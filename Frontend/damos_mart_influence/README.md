@@ -6,10 +6,17 @@ Backend harus online dengan URL HTTPS publik. Frontend di-build dengan URL API t
 
 ### 1. Deploy backend (Railway — gratis tier)
 
+Repo GitHub kamu monorepo (`Backend` + `Frontend`). Railway harus diarahkan ke subfolder backend saja.
+
 1. Buat akun di [Railway](https://railway.app).
-2. New Project → **Deploy from GitHub** (repo backend) atau upload folder `damos-mart-backend`.
-3. Tambah service **PostgreSQL** dan **Redis** di project yang sama.
-4. Set environment variables di service backend:
+2. **New Project** → **Deploy from GitHub** → pilih repo `Damos-Mart-SMK-Telkom`.
+3. Klik service backend → **Settings** → **Root Directory** → isi:
+   ```
+   Backend/damos-mart-backend
+   ```
+   (tanpa slash di akhir). Save → Railway akan redeploy dari folder itu saja.
+4. Tambah service **PostgreSQL** dan **Redis** di project yang sama (klik **+ New** di project).
+5. Set environment variables di service backend (tab **Variables**):
 
 | Variable | Contoh |
 |----------|--------|
@@ -22,8 +29,9 @@ Backend harus online dengan URL HTTPS publik. Frontend di-build dengan URL API t
 | `CORS_ORIGINS` | `https://your-app.netlify.app` |
 | `API_PREFIX` | `/api/v1` |
 
-5. Railway akan build dari `Dockerfile`. Setelah deploy, catat URL publik, mis. `https://damos-mart-api.up.railway.app`.
-6. (Opsional) Seed data: jalankan `npm run prisma:seed` sekali via Railway shell.
+5. Railway akan build dari `Dockerfile` di folder tersebut. Setelah deploy, catat URL publik, mis. `https://damos-mart-api.up.railway.app`.
+6. Aktifkan domain publik: service backend → **Settings** → **Networking** → **Generate Domain**.
+7. (Opsional) Seed data: service backend → **Settings** → shell / one-off → `npm run prisma:seed`.
 
 Cek health: `https://your-api-url/health`
 

@@ -1,0 +1,30 @@
+# Dependencies
+**/node_modules/
+
+# Build output
+**/dist/
+**/build/
+
+# Environment & secrets
+**/.env
+**/.env.local
+**/.env.*.local
+!.env.example
+
+# Uploads & local data
+**/uploads/
+**/.dart_tool/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Flutter
+**/coverage/
+.pub-cache/
+.pub/

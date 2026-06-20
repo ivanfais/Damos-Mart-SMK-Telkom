@@ -1,5 +1,7 @@
 # Monorepo deploy — builds Backend/damos-mart-backend when Railway root is repo root
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
+
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -13,7 +15,9 @@ COPY Backend/damos-mart-backend/src ./src/
 
 RUN npm run build && npx prisma generate
 
-FROM node:20-alpine AS runner
+FROM node:20-bookworm-slim AS runner
+
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -26,7 +30,8 @@ COPY Backend/damos-mart-backend/docker-entrypoint.sh ./
 RUN npm ci --omit=dev && npm install prisma@5.14.0 --no-save
 
 COPY --from=builder /app/dist ./dist
-RUN npx prisma generate
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 RUN chmod +x docker-entrypoint.sh
 

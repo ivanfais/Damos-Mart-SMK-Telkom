@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "=== Damos Mart Backend — startup ==="
+echo "=== Damos Mart Backend startup ==="
 echo "NODE_ENV=${NODE_ENV:-unknown}"
 echo "PORT=${PORT:-3000}"
 

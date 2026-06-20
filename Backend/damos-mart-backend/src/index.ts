@@ -29,6 +29,11 @@ import adminRouter from './modules/admin/admin.routes';
 const app = express();
 const server = createServer(app);
 
+// Health check first — Railway probes this before the app is fully warm
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // 1. Initialize Socket.IO connection manager
 initSocket(server);
 
@@ -69,19 +74,17 @@ app.use(`${apiPrefix}/admin`, adminRouter);
 // 5. Swagger API Docs Endpoint
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date() });
-});
-
 // 6. Global Error Handling Middleware
 app.use(errorHandler);
 
 // 7. Start listening
 const PORT = env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Damos Mart Backend Server is running on port ${PORT}`);
+const HOST = '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 Damos Mart Backend Server is running on ${HOST}:${PORT}`);
   console.log(`📑 OpenAPI documentation available at http://localhost:${PORT}/api-docs`);
+  console.log(`❤️ Health check: http://localhost:${PORT}/health`);
 });
 
 export { app, server };

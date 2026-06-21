@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/api_config.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/product_grid_layout.dart';
 import '../../data/models/product_model.dart';
 
 /// Compact product card for home/catalog grids.
@@ -27,11 +28,44 @@ class DamosProductGridCard extends StatelessWidget {
   static const Color _red = Color(0xFFD42427);
   static const Color _star = Color(0xFFFFC107);
 
+  Widget _buildProductImage(double height) {
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: ColoredBox(
+        color: _bgGrey,
+        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: height,
+                placeholder: (_, __) => const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
+                  ),
+                ),
+                errorWidget: (_, __, ___) => const Center(
+                  child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
+                ),
+              )
+            : const Center(
+                child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool hasStock = product.stock > 0 || product.isPreorder;
+    final imageHeight = ProductGridLayout.imageHeight(context);
 
-    return Container(
+    return SizedBox(
+      height: ProductGridLayout.cardHeight(context),
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -41,76 +75,56 @@ class DamosProductGridCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: onTap,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(
-                    color: _bgGrey,
-                    child: product.imageUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            placeholder: (_, __) => const Center(
-                              child: SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
-                              ),
-                            ),
-                            errorWidget: (_, __, ___) => const Center(
-                              child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
-                          ),
+          GestureDetector(
+            onTap: onTap,
+            child: Stack(
+              children: [
+                _buildProductImage(imageHeight),
+                if (product.categoryName.isNotEmpty)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _greenLight,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        product.categoryName.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: _primary,
+                        ),
+                      ),
+                    ),
                   ),
-                  if (product.categoryName.isNotEmpty)
-                    Positioned(
-                      top: 6,
-                      left: 6,
+                if (!hasStock)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: imageHeight / 2 - 14,
+                    child: Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _greenLight,
-                          borderRadius: BorderRadius.circular(4),
+                          color: _red,
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
-                          product.categoryName.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                            color: _primary,
-                          ),
+                        child: const Text(
+                          'STOK HABIS',
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
-                  if (!hasStock)
-                    Positioned.fill(
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _red,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'STOK HABIS',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
-          Padding(
+          SizedBox(
+            height: ProductGridLayout.contentHeight,
+            child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,9 +210,11 @@ class DamosProductGridCard extends StatelessWidget {
                 ),
               ],
             ),
+            ),
           ),
         ],
       ),
+    ),
     );
   }
 }

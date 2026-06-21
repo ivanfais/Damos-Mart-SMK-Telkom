@@ -605,7 +605,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
               GestureDetector(
-                onTap: () => context.push('/queue/${queue!.id}'),
+                onTap: () async {
+                  await context.push('/queue/${queue!.id}');
+                  if (!mounted) return;
+                  context.read<QueueCubit>().restoreActiveQueuesView();
+                },
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -673,6 +677,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -686,7 +691,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (_isLoadingFeatured)
             const ProductGridShimmer(itemCount: 4)
           else if (_featuredProducts.isEmpty)
@@ -697,19 +702,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: _Ds.textSecondary)),
             )
           else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _featuredProducts.length,
-              gridDelegate: ProductGridLayout.responsiveDelegate(context),
-              itemBuilder: (context, index) {
-                final product = _featuredProducts[index];
-                return DamosProductGridCard(
-                  product: product,
-                  onTap: () => context.push('/catalog/${product.id}'),
-                  onAddToCart: () => _addToCart(product),
-                );
-              },
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final product in _featuredProducts)
+                  SizedBox(
+                    width: ProductGridLayout.itemWidth(context),
+                    child: DamosProductGridCard(
+                      product: product,
+                      onTap: () => context.push('/catalog/${product.id}'),
+                      onAddToCart: () => _addToCart(product),
+                    ),
+                  ),
+              ],
             ),
         ],
       ),

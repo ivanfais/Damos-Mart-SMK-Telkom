@@ -144,6 +144,33 @@ class _CatalogScreenState extends State<CatalogScreen> {
     PopUpAlert.showAddedToCart(context: context, productName: product.name);
   }
 
+  Widget _buildCategoryChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? _Ds.primary : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? _Ds.primary : _Ds.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isSelected ? Colors.white : _Ds.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCategorySection(String selectedCategoryId, List<CategoryModel> categories) {
     final selectedChip = _chipLabelForCategoryId(selectedCategoryId, categories);
 
@@ -157,39 +184,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Wrap(
             spacing: 8,
-            runSpacing: 8,
+            runSpacing: 4,
             children: _chipOptions.map((label) {
               final isSelected = selectedChip == label;
-              return ChoiceChip(
-                label: Text(label),
-                selected: isSelected,
-                onSelected: (_) {
+              return _buildCategoryChip(
+                label: label,
+                isSelected: isSelected,
+                onTap: () {
                   final categoryId = _categoryIdForChip(label, categories);
                   context.read<ProductCubit>().filterByCategory(categoryId);
                 },
-                backgroundColor: Colors.white,
-                selectedColor: _Ds.primary,
-                labelStyle: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : _Ds.textPrimary,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(color: isSelected ? _Ds.primary : _Ds.border),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                showCheckmark: false,
               );
             }).toList(),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
       ],
     );
   }

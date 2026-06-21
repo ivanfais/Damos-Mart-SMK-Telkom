@@ -42,6 +42,7 @@ class ProductGridShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     return GridView.builder(
       shrinkWrap: true,
+      primary: false,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,
       gridDelegate: ProductGridLayout.responsiveDelegate(context),

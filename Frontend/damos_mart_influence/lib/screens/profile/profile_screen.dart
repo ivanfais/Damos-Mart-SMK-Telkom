@@ -1,13 +1,12 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
-import '../../config/api_config.dart';
 import '../../data/models/user_model.dart';
 import '../../widgets/common/pop_up_alert.dart';
+import '../../widgets/common/user_avatar.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
 
 class _Ds {
@@ -48,15 +47,10 @@ class ProfileScreen extends StatelessWidget {
       clipBehavior: Clip.none,
       alignment: Alignment.center,
       children: [
-        CircleAvatar(
+        UserAvatar(
+          avatarUrl: user.avatarUrl,
           radius: 52,
-          backgroundColor: _Ds.bgGrey,
-          backgroundImage: user.avatarUrl != null
-              ? CachedNetworkImageProvider(ApiConfig.imageUrl(user.avatarUrl!))
-              : null,
-          child: user.avatarUrl == null
-              ? const Icon(Icons.person, size: 48, color: _Ds.textSecondary)
-              : null,
+          iconSize: 48,
         ),
         Positioned(
           right: 4,

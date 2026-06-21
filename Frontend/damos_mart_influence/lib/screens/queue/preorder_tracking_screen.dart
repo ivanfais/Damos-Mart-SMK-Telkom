@@ -72,8 +72,10 @@ class _PreorderTrackingScreenState extends State<PreorderTrackingScreen> {
   }
 
   String? _productImage(OrderModel order) {
-    // Order items may not include image URL; return null for placeholder.
-    return null;
+    if (order.orderItems.isEmpty) return null;
+    final imageUrl = order.orderItems.first.imageUrl;
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+    return imageUrl;
   }
 
   Widget _buildOrderInfoCard(OrderModel order) {
@@ -98,17 +100,24 @@ class _PreorderTrackingScreenState extends State<PreorderTrackingScreen> {
               color: _Ds.bgGrey,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: imageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: ApiConfig.imageUrl(imageUrl),
-                      fit: BoxFit.contain,
-                      errorWidget: (_, __, ___) =>
-                          const Icon(Icons.checkroom_outlined, color: _Ds.hint, size: 28),
-                    )
-                  : const Icon(Icons.checkroom_outlined, color: _Ds.hint, size: 28),
-            ),
+            clipBehavior: Clip.antiAlias,
+            child: imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: ApiConfig.imageUrl(imageUrl),
+                    fit: BoxFit.cover,
+                    width: 56,
+                    height: 56,
+                    placeholder: (_, __) => const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: _Ds.primary),
+                      ),
+                    ),
+                    errorWidget: (_, __, ___) =>
+                        const Icon(Icons.checkroom_outlined, color: _Ds.hint, size: 28),
+                  )
+                : const Icon(Icons.checkroom_outlined, color: _Ds.hint, size: 28),
           ),
           const SizedBox(width: 12),
           Expanded(

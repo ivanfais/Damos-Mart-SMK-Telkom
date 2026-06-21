@@ -51,28 +51,43 @@ class QueueError extends QueueState {
 // Cubit
 class QueueCubit extends Cubit<QueueState> {
   final QueueRepository _repository;
+  QueueActiveLoaded? _cachedActiveQueues;
 
   QueueCubit({QueueRepository? repository})
       : _repository = repository ?? QueueRepository(),
         super(QueueInitial());
+
+  QueueActiveLoaded _buildActiveLoaded(List<QueueModel> queues, Map<String, dynamic> stats) {
+    return QueueActiveLoaded(
+      activeQueues: queues,
+      currentServing: stats['currentServing']?.toString() ?? 'N/A',
+      totalWaiting: stats['totalWaiting'] as int? ?? 0,
+    );
+  }
 
   Future<void> loadActiveQueues() async {
     emit(QueueLoading());
     try {
       final queues = await _repository.getActiveQueues();
       final stats = await _repository.getCurrentQueueState();
-      emit(QueueActiveLoaded(
-        activeQueues: queues,
-        currentServing: stats['currentServing']?.toString() ?? 'N/A',
-        totalWaiting: stats['totalWaiting'] as int? ?? 0,
-      ));
+      _cachedActiveQueues = _buildActiveLoaded(queues, stats);
+      emit(_cachedActiveQueues!);
     } catch (e) {
       emit(QueueError(e.toString()));
     }
   }
 
+  /// Restore list view instantly after leaving a detail screen.
+  void restoreActiveQueuesView() {
+    if (_cachedActiveQueues != null) {
+      emit(_cachedActiveQueues!);
+      _refreshActiveQueuesInBackground();
+      return;
+    }
+    loadActiveQueues();
+  }
+
   Future<void> loadQueueDetail(String queueId) async {
-    emit(QueueLoading());
     try {
       final queue = await _repository.getQueueDetails(queueId);
       emit(QueueDetailLoaded(queue));
@@ -80,21 +95,24 @@ class QueueCubit extends Cubit<QueueState> {
       emit(QueueError(e.toString()));
     }
   }
+
+  Future<void> _refreshActiveQueuesInBackground() async {
+    try {
+      final queues = await _repository.getActiveQueues();
+      final stats = await _repository.getCurrentQueueState();
+      _cachedActiveQueues = _buildActiveLoaded(queues, stats);
+      if (state is QueueActiveLoaded) {
+        emit(_cachedActiveQueues!);
+      }
+    } catch (_) {
+      // Keep cached list visible if refresh fails.
+    }
+  }
   
   // Custom update trigger (e.g. from WebSockets without full loading state)
   void updateActiveQueuesSilently() async {
     if (state is QueueActiveLoaded) {
-      try {
-        final queues = await _repository.getActiveQueues();
-        final stats = await _repository.getCurrentQueueState();
-        emit(QueueActiveLoaded(
-          activeQueues: queues,
-          currentServing: stats['currentServing']?.toString() ?? 'N/A',
-          totalWaiting: stats['totalWaiting'] as int? ?? 0,
-        ));
-      } catch (_) {
-        // Fail silently to prevent interrupting user view with error screen
-      }
+      await _refreshActiveQueuesInBackground();
     }
   }
 

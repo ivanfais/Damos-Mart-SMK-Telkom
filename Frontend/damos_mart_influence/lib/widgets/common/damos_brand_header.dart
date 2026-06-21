@@ -1,10 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_state.dart';
-import '../../config/api_config.dart';
+import 'user_avatar.dart';
 import '../../config/app_constants.dart';
 
 /// Baris logo + judul + profil (tanpa wrapper hijau).
@@ -169,15 +168,12 @@ class _ProfileAvatarButton extends StatelessWidget {
                 width: DamosBrandHeaderRow.profileBorderWidth,
               ),
             ),
-            child: CircleAvatar(
+            child: UserAvatar(
+              avatarUrl: avatarUrl,
               radius: DamosBrandHeaderRow.profileAvatarRadius,
               backgroundColor: Colors.white,
-              backgroundImage: avatarUrl != null
-                  ? CachedNetworkImageProvider(ApiConfig.imageUrl(avatarUrl))
-                  : null,
-              child: avatarUrl == null
-                  ? const Icon(Icons.person, color: DamosBrandHeaderRow.primary, size: 24)
-                  : null,
+              iconColor: DamosBrandHeaderRow.primary,
+              iconSize: 24,
             ),
           );
         },

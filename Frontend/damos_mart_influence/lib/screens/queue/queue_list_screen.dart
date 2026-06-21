@@ -34,7 +34,7 @@ class _QueueListScreenState extends State<QueueListScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<QueueCubit>().loadActiveQueues();
+    context.read<QueueCubit>().restoreActiveQueuesView();
 
     SocketService.instance.onQueueUpdated((_) => _refreshQueues());
     SocketService.instance.onQueueCalled((_) => _refreshQueues());
@@ -176,12 +176,14 @@ class _QueueListScreenState extends State<QueueListScreen> {
     }
   }
 
-  void _openDetail(QueueModel queue) {
-    if (queue.order?.isPreorder == true) {
-      context.push('/queue/${queue.id}/tracking');
-    } else {
-      context.push('/queue/${queue.id}');
-    }
+  Future<void> _openDetail(QueueModel queue) async {
+    final route = queue.order?.isPreorder == true
+        ? '/queue/${queue.id}/tracking'
+        : '/queue/${queue.id}';
+
+    await context.push(route);
+    if (!mounted) return;
+    context.read<QueueCubit>().restoreActiveQueuesView();
   }
 
   Widget _buildCategoryBadge(String label) {
@@ -359,7 +361,7 @@ class _QueueListScreenState extends State<QueueListScreen> {
           return _buildScrollPage([
             const SizedBox(
               height: 240,
-              child: Center(child: Text('Menghubungkan ke Antrean...')),
+              child: Center(child: CircularProgressIndicator(color: _Ds.primary)),
             ),
           ]);
         },

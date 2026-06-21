@@ -12,6 +12,7 @@ import '../../data/repositories/product_repository.dart';
 import '../../config/app_constants.dart';
 import '../../widgets/common/damos_screen_header.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../core/utils/product_grid_layout.dart';
 import '../../widgets/product/damos_product_grid_card.dart';
 import '../../widgets/common/pop_up_alert.dart';
 
@@ -700,12 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _featuredProducts.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.68,
-              ),
+              gridDelegate: ProductGridLayout.responsiveDelegate(context),
               itemBuilder: (context, index) {
                 final product = _featuredProducts[index];
                 return DamosProductGridCard(

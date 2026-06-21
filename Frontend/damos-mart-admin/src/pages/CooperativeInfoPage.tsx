@@ -9,7 +9,8 @@ import {
   Image as ImageIcon,
   BarChart3,
 } from 'lucide-react';
-import apiClient, { API_BASE_URL } from '../api/client';
+import apiClient from '../api/client';
+import { assetUrl } from '../config/env';
 
 const CHART_HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16];
 const CHART_DAYS = [
@@ -48,11 +49,7 @@ const buildCrowdGrid = (existing: any[]): CrowdCell[] => {
   return cells;
 };
 
-const resolveImageUrl = (path?: string | null) => {
-  if (!path) return null;
-  if (path.startsWith('http')) return path;
-  return `${API_BASE_URL.replace('/api/v1', '')}${path}`;
-};
+const resolveImageUrl = (path?: string | null) => assetUrl(path) || null;
 
 const CONDITION_OPTIONS = [
   { value: 'SEPI', label: 'Sepi', hint: 'Kondisi sepi / sedikit pengunjung', activeClass: 'border-emerald-500 bg-emerald-50 text-emerald-700' },

@@ -1,7 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/env';
 
-// The Backend API base URL (standardized in instruction section 11)
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+export { API_BASE_URL } from '../config/env';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -51,4 +51,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-export { API_BASE_URL };

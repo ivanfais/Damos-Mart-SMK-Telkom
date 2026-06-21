@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/product/product_cubit.dart';
+import '../../blocs/cart/cart_cubit.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/product_variant_model.dart';
+import '../../data/models/cart_item_model.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../config/api_config.dart';
 import '../../widgets/common/loading_shimmer.dart';
@@ -35,6 +37,7 @@ class PreorderScreen extends StatefulWidget {
 class _PreorderScreenState extends State<PreorderScreen> {
   int _quantity = 1;
   ProductVariantModel? _selectedVariant;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -101,25 +104,75 @@ class _PreorderScreenState extends State<PreorderScreen> {
     );
   }
 
-  void _executePreorder(ProductModel product) {
+  Future<void> _executePreorder(ProductModel product) async {
+    if (_isSubmitting) return;
+
     if (product.variants.isNotEmpty && _selectedVariant == null) {
       PopUpAlert.show(
         context: context,
-        title: 'Pilih Ukuran ⚠️',
+        title: 'Pilih Ukuran',
         description: 'Silakan pilih ukuran seragam terlebih dahulu ya!',
         isError: true,
       );
       return;
     }
 
-    final variantLabel = _selectedVariant != null ? ' (Ukuran: ${_selectedVariant!.variantName})' : '';
-    PopUpAlert.showSuccess(
-      context: context,
-      title: 'Yeay! Pre-Order Berhasil! 🎉',
-      description:
-          'Kamu telah memesan $_quantity x ${product.name}$variantLabel.\nPetugas kami akan segera memproses pesananmu!',
-      onConfirm: () => context.go('/home'),
-    );
+    setState(() => _isSubmitting = true);
+
+    try {
+      await context.read<CartCubit>().addToCart(
+        productId: product.id,
+        variantId: _selectedVariant?.id,
+        quantity: _quantity,
+      );
+
+      if (!mounted) return;
+
+      final cartState = context.read<CartCubit>().state;
+      if (cartState is CartError) {
+        PopUpAlert.show(
+          context: context,
+          title: 'Gagal Pre-Order',
+          description: cartState.message,
+          isError: true,
+        );
+        return;
+      }
+
+      if (cartState is! CartLoaded) {
+        PopUpAlert.show(
+          context: context,
+          title: 'Gagal Pre-Order',
+          description: 'Keranjang belum siap. Coba lagi ya!',
+          isError: true,
+        );
+        return;
+      }
+
+      final selectedVariantId = _selectedVariant?.id;
+      CartItemModel? cartItem;
+      for (final item in cartState.items) {
+        if (item.productId == product.id && item.variantId == selectedVariantId) {
+          cartItem = item;
+          break;
+        }
+      }
+
+      if (cartItem == null) {
+        PopUpAlert.show(
+          context: context,
+          title: 'Gagal Pre-Order',
+          description: 'Item pre-order tidak ditemukan di keranjang.',
+          isError: true,
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      context.push('/checkout', extra: [cartItem]);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   Widget _buildScrollHeader() {
@@ -295,17 +348,23 @@ class _PreorderScreenState extends State<PreorderScreen> {
           height: 52,
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => _executePreorder(product),
+            onPressed: _isSubmitting ? null : () => _executePreorder(product),
             style: ElevatedButton.styleFrom(
               backgroundColor: _Ds.primary,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text(
-              'Pre-Order Sekarang',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  )
+                : const Text(
+                    'Pre-Order Sekarang',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                  ),
           ),
         ),
       ),

@@ -12,7 +12,8 @@ import {
   Sparkles,
   RefreshCw,
 } from 'lucide-react';
-import apiClient, { API_BASE_URL } from '../api/client';
+import apiClient from '../api/client';
+import { assetUrl } from '../config/env';
 
 export const ProductsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -167,7 +168,7 @@ export const ProductsPage: React.FC = () => {
                   <td className="py-4 px-4">
                     {product.imageUrl ? (
                       <img
-                        src={`http://localhost:3000${product.imageUrl}`}
+                        src={assetUrl(product.imageUrl)}
                         alt={product.name}
                         className="w-12 h-12 object-cover rounded-xl border border-slate-200"
                         onError={(e) => {

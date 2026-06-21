@@ -49,6 +49,21 @@ class CooperativeController {
             return next(error);
         }
     }
+    /**
+     * Fetches real-time cooperative condition.
+     */
+    async getStatus(req, res, next) {
+        try {
+            const status = await coopService.getCurrentStatus();
+            return res.status(200).json({
+                success: true,
+                data: status,
+            });
+        }
+        catch (error) {
+            return next(error);
+        }
+    }
     // ==========================================
     // ADMIN HANDLERS
     // ==========================================
@@ -126,6 +141,40 @@ class CooperativeController {
                 success: true,
                 data: updated,
                 message: 'Operating hours updated successfully',
+            });
+        }
+        catch (error) {
+            return next(error);
+        }
+    }
+    /**
+     * Admin: Bulk upserts crowd density data.
+     */
+    async updateCrowd(req, res, next) {
+        try {
+            const { slots } = req.body;
+            const updated = await coopService.updateCrowdData(slots);
+            return res.status(200).json({
+                success: true,
+                data: updated,
+                message: 'Crowd density data updated successfully',
+            });
+        }
+        catch (error) {
+            return next(error);
+        }
+    }
+    /**
+     * Admin: Updates real-time cooperative condition.
+     */
+    async updateStatus(req, res, next) {
+        try {
+            const { condition } = req.body;
+            const updated = await coopService.updateCurrentStatus(condition);
+            return res.status(200).json({
+                success: true,
+                data: updated,
+                message: 'Cooperative condition updated successfully',
             });
         }
         catch (error) {

@@ -2,15 +2,23 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.emitNewOrderAdmin = exports.emitChatRead = exports.emitChatMessage = exports.emitQueueReady = exports.emitQueueCalled = exports.emitQueueUpdate = exports.getIo = exports.initSocket = void 0;
 const socket_io_1 = require("socket.io");
+const env_1 = require("../config/env");
 let io;
+function socketCorsOrigins() {
+    if (env_1.env.CORS_ORIGINS.includes('*')) {
+        return '*';
+    }
+    return env_1.env.CORS_ORIGINS;
+}
 /**
  * Initializes Socket.IO with namespaces for /queues and /chat
  */
 const initSocket = (server) => {
+    const origins = socketCorsOrigins();
     io = new socket_io_1.Server(server, {
         cors: {
-            origin: '*', // Allow all in development or config-based
-            credentials: true,
+            origin: origins,
+            credentials: origins !== '*',
         },
     });
     // ==========================================

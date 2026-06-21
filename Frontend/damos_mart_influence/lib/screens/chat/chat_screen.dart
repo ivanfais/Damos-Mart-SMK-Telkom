@@ -33,6 +33,10 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isAdminTyping = false;
   String? _currentUserId;
+  int _lastMessageCount = 0;
+
+  late final void Function(dynamic) _chatMessageHandler;
+  late final void Function(dynamic) _chatTypingHandler;
 
   @override
   void initState() {
@@ -43,27 +47,34 @@ class _ChatScreenState extends State<ChatScreen> {
       _currentUserId = authState.user.id;
     }
 
-    context.read<ChatCubit>().loadRoomAndMessages();
-
-    SocketService.instance.onChatMessage((data) {
-      if (mounted && data != null) {
-        final message = ChatMessageModel.fromJson(data);
+    _chatMessageHandler = (data) {
+      if (!mounted || data == null) return;
+      try {
+        final message = ChatMessageModel.fromJson(Map<String, dynamic>.from(data as Map));
         context.read<ChatCubit>().receiveMessage(message);
-        _scrollToBottom();
-      }
-    });
+      } catch (_) {}
+    };
 
-    SocketService.instance.onChatTyping((data) {
-      if (mounted && data != null && data['userId'] != _currentUserId) {
+    _chatTypingHandler = (data) {
+      if (!mounted || data == null) return;
+      if (data['userId'] != _currentUserId) {
         setState(() {
           _isAdminTyping = data['isTyping'] as bool? ?? false;
         });
       }
-    });
+    };
+
+    SocketService.instance.onChatMessage(_chatMessageHandler);
+    SocketService.instance.onChatTyping(_chatTypingHandler);
+
+    context.read<ChatCubit>().loadRoomAndMessages();
   }
 
   @override
   void dispose() {
+    SocketService.instance.offChatMessage(_chatMessageHandler);
+    SocketService.instance.offChatTyping(_chatTypingHandler);
+
     final chatState = context.read<ChatCubit>().state;
     if (chatState is ChatRoomLoaded) {
       SocketService.instance.leaveChat(chatState.room.id);
@@ -276,6 +287,10 @@ class _ChatScreenState extends State<ChatScreen> {
         listener: (context, state) {
           if (state is ChatRoomLoaded) {
             SocketService.instance.joinChat(state.room.id);
+            if (state.messages.length != _lastMessageCount) {
+              _lastMessageCount = state.messages.length;
+              _scrollToBottom();
+            }
           }
         },
         builder: (context, state) {
@@ -297,36 +312,25 @@ class _ChatScreenState extends State<ChatScreen> {
 
             return Column(
               children: [
+                _buildScrollHeader(),
                 Expanded(
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    slivers: [
-                      SliverToBoxAdapter(child: _buildScrollHeader()),
-                      if (messages.isEmpty)
-                        SliverFillRemaining(
-                          child: Center(
-                            child: Text(
-                              'Mulai percakapan dengan admin koperasi.',
-                              style: TextStyle(fontSize: 14, color: _Ds.textSecondary),
-                            ),
+                  child: messages.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Mulai percakapan dengan admin koperasi.',
+                            style: TextStyle(fontSize: 14, color: _Ds.textSecondary),
                           ),
                         )
-                      else
-                        SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final message = messages[index];
-                                final isMe = message.senderId == _currentUserId;
-                                return _buildMessageBubble(message, isMe);
-                              },
-                              childCount: messages.length,
-                            ),
-                          ),
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final message = messages[index];
+                            final isMe = message.senderId == _currentUserId;
+                            return _buildMessageBubble(message, isMe);
+                          },
                         ),
-                    ],
-                  ),
                 ),
                 _buildInputBar(state.isSending),
               ],

@@ -14,6 +14,7 @@ import 'blocs/queue/queue_cubit.dart';
 import 'blocs/chat/chat_cubit.dart';
 import 'blocs/notification/notification_cubit.dart';
 import 'blocs/cooperative/cooperative_cubit.dart';
+import 'core/notifications/push_notification_service.dart';
 import 'core/socket/socket_service.dart';
 import 'widgets/common/notification_banner.dart';
 
@@ -32,31 +33,61 @@ class _DamosMartAppState extends State<DamosMartApp> {
     _socketListenersRegistered = true;
 
     SocketService.instance.onQueueCalled((data) {
-      _showQueueBanner(
+      final queueNumber = data['queueNumber']?.toString() ?? '-';
+      _showQueueNotification(
         title: 'Antrean Dipanggil',
         message:
-            'Pesanan ${data['queueNumber']} Anda sedang disiapkan oleh petugas koperasi.',
+            'Pesanan $queueNumber Anda sedang disiapkan oleh petugas koperasi.',
+        queueNumber: queueNumber,
+        isReady: false,
       );
+      _refreshQueuesAfterSocketEvent();
     });
 
     SocketService.instance.onQueueReady((data) {
-      _showQueueBanner(
+      final queueNumber = data['queueNumber']?.toString() ?? '-';
+      _showQueueNotification(
         title: 'Pesanan Siap Diambil!',
         message:
-            'Pesanan ${data['queueNumber']} Anda sudah siap diambil di kasir. Silakan ambil sekarang.',
+            'Pesanan $queueNumber Anda sudah siap diambil di kasir. Silakan ambil sekarang.',
+        queueNumber: queueNumber,
+        isReady: true,
       );
+      _refreshQueuesAfterSocketEvent();
     });
   }
 
-  void _showQueueBanner({required String title, required String message}) {
+  void _refreshQueuesAfterSocketEvent() {
     final context = AppRouter.rootNavigatorKey.currentContext;
-    if (context == null) return;
+    if (context != null) {
+      context.read<QueueCubit>().updateActiveQueuesSilently();
+    }
+  }
 
-    NotificationBanner.show(
-      context: context,
-      title: title,
-      message: message,
-    );
+  void _showQueueNotification({
+    required String title,
+    required String message,
+    required String queueNumber,
+    required bool isReady,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final push = PushNotificationService.instance;
+      if (push.isSupported) {
+        await push.ensurePermission();
+        if (isReady) {
+          await push.showQueueReady(queueNumber: queueNumber);
+        } else {
+          await push.showQueueCalled(queueNumber: queueNumber);
+        }
+        return;
+      }
+
+      // Web fallback: in-app banner
+      NotificationBanner.show(
+        title: title,
+        message: message,
+      );
+    });
   }
 
   @override
@@ -91,6 +122,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
+            PushNotificationService.instance.ensurePermission();
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
           } else if (state is Unauthenticated) {

@@ -86,8 +86,35 @@ class OrdersService {
             await tx.orderItem.createMany({
                 data: orderItemsData,
             });
-            return order;
+            if (data.paymentMethod === 'QRIS') {
+                const queueNumber = await (0, queue_number_1.generateNextQueueNumber)(tx);
+                await tx.queue.create({
+                    data: {
+                        orderId: order.id,
+                        userId,
+                        queueNumber,
+                        queueDate: new Date(),
+                        status: 'WAITING',
+                    },
+                });
+            }
+            return tx.order.findUnique({
+                where: { id: order.id },
+                include: {
+                    orderItems: {
+                        include: {
+                            product: {
+                                select: { imageUrl: true },
+                            },
+                        },
+                    },
+                    queue: true,
+                },
+            });
         });
+        if (!resultOrder) {
+            throw new error_middleware_1.AppError(500, 'ORDER_CREATE_FAILED', 'Failed to create order');
+        }
         // Notify admins via websocket of new pending order
         (0, socket_1.emitNewOrderAdmin)(resultOrder);
         return {
@@ -131,6 +158,15 @@ class OrdersService {
                             where: { id: item.variantId },
                             data: { stock: variant.stock - item.quantity },
                         });
+                        // Also decrement the parent product's main stock so the catalog
+                        // total reflects the sale (guarded so it never goes negative).
+                        const parent = await tx.product.findUnique({ where: { id: item.productId } });
+                        if (parent) {
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: { stock: Math.max(0, parent.stock - item.quantity) },
+                            });
+                        }
                     }
                     else {
                         const product = await tx.product.findUnique({ where: { id: item.productId } });
@@ -150,7 +186,7 @@ class OrdersService {
             const updatedOrder = await tx.order.update({
                 where: { id: orderId },
                 data: {
-                    status: 'PAID',
+                    status: order.isPreorder ? 'IN_PRODUCTION' : 'PAID',
                     paymentStatus: 'PAID',
                     paymentMethod,
                     paidAt: new Date(),
@@ -170,32 +206,47 @@ class OrdersService {
                     },
                 });
             }
-            // 4. Generate daily Queue number
-            const queueNumber = await (0, queue_number_1.generateNextQueueNumber)(tx);
-            // Estimate waiting time (e.g. number of WAITING + PREPARING queues * 5 mins)
+            // 4. Ensure queue number exists (reserved at QRIS checkout or generated now)
+            const existingQueue = await tx.queue.findUnique({
+                where: { orderId: order.id },
+            });
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            const endOfToday = new Date();
+            endOfToday.setHours(23, 59, 59, 999);
             const pendingQueuesCount = await tx.queue.count({
                 where: {
                     status: { in: ['WAITING', 'PREPARING'] },
-                    queueDate: new Date(),
+                    queueDate: { gte: startOfToday, lte: endOfToday },
                 },
             });
             const estimatedWaitMinutes = (pendingQueuesCount + 1) * 5;
-            const queue = await tx.queue.create({
-                data: {
-                    orderId: order.id,
-                    userId,
-                    queueNumber,
-                    queueDate: new Date(),
-                    status: 'WAITING',
-                    estimatedWaitMinutes,
-                },
-            });
+            let queue;
+            if (existingQueue) {
+                queue = await tx.queue.update({
+                    where: { id: existingQueue.id },
+                    data: { estimatedWaitMinutes },
+                });
+            }
+            else {
+                const queueNumber = await (0, queue_number_1.generateNextQueueNumber)(tx);
+                queue = await tx.queue.create({
+                    data: {
+                        orderId: order.id,
+                        userId,
+                        queueNumber,
+                        queueDate: new Date(),
+                        status: 'WAITING',
+                        estimatedWaitMinutes,
+                    },
+                });
+            }
             // 5. Create notification row
             await tx.notification.create({
                 data: {
                     userId,
                     title: 'Pembayaran Berhasil',
-                    body: `Pesanan ${order.orderNumber} telah dibayar. Nomor antrean Anda adalah ${queueNumber}.`,
+                    body: `Pesanan ${order.orderNumber} telah dibayar. Nomor antrean Anda adalah ${queue.queueNumber}.`,
                     type: 'ORDER_STATUS',
                     referenceId: order.id,
                 },
@@ -234,7 +285,13 @@ class OrdersService {
                 skip: offset,
                 take: limit,
                 include: {
-                    orderItems: true,
+                    orderItems: {
+                        include: {
+                            product: {
+                                select: { imageUrl: true },
+                            },
+                        },
+                    },
                     queue: true,
                 },
             }),
@@ -253,7 +310,13 @@ class OrdersService {
         const order = await database_1.default.order.findUnique({
             where: { id: orderId },
             include: {
-                orderItems: true,
+                orderItems: {
+                    include: {
+                        product: {
+                            select: { imageUrl: true },
+                        },
+                    },
+                },
                 queue: true,
                 user: {
                     select: {
@@ -284,11 +347,16 @@ class OrdersService {
         if (order.status !== 'PENDING') {
             throw new error_middleware_1.AppError(400, 'ORDER_CANNOT_BE_CANCELLED', `Cannot cancel order with status: ${order.status}`);
         }
-        const updated = await database_1.default.order.update({
-            where: { id: orderId },
-            data: {
-                status: 'CANCELLED',
-            },
+        const updated = await database_1.default.$transaction(async (tx) => {
+            await tx.queue.deleteMany({
+                where: { orderId },
+            });
+            return tx.order.update({
+                where: { id: orderId },
+                data: {
+                    status: 'CANCELLED',
+                },
+            });
         });
         return updated;
     }
@@ -370,24 +438,56 @@ class OrdersService {
     }
     /**
      * Admin: Updates order status manually.
+     * When an order that already consumed stock (paid/preparing/etc.) is cancelled,
+     * its stock is returned so inventory stays consistent.
      */
     async updateOrderStatusAdmin(orderId, status) {
         const order = await database_1.default.order.findUnique({
             where: { id: orderId },
+            include: {
+                orderItems: {
+                    include: { product: true },
+                },
+            },
         });
         if (!order) {
             throw new error_middleware_1.AppError(404, 'ORDER_NOT_FOUND', 'Order not found');
         }
-        const updated = await database_1.default.order.update({
-            where: { id: orderId },
-            data: { status },
-            include: {
-                user: {
-                    select: {
-                        id: true,
+        // Stock was decremented at payment time. So any status other than PENDING /
+        // CANCELLED means stock is currently being held by this order.
+        const stockWasConsumed = order.status !== 'PENDING' && order.status !== 'CANCELLED';
+        const shouldRestoreStock = status === 'CANCELLED' && stockWasConsumed;
+        const updated = await database_1.default.$transaction(async (tx) => {
+            if (shouldRestoreStock) {
+                for (const item of order.orderItems) {
+                    // Preorder items never decremented stock, so skip them.
+                    if (item.product.isPreorder)
+                        continue;
+                    if (item.variantId) {
+                        await tx.productVariant.update({
+                            where: { id: item.variantId },
+                            data: { stock: { increment: item.quantity } },
+                        });
+                    }
+                    // The parent product stock is decremented for both variant and
+                    // non-variant sales, so always return it here.
+                    await tx.product.update({
+                        where: { id: item.productId },
+                        data: { stock: { increment: item.quantity } },
+                    });
+                }
+            }
+            return tx.order.update({
+                where: { id: orderId },
+                data: { status },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                        },
                     },
                 },
-            },
+            });
         });
         // Create notification entry for order status change
         await database_1.default.notification.create({

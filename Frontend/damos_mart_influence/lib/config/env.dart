@@ -1,23 +1,23 @@
 /// Runtime configuration via `--dart-define`.
 ///
-/// Local dev (default):
-///   flutter run -d chrome
+/// Default: Railway production API.
 ///
-/// Staging / user testing build:
-///   flutter build web --release \
-///     --dart-define=APP_ENV=staging \
-///     --dart-define=API_BASE_URL=https://your-api.example.com
+/// Local backend:
+///   flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000 --dart-define=APP_ENV=development
 class Env {
+  static const String _railwayApiOrigin =
+      'https://damos-mart-smk-telkom-production.up.railway.app';
+
   /// `development` | `staging` | `production`
   static const String appEnv = String.fromEnvironment(
     'APP_ENV',
-    defaultValue: 'development',
+    defaultValue: 'staging',
   );
 
   /// API origin without trailing slash, e.g. `https://api.example.com` or `http://localhost:3000`
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:3000',
+    defaultValue: _railwayApiOrigin,
   );
 
   static bool get isProduction => appEnv == 'production';

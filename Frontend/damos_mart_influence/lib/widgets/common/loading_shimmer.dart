@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../core/utils/product_grid_layout.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimensions.dart';
 
@@ -43,12 +44,7 @@ class ProductGridShimmer extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.62,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
+      gridDelegate: ProductGridLayout.responsiveDelegate(context),
       itemBuilder: (context, index) {
         return Container(
           decoration: BoxDecoration(

@@ -7,6 +7,18 @@ exports.QueuesService = void 0;
 const database_1 = __importDefault(require("../../config/database"));
 const error_middleware_1 = require("../../middlewares/error.middleware");
 const socket_1 = require("../../socket");
+/**
+ * Returns [startOfDay, endOfDay] for the current local day. Used to filter
+ * `queueDate` (a @db.Date column) reliably — comparing the column with a single
+ * `new Date()` timestamp never matches because the stored value is date-only.
+ */
+function todayRange() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
 class QueuesService {
     /**
      * Fetches active queues belonging to the student (WAITING, PREPARING, READY).
@@ -16,11 +28,20 @@ class QueuesService {
             where: {
                 userId,
                 status: { in: ['WAITING', 'PREPARING', 'READY'] },
+                order: {
+                    paymentStatus: 'PAID',
+                },
             },
             include: {
                 order: {
                     include: {
-                        orderItems: true,
+                        orderItems: {
+                            include: {
+                                product: {
+                                    select: { imageUrl: true },
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -36,7 +57,13 @@ class QueuesService {
             include: {
                 order: {
                     include: {
-                        orderItems: true,
+                        orderItems: {
+                            include: {
+                                product: {
+                                    select: { imageUrl: true },
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -57,10 +84,11 @@ class QueuesService {
      * - totalWaiting: count of status = WAITING
      */
     async getCurrentQueueState() {
+        const { start, end } = todayRange();
         const serving = await database_1.default.queue.findFirst({
             where: {
                 status: { in: ['PREPARING', 'READY'] },
-                queueDate: new Date(),
+                queueDate: { gte: start, lte: end },
             },
             orderBy: { calledAt: 'desc' },
             select: { queueNumber: true },
@@ -68,7 +96,7 @@ class QueuesService {
         const waitingCount = await database_1.default.queue.count({
             where: {
                 status: 'WAITING',
-                queueDate: new Date(),
+                queueDate: { gte: start, lte: end },
             },
         });
         return {
@@ -83,9 +111,10 @@ class QueuesService {
      * Admin: Fetches all queues created today.
      */
     async getAllTodayQueues() {
+        const { start, end } = todayRange();
         return database_1.default.queue.findMany({
             where: {
-                queueDate: new Date(),
+                queueDate: { gte: start, lte: end },
             },
             orderBy: { createdAt: 'asc' },
             include: {
@@ -97,7 +126,13 @@ class QueuesService {
                 },
                 order: {
                     include: {
-                        orderItems: true,
+                        orderItems: {
+                            include: {
+                                product: {
+                                    select: { imageUrl: true },
+                                },
+                            },
+                        },
                     },
                 },
             },

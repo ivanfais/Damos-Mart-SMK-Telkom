@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
+import { SOCKET_SERVER_URL } from '../config/env';
 
 interface SocketState {
   queueSocket: Socket | null;
@@ -8,8 +9,6 @@ interface SocketState {
   connectSockets: () => void;
   disconnectSockets: () => void;
 }
-
-const SOCKET_SERVER_URL = 'http://localhost:3000';
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   queueSocket: null,
@@ -55,4 +54,3 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 }));
 
 export default useSocketStore;
-export { SOCKET_SERVER_URL };

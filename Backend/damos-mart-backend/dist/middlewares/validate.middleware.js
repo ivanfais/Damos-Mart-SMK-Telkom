@@ -13,10 +13,15 @@ const validateRequest = (schema) => {
                 query: req.query,
                 params: req.params,
             });
-            // Replace with validated, typed values
-            req.body = parsed.body;
-            req.query = parsed.query;
-            req.params = parsed.params;
+            // Replace with validated, typed values — but only for the parts the schema
+            // actually defines. Otherwise zod strips them to `undefined` and would wipe
+            // out req.params / req.query (breaking route handlers that read them).
+            if (parsed.body !== undefined)
+                req.body = parsed.body;
+            if (parsed.query !== undefined)
+                req.query = parsed.query;
+            if (parsed.params !== undefined)
+                req.params = parsed.params;
             return next();
         }
         catch (error) {

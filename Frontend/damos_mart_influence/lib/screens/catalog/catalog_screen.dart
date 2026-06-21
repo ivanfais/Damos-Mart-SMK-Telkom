@@ -6,6 +6,7 @@ import '../../blocs/cart/cart_cubit.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/product_model.dart';
 import '../../widgets/common/damos_screen_header.dart';
+import '../../core/utils/product_grid_layout.dart';
 import '../../widgets/product/damos_product_grid_card.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
@@ -218,12 +219,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.68,
-        ),
+        gridDelegate: ProductGridLayout.responsiveSliverDelegate(context),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             if (index >= state.products.length) {

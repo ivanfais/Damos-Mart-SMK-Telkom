@@ -15,6 +15,7 @@ const bind = (method) => {
 router.get('/info', bind('getInfo'));
 router.get('/hours', bind('getHours'));
 router.get('/crowd', bind('getCrowd'));
+router.get('/status', bind('getStatus'));
 // Admin CRUD routes
 exports.adminCooperativeRouter = (0, express_1.Router)();
 exports.adminCooperativeRouter.use(auth_middleware_1.authMiddleware, admin_middleware_1.adminMiddleware);
@@ -22,4 +23,6 @@ exports.adminCooperativeRouter.post('/info', upload_middleware_1.uploadCooperati
 exports.adminCooperativeRouter.put('/info/:id', upload_middleware_1.uploadCooperative.single('image'), bind('updateInfo'));
 exports.adminCooperativeRouter.delete('/info/:id', bind('deleteInfo'));
 exports.adminCooperativeRouter.put('/hours', bind('updateHours'));
+exports.adminCooperativeRouter.put('/crowd', bind('updateCrowd'));
+exports.adminCooperativeRouter.put('/status', bind('updateStatus'));
 exports.default = router;

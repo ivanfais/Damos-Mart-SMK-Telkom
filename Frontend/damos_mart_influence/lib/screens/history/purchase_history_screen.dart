@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/order/order_cubit.dart';
+import '../../config/api_config.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../data/models/order_model.dart';
@@ -109,6 +111,35 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
     );
   }
 
+  Widget _buildProductThumbnail(String? imageUrl) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: _Ds.bgGrey,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: imageUrl != null && imageUrl.isNotEmpty
+          ? CachedNetworkImage(
+              imageUrl: ApiConfig.imageUrl(imageUrl),
+              fit: BoxFit.cover,
+              width: 56,
+              height: 56,
+              placeholder: (_, __) => const Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: _Ds.primary),
+                ),
+              ),
+              errorWidget: (_, __, ___) =>
+                  const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 24),
+            )
+          : const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 24),
+    );
+  }
+
   Widget _buildHistoryCard(OrderModel order, {required bool isCompletedTab}) {
     final badge = _statusBadge(order, isCompletedTab: isCompletedTab);
     final totalItems = order.orderItems.fold<int>(0, (sum, item) => sum + item.quantity);
@@ -150,15 +181,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: _Ds.bgGrey,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 24),
-              ),
+              _buildProductThumbnail(firstItem?.imageUrl),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -180,7 +203,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
           ),
           const SizedBox(height: 14),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
@@ -197,29 +220,27 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
                     const SizedBox(height: 4),
                     Text(
                       CurrencyFormatter.format(order.total),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _Ds.textPrimary),
                     ),
                   ],
                 ),
               ),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 120),
-                child: SizedBox(
-                  height: 40,
-                  child: ElevatedButton(
-                    onPressed: () => _openOrderDetail(order),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _Ds.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text(
-                      'Lihat Detail',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () => _openOrderDetail(order),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _Ds.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text(
+                  'Lihat Detail',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
             ],

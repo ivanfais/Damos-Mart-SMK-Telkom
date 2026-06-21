@@ -1,6 +1,5 @@
 param(
-  [Parameter(Mandatory = $true)]
-  [string]$ApiBaseUrl
+  [string]$ApiBaseUrl = "https://damos-mart-smk-telkom-production.up.railway.app"
 )
 
 $ErrorActionPreference = "Stop"

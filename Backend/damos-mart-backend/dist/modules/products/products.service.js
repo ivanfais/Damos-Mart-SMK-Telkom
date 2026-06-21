@@ -189,13 +189,19 @@ class ProductsService {
         if (imageUrl) {
             updateData.imageUrl = imageUrl;
         }
-        return database_1.default.product.update({
+        const product = await database_1.default.product.update({
             where: { id },
             data: updateData,
             include: {
                 variants: true,
             },
         });
+        // If the product has variants, its main stock is derived from them.
+        if (product.variants.length > 0) {
+            await this.syncProductStockFromVariants(id);
+            return database_1.default.product.findUnique({ where: { id }, include: { variants: true } });
+        }
+        return product;
     }
     /**
      * Deletes a product (Admin).
@@ -207,11 +213,29 @@ class ProductsService {
         });
     }
     /**
+     * Recomputes a product's main stock from the sum of its variant stocks.
+     * When a product has variants, the main stock is derived (no longer managed
+     * manually). If no variants remain, the manual main stock is left untouched.
+     */
+    async syncProductStockFromVariants(productId) {
+        const variants = await database_1.default.productVariant.findMany({
+            where: { productId },
+            select: { stock: true },
+        });
+        if (variants.length === 0)
+            return;
+        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+        await database_1.default.product.update({
+            where: { id: productId },
+            data: { stock: totalStock },
+        });
+    }
+    /**
      * Adds a variant to a product (Admin).
      */
     async createVariant(productId, data) {
         await this.getById(productId); // Check existence
-        return database_1.default.productVariant.create({
+        const variant = await database_1.default.productVariant.create({
             data: {
                 productId,
                 variantName: data.variantName,
@@ -219,6 +243,8 @@ class ProductsService {
                 stock: data.stock,
             },
         });
+        await this.syncProductStockFromVariants(productId);
+        return variant;
     }
     /**
      * Updates a product variant (Admin).
@@ -230,10 +256,12 @@ class ProductsService {
         if (!variant) {
             throw new error_middleware_1.AppError(404, 'VARIANT_NOT_FOUND', 'Product variant not found');
         }
-        return database_1.default.productVariant.update({
+        const updated = await database_1.default.productVariant.update({
             where: { id: variantId },
             data,
         });
+        await this.syncProductStockFromVariants(productId);
+        return updated;
     }
     /**
      * Deletes a product variant (Admin).
@@ -248,6 +276,7 @@ class ProductsService {
         await database_1.default.productVariant.delete({
             where: { id: variantId },
         });
+        await this.syncProductStockFromVariants(productId);
     }
 }
 exports.ProductsService = ProductsService;

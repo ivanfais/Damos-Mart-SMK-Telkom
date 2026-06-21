@@ -9,73 +9,67 @@ class SocketService {
   IO.Socket? _queueSocket;
   IO.Socket? _chatSocket;
   String? _userId;
+  String? _activeChatRoomId;
+
+  IO.OptionBuilder get _socketOptions => IO.OptionBuilder()
+      .setTransports(['websocket', 'polling'])
+      .enableAutoConnect();
 
   void init(String userId) {
     _userId = userId;
-    
-    // Initialize queues socket
+    _ensureQueueSocket();
+    _ensureChatSocket();
+  }
+
+  void _ensureQueueSocket() {
     if (_queueSocket == null) {
-      _queueSocket = IO.io(
-        '${ApiConfig.wsUrl}/queues',
-        IO.OptionBuilder()
-            .setTransports(['websocket'])
-            .enableAutoConnect()
-            .build(),
-      );
+      _queueSocket = IO.io('${ApiConfig.wsUrl}/queues', _socketOptions.build());
 
       _queueSocket!.onConnect((_) {
-        print('🔌 Connected to /queues namespace');
         if (_userId != null) {
           _queueSocket!.emit('queue:subscribe', {'userId': _userId});
         }
       });
-
-      _queueSocket!.onDisconnect((_) {
-        print('🔌 Disconnected from /queues namespace');
-      });
-    } else {
-      if (_queueSocket!.disconnected) {
-        _queueSocket!.connect();
-      } else if (_userId != null) {
-        _queueSocket!.emit('queue:subscribe', {'userId': _userId});
-      }
+    } else if (_queueSocket!.disconnected) {
+      _queueSocket!.connect();
+    } else if (_userId != null) {
+      _queueSocket!.emit('queue:subscribe', {'userId': _userId});
     }
   }
 
-  // Registers callback for queue updates
-  void onQueueUpdated(void Function(dynamic) callback) {
-    _queueSocket?.on('queue:updated', callback);
-  }
-
-  // Registers callback for queue called
-  void onQueueCalled(void Function(dynamic) callback) {
-    _queueSocket?.on('queue:called', callback);
-  }
-
-  // Registers callback for queue ready
-  void onQueueReady(void Function(dynamic) callback) {
-    _queueSocket?.on('queue:ready', callback);
-  }
-
-  // --- CHAT LOGIC ---
-  void joinChat(String roomId) {
+  void _ensureChatSocket() {
     if (_chatSocket == null) {
-      _chatSocket = IO.io(
-        '${ApiConfig.wsUrl}/chat',
-        IO.OptionBuilder()
-            .setTransports(['websocket'])
-            .enableAutoConnect()
-            .build(),
-      );
+      _chatSocket = IO.io('${ApiConfig.wsUrl}/chat', _socketOptions.build());
 
       _chatSocket!.onConnect((_) {
-        print('🔌 Connected to /chat namespace');
-        _chatSocket!.emit('chat:join', {'roomId': roomId});
+        if (_activeChatRoomId != null) {
+          _chatSocket!.emit('chat:join', {'roomId': _activeChatRoomId});
+        }
       });
-    } else {
-      if (_chatSocket!.disconnected) {
-        _chatSocket!.connect();
-      }
+    } else if (_chatSocket!.disconnected) {
+      _chatSocket!.connect();
+    }
+  }
+
+  void onQueueUpdated(void Function(dynamic) callback) {
+    _ensureQueueSocket();
+    _queueSocket!.on('queue:updated', callback);
+  }
+
+  void onQueueCalled(void Function(dynamic) callback) {
+    _ensureQueueSocket();
+    _queueSocket!.on('queue:called', callback);
+  }
+
+  void onQueueReady(void Function(dynamic) callback) {
+    _ensureQueueSocket();
+    _queueSocket!.on('queue:ready', callback);
+  }
+
+  void joinChat(String roomId) {
+    _activeChatRoomId = roomId;
+    _ensureChatSocket();
+    if (_chatSocket!.connected) {
       _chatSocket!.emit('chat:join', {'roomId': roomId});
     }
   }
@@ -97,15 +91,28 @@ class SocketService {
   }
 
   void onChatMessage(void Function(dynamic) callback) {
-    _chatSocket?.on('chat:message', callback);
+    _ensureChatSocket();
+    _chatSocket!.on('chat:message', callback);
+  }
+
+  void offChatMessage(void Function(dynamic) callback) {
+    _chatSocket?.off('chat:message', callback);
   }
 
   void onChatTyping(void Function(dynamic) callback) {
-    _chatSocket?.on('chat:typing', callback);
+    _ensureChatSocket();
+    _chatSocket!.on('chat:typing', callback);
+  }
+
+  void offChatTyping(void Function(dynamic) callback) {
+    _chatSocket?.off('chat:typing', callback);
   }
 
   void leaveChat(String roomId) {
     _chatSocket?.emit('chat:leave', {'roomId': roomId});
+    if (_activeChatRoomId == roomId) {
+      _activeChatRoomId = null;
+    }
   }
 
   void disconnect() {
@@ -114,5 +121,6 @@ class SocketService {
     _chatSocket?.disconnect();
     _chatSocket = null;
     _userId = null;
+    _activeChatRoomId = null;
   }
 }

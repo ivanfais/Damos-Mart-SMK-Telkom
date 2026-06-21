@@ -53,7 +53,7 @@ class _CartScreenState extends State<CartScreen> {
       if (selectAll == true) {
         _selectedItemIds
           ..clear()
-          ..addAll(items.where((i) => i.inStock).map((i) => i.id));
+          ..addAll(items.where((i) => i.inStock || i.isPreorder).map((i) => i.id));
       } else {
         _selectedItemIds.clear();
       }
@@ -176,7 +176,7 @@ class _CartScreenState extends State<CartScreen> {
               activeColor: _Ds.primary,
               side: const BorderSide(color: _Ds.border, width: 1.5),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              onChanged: item.inStock ? (_) => _toggleSelectItem(item.id) : null,
+              onChanged: (item.inStock || item.isPreorder) ? (_) => _toggleSelectItem(item.id) : null,
             ),
           ),
           const SizedBox(width: 12),
@@ -229,7 +229,7 @@ class _CartScreenState extends State<CartScreen> {
           _buildQuantitySelector(
             quantity: item.quantity,
             maxQty: maxQty > 0 ? maxQty : 1,
-            enabled: item.inStock,
+            enabled: item.inStock || item.isPreorder,
             onChanged: (qty) {
               context.read<CartCubit>().updateQuantity(cartItemId: item.id, quantity: qty);
             },
@@ -240,7 +240,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildSelectAllHeader(List<CartItemModel> items) {
-    final inStockItems = items.where((i) => i.inStock).toList();
+    final inStockItems = items.where((i) => i.inStock || i.isPreorder).toList();
     final selectedCount = _selectedCount(items);
     final isAllChecked = inStockItems.isNotEmpty && selectedCount == inStockItems.length;
 

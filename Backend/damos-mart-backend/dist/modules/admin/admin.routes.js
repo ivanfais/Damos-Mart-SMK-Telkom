@@ -11,6 +11,7 @@ const queues_routes_1 = require("../queues/queues.routes");
 const chat_routes_1 = require("../chat/chat.routes");
 const users_routes_1 = require("../users/users.routes");
 const cooperative_routes_1 = require("../cooperative/cooperative.routes");
+const complaints_routes_1 = require("../complaints/complaints.routes");
 // Guard Middlewares
 const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const admin_middleware_1 = require("../../middlewares/admin.middleware");
@@ -81,4 +82,5 @@ router.use('/queues', queues_routes_1.adminQueueRouter);
 router.use('/chat', chat_routes_1.adminChatRouter);
 router.use('/users', users_routes_1.adminUserRouter);
 router.use('/cooperative', cooperative_routes_1.adminCooperativeRouter);
+router.use('/complaints', complaints_routes_1.adminComplaintRouter);
 exports.default = router;

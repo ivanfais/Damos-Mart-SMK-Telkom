@@ -44,6 +44,7 @@ export class CartService {
       totalPrice += subtotal;
 
       const availableStock = item.variant ? item.variant.stock : item.product.stock;
+      const isAvailable = item.product.isPreorder || availableStock >= item.quantity;
 
       return {
         id: item.id,
@@ -56,7 +57,7 @@ export class CartService {
         unitPrice,
         quantity: item.quantity,
         subtotal,
-        inStock: availableStock >= item.quantity,
+        inStock: isAvailable,
         availableStock,
       };
     });

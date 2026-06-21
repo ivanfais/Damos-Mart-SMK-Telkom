@@ -112,7 +112,13 @@ export class OrdersService {
       return tx.order.findUnique({
         where: { id: order.id },
         include: {
-          orderItems: true,
+          orderItems: {
+            include: {
+              product: {
+                select: { imageUrl: true },
+              },
+            },
+          },
           queue: true,
         },
       });
@@ -198,7 +204,7 @@ export class OrdersService {
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
-          status: 'PAID',
+          status: order.isPreorder ? 'IN_PRODUCTION' : 'PAID',
           paymentStatus: 'PAID',
           paymentMethod,
           paidAt: new Date(),
@@ -309,7 +315,13 @@ export class OrdersService {
         skip: offset,
         take: limit,
         include: {
-          orderItems: true,
+          orderItems: {
+            include: {
+              product: {
+                select: { imageUrl: true },
+              },
+            },
+          },
           queue: true,
         },
       }),
@@ -331,7 +343,13 @@ export class OrdersService {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        orderItems: true,
+        orderItems: {
+          include: {
+            product: {
+              select: { imageUrl: true },
+            },
+          },
+        },
         queue: true,
         user: {
           select: {

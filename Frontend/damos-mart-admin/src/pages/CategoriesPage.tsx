@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, Image as ImageIcon, Save, RefreshCw, X, FolderKanban } from 'lucide-react';
 import apiClient from '../api/client';
+import { assetUrl } from '../config/env';
 
 export const CategoriesPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -78,7 +79,7 @@ export const CategoriesPage: React.FC = () => {
     setEditingId(cat.id);
     setName(cat.name);
     setSortOrder(cat.sortOrder);
-    setImagePreview(cat.iconUrl ? `http://localhost:3000${cat.iconUrl}` : null);
+    setImagePreview(cat.iconUrl ? assetUrl(cat.iconUrl) : null);
     setFormOpen(true);
   };
 
@@ -150,7 +151,7 @@ export const CategoriesPage: React.FC = () => {
                   <div className="w-12 h-12 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
                     {cat.iconUrl ? (
                       <img
-                        src={`http://localhost:3000${cat.iconUrl}`}
+                        src={assetUrl(cat.iconUrl)}
                         alt={cat.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {

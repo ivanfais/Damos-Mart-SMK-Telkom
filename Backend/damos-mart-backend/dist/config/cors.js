@@ -12,6 +12,10 @@ exports.corsOptions = {
         if (!origin) {
             return callback(null, true);
         }
+        // In development, allow all localhost origins (Flutter web uses random ports)
+        if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+            return callback(null, true);
+        }
         // Check if the origin is allowed
         const isAllowed = env_1.env.CORS_ORIGINS.some(allowedOrigin => {
             // Direct match or wildcard match

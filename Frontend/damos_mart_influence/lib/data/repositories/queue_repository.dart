@@ -18,8 +18,10 @@ class QueueRepository {
   Future<QueueModel> getQueueDetails(String queueId) async {
     final response = await _client.get(ApiConfig.queueDetail(queueId));
     final data = response.data['data'] as Map<String, dynamic>;
-    // The backend returns { queue: {...}, order: {...}, qrData: "..." }
-    final queueJson = data['queue'] as Map<String, dynamic>;
+    final queueJson = Map<String, dynamic>.from(data['queue'] as Map<String, dynamic>);
+    if (queueJson['order'] == null && data['order'] != null) {
+      queueJson['order'] = data['order'];
+    }
     return QueueModel.fromJson(queueJson);
   }
 

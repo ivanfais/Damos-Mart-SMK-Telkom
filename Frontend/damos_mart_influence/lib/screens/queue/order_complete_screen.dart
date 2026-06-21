@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../blocs/queue/queue_cubit.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../data/models/queue_model.dart';
+import '../../data/repositories/queue_repository.dart';
 import '../../widgets/common/error_state.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
@@ -26,10 +25,37 @@ class OrderCompleteScreen extends StatefulWidget {
 }
 
 class _OrderCompleteScreenState extends State<OrderCompleteScreen> {
+  final QueueRepository _repository = QueueRepository();
+  QueueModel? _queue;
+  bool _isLoading = true;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
-    context.read<QueueCubit>().loadQueueDetail(widget.queueId);
+    _loadQueue();
+  }
+
+  Future<void> _loadQueue() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final queue = await _repository.getQueueDetails(widget.queueId);
+      if (!mounted) return;
+      setState(() {
+        _queue = queue;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   Widget _buildInfoRow(String label, String value, {TextStyle? valueStyle}) {
@@ -82,68 +108,68 @@ class _OrderCompleteScreenState extends State<OrderCompleteScreen> {
       child: Column(
         children: [
           Container(
-              width: 80,
-              height: 80,
-              decoration: const BoxDecoration(
-                color: _Ds.primary,
-                shape: BoxShape.circle,
+            width: 80,
+            height: 80,
+            decoration: const BoxDecoration(
+              color: _Ds.primary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check, size: 44, color: Colors.white),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Pesanan Telah Diambil',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _Ds.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Terima kasih telah berbelanja di Damos Mart',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: _Ds.textSecondary),
+          ),
+          const SizedBox(height: 32),
+          _buildInfoCard(queue),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () => context.go('/home'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _Ds.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Icon(Icons.check, size: 44, color: Colors.white),
+              child: const Text(
+                'Kembali ke Beranda',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Pesanan Telah Diambil',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _Ds.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Terima kasih telah berbelanja di Damos Mart',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: _Ds.textSecondary),
-            ),
-            const SizedBox(height: 32),
-            _buildInfoCard(queue),
-            const SizedBox(height: 28),
+          ),
+          if (hasReviewTarget) ...[
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: ElevatedButton(
-                onPressed: () => context.go('/home'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _Ds.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
+              child: OutlinedButton(
+                onPressed: () {
+                  final firstItem = order!.orderItems.first;
+                  context.push('/review/${order.id}/${firstItem.productId}');
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _Ds.primary,
+                  side: const BorderSide(color: _Ds.primary),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text(
-                  'Kembali ke Beranda',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  'Beri Rating Produk',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
-            if (hasReviewTarget) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: () {
-                    final firstItem = order.orderItems.first;
-                    context.go('/review/${order.id}/${firstItem.productId}');
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _Ds.primary,
-                    side: const BorderSide(color: _Ds.primary),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text(
-                    'Beri Rating Produk',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ],
+          ],
         ],
       ),
     );
@@ -156,8 +182,7 @@ class _OrderCompleteScreenState extends State<OrderCompleteScreen> {
         children: [
           const DamosPageHeader(
             title: 'Damos Mart',
-            backgroundColor: Colors.white,
-            foregroundColor: _Ds.textPrimary,
+            showBackButton: true,
           ),
           child,
         ],
@@ -171,12 +196,12 @@ class _OrderCompleteScreenState extends State<OrderCompleteScreen> {
       child: Column(
         children: const [
           LoadingShimmer(width: 80, height: 80, borderRadius: 40),
-            SizedBox(height: 20),
-            LoadingShimmer(width: 240, height: 28, borderRadius: 8),
-            SizedBox(height: 8),
-            LoadingShimmer(width: 260, height: 14, borderRadius: 6),
-            SizedBox(height: 32),
-            LoadingShimmer(width: double.infinity, height: 90, borderRadius: 12),
+          SizedBox(height: 20),
+          LoadingShimmer(width: 240, height: 28, borderRadius: 8),
+          SizedBox(height: 8),
+          LoadingShimmer(width: 260, height: 14, borderRadius: 6),
+          SizedBox(height: 32),
+          LoadingShimmer(width: double.infinity, height: 90, borderRadius: 12),
         ],
       ),
     );
@@ -186,35 +211,18 @@ class _OrderCompleteScreenState extends State<OrderCompleteScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: BlocBuilder<QueueCubit, QueueState>(
-        builder: (context, state) {
-          if (state is QueueLoading) {
-            return _buildScrollPage(_buildShimmerLoading());
-          }
-
-          if (state is QueueError) {
-            return _buildScrollPage(
-              SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.55,
-                child: ErrorState(
-                  message: state.message,
-                  onRetry: () => context.read<QueueCubit>().loadQueueDetail(widget.queueId),
-                ),
-              ),
-            );
-          }
-
-          if (state is QueueDetailLoaded) {
-            return _buildScrollPage(_buildContent(state.queue));
-          }
-
-          return _buildScrollPage(
-            const SizedBox(
-              height: 240,
-              child: Center(child: Text('Memproses data penutupan order...')),
-            ),
-          );
-        },
+      body: _buildScrollPage(
+        _isLoading
+            ? _buildShimmerLoading()
+            : _errorMessage != null
+                ? SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.55,
+                    child: ErrorState(
+                      message: _errorMessage!,
+                      onRetry: _loadQueue,
+                    ),
+                  )
+                : _buildContent(_queue!),
       ),
     );
   }

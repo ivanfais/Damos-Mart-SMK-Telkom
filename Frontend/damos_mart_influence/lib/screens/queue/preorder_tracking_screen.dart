@@ -316,8 +316,6 @@ class _PreorderTrackingScreenState extends State<PreorderTrackingScreen> {
           const DamosPageHeader(
             title: 'Status Antrean Pre-Order',
             showBackButton: true,
-            backgroundColor: Colors.white,
-            foregroundColor: _Ds.textPrimary,
           ),
           Padding(
             padding: const EdgeInsets.all(16),

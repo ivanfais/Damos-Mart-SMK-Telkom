@@ -39,11 +39,6 @@ class ReviewRepository {
     final response = await _client.post(
       ApiConfig.reviews,
       data: formData,
-      options: Options(
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      ),
     );
 
     final data = response.data['data'] as Map<String, dynamic>;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-
+import '../../core/utils/damos_system_ui.dart';
 /// Green page header for inside scroll content (not fixed).
 class DamosPageHeader extends StatelessWidget {
   const DamosPageHeader({
@@ -26,8 +27,11 @@ class DamosPageHeader extends StatelessWidget {
   final Widget? titleWidget;
   final Widget? trailing;
 
-  static const Color primary = Color(0xFF1B8C2E);
+  static const Color primary = DamosSystemUi.primary;
 
+  static SystemUiOverlayStyle get greenStatusBar => DamosSystemUi.greenHeader;
+
+  static SystemUiOverlayStyle get lightStatusBar => DamosSystemUi.lightHeader;
   void _handleBack(BuildContext context) {
     if (onBack != null) {
       onBack!();
@@ -44,7 +48,7 @@ class DamosPageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topPadding = includeTopSafeArea ? MediaQuery.paddingOf(context).top : 0.0;
 
-    return Container(
+    final header = Container(
       width: double.infinity,
       color: backgroundColor,
       padding: EdgeInsets.fromLTRB(
@@ -77,6 +81,15 @@ class DamosPageHeader extends StatelessWidget {
         ],
       ),
     );
+
+    if (backgroundColor == primary) {
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: greenStatusBar,
+        child: header,
+      );
+    }
+
+    return header;
   }
 }
 
@@ -117,8 +130,8 @@ class DamosPageAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: primary,
       foregroundColor: Colors.white,
-      elevation: 0,
-      automaticallyImplyLeading: false,
+      systemOverlayStyle: DamosSystemUi.greenHeader,
+      elevation: 0,      automaticallyImplyLeading: false,
       centerTitle: false,
       titleSpacing: showBackButton ? 0 : 16,
       leading: showBackButton

@@ -202,20 +202,21 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
             ],
           ),
           const SizedBox(height: 14),
+          const Divider(height: 1, color: _Ds.borderLight),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      'TOTAL PESANAN',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _Ds.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
+                      'Total Pesanan',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: _Ds.textSecondary),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -228,19 +229,22 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
                 ),
               ),
               const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () => _openOrderDetail(order),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _Ds.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text(
-                  'Lihat Detail',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              SizedBox(
+                width: 120,
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: () => _openOrderDetail(order),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _Ds.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text(
+                    'Lihat Detail',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
@@ -333,24 +337,19 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _Ds.bgLight,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          SliverToBoxAdapter(
-            child: DamosPageHeader(
+      body: Column(
+          children: [
+            const DamosPageHeader(
               title: 'Riwayat Pembelian',
               showBackButton: true,
-              backgroundColor: Colors.white,
-              foregroundColor: _Ds.textPrimary,
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Material(
-              color: Colors.white,
+            Material(
+              color: _Ds.primary,
               child: TabBar(
                 controller: _tabController,
-                labelColor: _Ds.textPrimary,
-                unselectedLabelColor: _Ds.textSecondary,
-                indicatorColor: _Ds.primary,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicatorColor: Colors.white,
                 indicatorWeight: 3,
                 labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
@@ -360,52 +359,53 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
                 ],
               ),
             ),
-          ),
-        ],
-        body: BlocBuilder<OrderCubit, OrderState>(
-              builder: (context, state) {
-                if (state is OrderLoading) {
-                  return _buildShimmerLoading();
-                }
+            Expanded(
+              child: BlocBuilder<OrderCubit, OrderState>(
+                builder: (context, state) {
+                  if (state is OrderLoading) {
+                    return _buildShimmerLoading();
+                  }
 
-                if (state is OrderError) {
-                  return ErrorState(
-                    message: state.message,
-                    onRetry: () => context.read<OrderCubit>().loadMyOrders(),
-                  );
-                }
+                  if (state is OrderError) {
+                    return ErrorState(
+                      message: state.message,
+                      onRetry: () => context.read<OrderCubit>().loadMyOrders(),
+                    );
+                  }
 
-                if (state is OrderHistoryLoaded) {
-                  final orders = state.orders;
+                  if (state is OrderHistoryLoaded) {
+                    final orders = state.orders;
 
-                  final activeOrders = orders
-                      .where(
-                        (o) =>
-                            o.status == OrderStatus.pending ||
-                            o.status == OrderStatus.paid ||
-                            o.status == OrderStatus.preparing ||
-                            o.status == OrderStatus.inProduction ||
-                            o.status == OrderStatus.ready,
-                      )
-                      .toList();
+                    final activeOrders = orders
+                        .where(
+                          (o) =>
+                              o.status == OrderStatus.pending ||
+                              o.status == OrderStatus.paid ||
+                              o.status == OrderStatus.preparing ||
+                              o.status == OrderStatus.inProduction ||
+                              o.status == OrderStatus.ready,
+                        )
+                        .toList();
 
-                  final pastOrders = orders
-                      .where((o) => o.status == OrderStatus.completed || o.status == OrderStatus.cancelled)
-                      .toList();
+                    final pastOrders = orders
+                        .where((o) => o.status == OrderStatus.completed || o.status == OrderStatus.cancelled)
+                        .toList();
 
-                  return TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildOrdersList(activeOrders, isCompletedTab: false),
-                      _buildOrdersList(pastOrders, isCompletedTab: true),
-                    ],
-                  );
-                }
+                    return TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildOrdersList(activeOrders, isCompletedTab: false),
+                        _buildOrdersList(pastOrders, isCompletedTab: true),
+                      ],
+                    );
+                  }
 
-                return const Center(child: Text('Memuat riwayat pembelian...'));
-              },
+                  return const Center(child: Text('Memuat riwayat pembelian...'));
+                },
+              ),
             ),
-      ),
+          ],
+        ),
     );
   }
 }

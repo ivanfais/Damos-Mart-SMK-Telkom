@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'routes/app_router.dart';
 import 'theme/app_theme.dart';
 
@@ -16,6 +17,7 @@ import 'blocs/notification/notification_cubit.dart';
 import 'blocs/cooperative/cooperative_cubit.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/socket/socket_service.dart';
+import 'core/utils/damos_system_ui.dart';
 import 'widgets/common/notification_banner.dart';
 
 class DamosMartApp extends StatefulWidget {
@@ -27,6 +29,24 @@ class DamosMartApp extends StatefulWidget {
 
 class _DamosMartAppState extends State<DamosMartApp> {
   bool _socketListenersRegistered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AppRouter.router.routerDelegate.addListener(_syncSystemUi);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncSystemUi());
+  }
+
+  @override
+  void dispose() {
+    AppRouter.router.routerDelegate.removeListener(_syncSystemUi);
+    super.dispose();
+  }
+
+  void _syncSystemUi() {
+    final location = AppRouter.router.routerDelegate.currentConfiguration.uri.toString();
+    DamosSystemUi.apply(DamosSystemUi.forRoute(location));
+  }
 
   void _registerNotificationListeners() {
     if (_socketListenersRegistered) return;
@@ -41,6 +61,11 @@ class _DamosMartAppState extends State<DamosMartApp> {
         queueNumber: queueNumber,
         isReady: false,
       );
+      _refreshQueuesAfterSocketEvent();
+    });
+
+    SocketService.instance.onQueueUpdated((data) {
+      _handleQueueCompleted(data);
       _refreshQueuesAfterSocketEvent();
     });
 
@@ -62,6 +87,24 @@ class _DamosMartAppState extends State<DamosMartApp> {
     if (context != null) {
       context.read<QueueCubit>().updateActiveQueuesSilently();
     }
+  }
+
+  void _handleQueueCompleted(dynamic data) {
+    final queueId = data?['queueId']?.toString();
+    final status = data?['status']?.toString();
+    if (queueId == null || status != 'COMPLETED') return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = AppRouter.rootNavigatorKey.currentContext;
+      if (context == null) return;
+
+      context.read<OrderCubit>().loadMyOrders();
+
+      final location = GoRouterState.of(context).uri.toString();
+      if (location.contains('/queue/$queueId/complete')) return;
+
+      context.push('/queue/$queueId/complete');
+    });
   }
 
   void _showQueueNotification({

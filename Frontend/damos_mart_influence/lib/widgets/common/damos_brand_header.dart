@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_state.dart';
-import 'user_avatar.dart';
+import '../../core/utils/damos_system_ui.dart';
 import '../../config/app_constants.dart';
+import 'user_avatar.dart';
 
 /// Baris logo + judul + profil (tanpa wrapper hijau).
 class DamosBrandHeaderRow extends StatelessWidget {
@@ -129,18 +131,21 @@ class DamosBrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
 
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: DamosBrandHeaderRow.primary,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.fromLTRB(12, topPadding + 12, 20, 20),
-      child: DamosBrandHeaderRow(
-        showProfileAvatar: showProfileAvatar,
-        showBackButton: showBackButton,
-        showTagline: showTagline,
-        onBack: onBack,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: DamosSystemUi.greenHeader,
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          color: DamosBrandHeaderRow.primary,
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(12, topPadding + 12, 20, 20),
+        child: DamosBrandHeaderRow(
+          showProfileAvatar: showProfileAvatar,
+          showBackButton: showBackButton,
+          showTagline: showTagline,
+          onBack: onBack,
+        ),
       ),
     );
   }

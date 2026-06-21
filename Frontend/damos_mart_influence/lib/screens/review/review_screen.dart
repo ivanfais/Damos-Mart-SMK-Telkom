@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/product/product_cubit.dart';
 import '../../config/api_config.dart';
+import '../../core/network/api_exception.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/review_repository.dart';
 import '../../widgets/common/loading_shimmer.dart';
@@ -180,10 +181,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final message = e is ApiException
+            ? e.message
+            : 'Ulasan gagal terkirim. Coba lagi nanti ya!';
         PopUpAlert.show(
           context: context,
           title: 'Gagal Mengirim',
-          description: 'Ulasan gagal terkirim. Coba lagi nanti ya!',
+          description: message,
           isError: true,
         );
       }
@@ -361,8 +365,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const DamosPageHeader(
             title: 'Beri Rating Produk',
             showBackButton: true,
-            backgroundColor: Colors.white,
-            foregroundColor: _Ds.textPrimary,
           ),
           Padding(
             padding: const EdgeInsets.all(16),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../core/utils/damos_system_ui.dart';
 import 'damos_brand_header.dart';
-
 /// Green header with logo, tagline, profile avatar, and search bar (Beranda & Katalog).
 class DamosScreenHeader extends StatelessWidget {
   const DamosScreenHeader({
@@ -24,8 +25,9 @@ class DamosScreenHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
 
-    return Container(
-      width: double.infinity,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: DamosSystemUi.greenHeader,
+      child: Container(      width: double.infinity,
       decoration: const BoxDecoration(
         color: primary,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
@@ -67,6 +69,7 @@ class DamosScreenHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

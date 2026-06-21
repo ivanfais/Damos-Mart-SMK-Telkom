@@ -9,7 +9,7 @@ class ProductGridLayout {
   static const double _spacing = 10;
   static const double _horizontalPadding = 32;
   static const double _imageRatio = 0.72;
-  static const double contentHeight = 110;
+  static const double contentHeight = 112;
 
   static double _effectiveWidth(BuildContext context) {
     return math.min(MediaQuery.sizeOf(context).width, _maxLayoutWidth);

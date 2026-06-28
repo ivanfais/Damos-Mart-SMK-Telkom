@@ -1,0 +1,8 @@
+# Deploy folder `build/web` after running scripts/build_web_staging.ps1
+[build]
+  publish = "build/web"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

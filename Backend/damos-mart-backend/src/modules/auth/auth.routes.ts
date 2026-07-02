@@ -8,10 +8,6 @@ import {
   refreshTokenSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
-<<<<<<< HEAD
-  validateResetTokenSchema,
-=======
->>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
 } from './auth.schema';
 
 const router = Router();
@@ -29,12 +25,5 @@ router.post('/forgot-password', validateRequest(forgotPasswordSchema), bind('for
 router.post('/reset-password', validateRequest(resetPasswordSchema), bind('resetPassword'));
 router.post('/refresh', validateRequest(refreshTokenSchema), bind('refresh'));
 router.post('/logout', validateRequest(refreshTokenSchema), bind('logout'));
-router.post('/forgot-password', validateRequest(forgotPasswordSchema), bind('forgotPassword'));
-router.get(
-  '/reset-password/validate',
-  validateRequest(validateResetTokenSchema),
-  bind('validateResetToken'),
-);
-router.post('/reset-password', validateRequest(resetPasswordSchema), bind('resetPassword'));
 
 export default router;

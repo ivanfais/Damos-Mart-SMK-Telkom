@@ -29,7 +29,13 @@ class QueuesService {
                 userId,
                 status: { in: ['WAITING', 'PREPARING', 'READY'] },
                 order: {
-                    paymentStatus: 'PAID',
+                    OR: [
+                        { paymentStatus: 'PAID' },
+                        {
+                            paymentStatus: 'UNPAID',
+                            paymentMethod: 'CASH_AT_COUNTER',
+                        },
+                    ],
                 },
             },
             include: {
@@ -165,9 +171,15 @@ class QueuesService {
             return uQueue;
         });
         // Notify student via Websockets
+        const order = await database_1.default.order.findUnique({
+            where: { id: queue.orderId },
+            select: { orderNumber: true },
+        });
         (0, socket_1.emitQueueCalled)(queue.userId, {
             queueId: updated.id,
+            orderId: queue.orderId,
             queueNumber: updated.queueNumber,
+            orderNumber: order?.orderNumber,
             status: updated.status,
             message: `Nomor antrean ${updated.queueNumber} sedang dipersiapkan.`,
         });
@@ -179,6 +191,9 @@ class QueuesService {
     async readyQueue(queueId) {
         const queue = await database_1.default.queue.findUnique({
             where: { id: queueId },
+            include: {
+                order: { select: { orderNumber: true } },
+            },
         });
         if (!queue) {
             throw new error_middleware_1.AppError(404, 'QUEUE_NOT_FOUND', 'Queue record not found');
@@ -209,8 +224,9 @@ class QueuesService {
         // Notify student via Websockets
         (0, socket_1.emitQueueReady)(queue.userId, {
             queueId: updated.id,
+            orderId: queue.orderId,
             queueNumber: updated.queueNumber,
-            status: updated.status,
+            orderNumber: queue.order.orderNumber,
         });
         return updated;
     }
@@ -241,6 +257,7 @@ class QueuesService {
         // Notify student via Websockets
         (0, socket_1.emitQueueUpdate)(queue.userId, {
             queueId: updated.id,
+            orderId: queue.orderId,
             status: updated.status,
             queueNumber: updated.queueNumber,
         });
@@ -269,6 +286,7 @@ class QueuesService {
         // Notify student via Websockets
         (0, socket_1.emitQueueUpdate)(queue.userId, {
             queueId: updated.id,
+            orderId: queue.orderId,
             status: updated.status,
             queueNumber: updated.queueNumber,
         });

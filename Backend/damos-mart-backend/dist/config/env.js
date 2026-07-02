@@ -20,7 +20,19 @@ const envSchema = zod_1.z.object({
     UPLOAD_DIR: zod_1.z.string().default('./uploads'),
     MAX_FILE_SIZE: zod_1.z.coerce.number().default(5242880),
     CORS_ORIGINS: zod_1.z.string().transform((val) => val.split(',').map(item => item.trim())),
-    API_PREFIX: zod_1.z.string().default('/api/v1')
+    API_PREFIX: zod_1.z.string().default('/api/v1'),
+    SMTP_HOST: zod_1.z.string().optional(),
+    SMTP_PORT: zod_1.z.coerce.number().default(587),
+    SMTP_SECURE: zod_1.z
+        .string()
+        .optional()
+        .transform((val) => val === 'true'),
+    SMTP_USER: zod_1.z.string().optional(),
+    SMTP_PASS: zod_1.z.string().optional(),
+    SMTP_FROM: zod_1.z.string().default('Damos Mart <noreply@damosmart.com>'),
+    RESET_PASSWORD_URL: zod_1.z
+        .string()
+        .default('http://localhost:8080/reset-password?token='),
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {

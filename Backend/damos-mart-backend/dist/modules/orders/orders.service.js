@@ -86,25 +86,26 @@ class OrdersService {
             await tx.orderItem.createMany({
                 data: orderItemsData,
             });
-            if (data.paymentMethod === 'QRIS') {
-                const queueNumber = await (0, queue_number_1.generateNextQueueNumber)(tx);
-                await tx.queue.create({
-                    data: {
-                        orderId: order.id,
-                        userId,
-                        queueNumber,
-                        queueDate: new Date(),
-                        status: 'WAITING',
-                    },
-                });
-            }
+            const queueNumber = await (0, queue_number_1.generateNextQueueNumber)(tx);
+            await tx.queue.create({
+                data: {
+                    orderId: order.id,
+                    userId,
+                    queueNumber,
+                    queueDate: new Date(),
+                    status: 'WAITING',
+                },
+            });
             return tx.order.findUnique({
                 where: { id: order.id },
                 include: {
                     orderItems: {
                         include: {
                             product: {
-                                select: { imageUrl: true },
+                                select: {
+                                    imageUrl: true,
+                                    category: { select: { name: true } },
+                                },
                             },
                         },
                     },
@@ -288,7 +289,10 @@ class OrdersService {
                     orderItems: {
                         include: {
                             product: {
-                                select: { imageUrl: true },
+                                select: {
+                                    imageUrl: true,
+                                    category: { select: { name: true } },
+                                },
                             },
                         },
                     },
@@ -313,7 +317,10 @@ class OrdersService {
                 orderItems: {
                     include: {
                         product: {
-                            select: { imageUrl: true },
+                            select: {
+                                imageUrl: true,
+                                category: { select: { name: true } },
+                            },
                         },
                     },
                 },

@@ -96,20 +96,6 @@ export class OrdersService {
         data: orderItemsData,
       });
 
-<<<<<<< HEAD
-      if (data.paymentMethod === 'QRIS' || data.paymentMethod === 'CASH_AT_COUNTER') {
-        const queueNumber = await generateNextQueueNumber(tx);
-        await tx.queue.create({
-          data: {
-            orderId: order.id,
-            userId,
-            queueNumber,
-            queueDate: new Date(),
-            status: 'WAITING',
-          },
-        });
-      }
-=======
       const queueNumber = await generateNextQueueNumber(tx);
       await tx.queue.create({
         data: {
@@ -120,7 +106,6 @@ export class OrdersService {
           status: 'WAITING',
         },
       });
->>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
 
       return tx.order.findUnique({
         where: { id: order.id },

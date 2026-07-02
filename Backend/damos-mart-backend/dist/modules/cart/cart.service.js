@@ -22,6 +22,11 @@ class CartService {
                         stock: true,
                         imageUrl: true,
                         isPreorder: true,
+                        category: {
+                            select: {
+                                name: true,
+                            },
+                        },
                     },
                 },
                 variant: {
@@ -50,6 +55,7 @@ class CartService {
                 id: item.id,
                 productId: item.productId,
                 productName: item.product.name,
+                categoryName: item.product.category.name,
                 imageUrl: item.product.imageUrl,
                 isPreorder: item.product.isPreorder,
                 variantId: item.variantId,

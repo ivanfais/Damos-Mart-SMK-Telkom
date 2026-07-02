@@ -20,6 +20,7 @@ class _Ds {
   static const Color border = Color(0xFFD1D5DB);
   static const Color borderLight = Color(0xFFE5E7EB);
   static const Color bgGrey = Color(0xFFF2F2F2);
+  static const Color greenLight = Color(0xFFE8F5E9);
   static const Color red = Color(0xFFD42427);
   static const Color star = Color(0xFFFFC107);
 }
@@ -294,6 +295,82 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  Widget _buildProductHeroImage({required String? imageUrl, required bool isOutOfStock}) {
+    const height = 320.0;
+
+    final Widget imageContent = imageUrl != null && imageUrl.isNotEmpty
+        ? CachedNetworkImage(
+            imageUrl: ApiConfig.imageUrl(imageUrl),
+            width: double.infinity,
+            height: height,
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            placeholder: (_, __) => Container(
+              color: _Ds.bgGrey,
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: _Ds.primary,
+                ),
+              ),
+            ),
+            errorWidget: (_, __, ___) => Container(
+              color: _Ds.bgGrey,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.shopping_bag_outlined,
+                color: _Ds.textSecondary,
+                size: 64,
+              ),
+            ),
+          )
+        : Container(
+            color: _Ds.bgGrey,
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.shopping_bag_outlined,
+              color: _Ds.textSecondary,
+              size: 64,
+            ),
+          );
+
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          imageContent,
+          if (isOutOfStock) ...[
+            ColoredBox(color: Colors.black.withValues(alpha: 0.28)),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _Ds.greenLight,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _Ds.primary.withValues(alpha: 0.25)),
+                ),
+                child: const Text(
+                  'STOK HABIS',
+                  style: TextStyle(
+                    color: _Ds.red,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildBottomBar({
     required ProductModel product,
     required bool isOutOfStock,
@@ -395,48 +472,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildScrollHeader(),
-                        // Product image — full width edge-to-edge
-                        SizedBox(
-                          height: 320,
-                          width: double.infinity,
-                          child: product.imageUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                                  width: double.infinity,
-                                  height: 320,
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.center,
-                                  placeholder: (_, __) => Container(
-                                    color: _Ds.bgGrey,
-                                    alignment: Alignment.center,
-                                    child: const SizedBox(
-                                      width: 28,
-                                      height: 28,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: _Ds.primary,
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (_, __, ___) => Container(
-                                    color: _Ds.bgGrey,
-                                    alignment: Alignment.center,
-                                    child: const Icon(
-                                      Icons.shopping_bag_outlined,
-                                      color: _Ds.textSecondary,
-                                      size: 64,
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  color: _Ds.bgGrey,
-                                  alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.shopping_bag_outlined,
-                                    color: _Ds.textSecondary,
-                                    size: 64,
-                                  ),
-                                ),
+                        _buildProductHeroImage(
+                          imageUrl: product.imageUrl,
+                          isOutOfStock: isOutOfStock,
                         ),
 
                         Padding(

@@ -475,11 +475,11 @@ class _PreorderScreenState extends State<PreorderScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       const Text(
-                                        'TERSEDIA',
+                                        'PRE-ORDER',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _Ds.primary,
+                                          fontWeight: FontWeight.w700,
+                                          color: _Ds.red,
                                         ),
                                       ),
                                     ],

@@ -56,11 +56,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLoggedOut(LoggedOut event, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
     try {
       final refreshToken = await SecureStorage.instance.getRefreshToken();
       if (refreshToken != null && refreshToken.isNotEmpty) {
-        // Call backend logout API to revoke token
         await _repository.logout(refreshToken);
       }
     } catch (_) {

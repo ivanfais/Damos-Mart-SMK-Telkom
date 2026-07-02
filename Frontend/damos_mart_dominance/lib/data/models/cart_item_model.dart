@@ -4,6 +4,7 @@ class CartItemModel extends Equatable {
   final String id;
   final String productId;
   final String productName;
+  final String? categoryName;
   final String? imageUrl;
   final bool isPreorder;
   final String? variantId;
@@ -18,6 +19,7 @@ class CartItemModel extends Equatable {
     required this.id,
     required this.productId,
     required this.productName,
+    this.categoryName,
     this.imageUrl,
     required this.isPreorder,
     this.variantId,
@@ -34,6 +36,7 @@ class CartItemModel extends Equatable {
       id: json['id'] as String,
       productId: json['productId'] as String,
       productName: json['productName'] as String,
+      categoryName: json['categoryName'] as String?,
       imageUrl: json['imageUrl'] as String?,
       isPreorder: json['isPreorder'] as bool? ?? false,
       variantId: json['variantId'] as String?,
@@ -51,6 +54,7 @@ class CartItemModel extends Equatable {
       'id': id,
       'productId': productId,
       'productName': productName,
+      'categoryName': categoryName,
       'imageUrl': imageUrl,
       'isPreorder': isPreorder,
       'variantId': variantId,
@@ -68,6 +72,7 @@ class CartItemModel extends Equatable {
         id,
         productId,
         productName,
+        categoryName,
         imageUrl,
         isPreorder,
         variantId,

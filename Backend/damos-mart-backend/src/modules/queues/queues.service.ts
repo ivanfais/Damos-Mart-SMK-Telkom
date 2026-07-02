@@ -182,9 +182,16 @@ export class QueuesService {
     });
 
     // Notify student via Websockets
+    const order = await prisma.order.findUnique({
+      where: { id: queue.orderId },
+      select: { orderNumber: true },
+    });
+
     emitQueueCalled(queue.userId, {
       queueId: updated.id,
+      orderId: queue.orderId,
       queueNumber: updated.queueNumber,
+      orderNumber: order?.orderNumber,
       status: updated.status,
       message: `Nomor antrean ${updated.queueNumber} sedang dipersiapkan.`,
     });
@@ -198,6 +205,9 @@ export class QueuesService {
   async readyQueue(queueId: string) {
     const queue = await prisma.queue.findUnique({
       where: { id: queueId },
+      include: {
+        order: { select: { orderNumber: true } },
+      },
     });
 
     if (!queue) {
@@ -234,8 +244,9 @@ export class QueuesService {
     // Notify student via Websockets
     emitQueueReady(queue.userId, {
       queueId: updated.id,
+      orderId: queue.orderId,
       queueNumber: updated.queueNumber,
-      status: updated.status,
+      orderNumber: queue.order.orderNumber,
     });
 
     return updated;
@@ -273,6 +284,7 @@ export class QueuesService {
     // Notify student via Websockets
     emitQueueUpdate(queue.userId, {
       queueId: updated.id,
+      orderId: queue.orderId,
       status: updated.status,
       queueNumber: updated.queueNumber,
     });
@@ -307,6 +319,7 @@ export class QueuesService {
     // Notify student via Websockets
     emitQueueUpdate(queue.userId, {
       queueId: updated.id,
+      orderId: queue.orderId,
       status: updated.status,
       queueNumber: updated.queueNumber,
     });

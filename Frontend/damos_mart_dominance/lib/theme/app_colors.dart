@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary — identitas Damos Mart (hijau)
-  static const Color primary       = Color(0xFF2E7D32);
+  // Primary — identitas Damos Mart Dominance
+  static const Color primary       = Color(0xFF008816);
   static const Color primaryLight  = Color(0xFF4CAF50);
-  static const Color primaryDark   = Color(0xFF1B5E20);
+  static const Color primaryDark   = Color(0xFF006B11);
   static const Color primarySurface = Color(0xFFE8F5E9); // hijau sangat muda
 
   // Accent — energik, menarik perhatian

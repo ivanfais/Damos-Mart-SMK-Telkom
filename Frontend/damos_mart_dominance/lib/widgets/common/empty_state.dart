@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_dimensions.dart';
-import '../../theme/app_text_styles.dart';
+import '../../theme/damos_dominance_colors.dart';
 
 class EmptyState extends StatelessWidget {
   final String title;
@@ -22,17 +20,16 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(AppDimensions.paddingLarge),
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Emoji avatar wrapper
           Container(
             width: 80,
             height: 80,
             decoration: const BoxDecoration(
-              color: AppColors.primarySurface,
+              color: Color(0xFFE8F5E9),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -46,9 +43,10 @@ class EmptyState extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: AppTextStyles.headingSmall.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: DamosDominanceColors.textPrimary,
             ),
           ),
           if (subtitle != null) ...[
@@ -56,22 +54,34 @@ class EmptyState extends StatelessWidget {
             Text(
               subtitle!,
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+              style: const TextStyle(
+                fontSize: 14,
+                color: DamosDominanceColors.textSecondary,
+                height: 1.45,
               ),
             ),
           ],
           if (onActionButtonPressed != null && actionButtonText != null) ...[
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: onActionButtonPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                minimumSize: const Size(180, 48),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: onActionButtonPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DamosDominanceColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  minimumSize: const Size(180, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  actionButtonText!,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
-              child: Text(actionButtonText!),
             ),
           ],
         ],

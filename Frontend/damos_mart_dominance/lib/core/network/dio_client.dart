@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'api_exception.dart';
 import '../../config/api_config.dart';
 import '../../config/env.dart';
+import '../auth/session_expired_notifier.dart';
 import '../storage/secure_storage.dart';
 
 class DioClient {
@@ -50,6 +51,7 @@ class DioClient {
             final refreshToken = await SecureStorage.instance.getRefreshToken();
             if (refreshToken == null || refreshToken.isEmpty) {
               await SecureStorage.instance.clearAll();
+              SessionExpiredNotifier.instance.notify();
               return handler.next(
                 DioException(
                   requestOptions: error.requestOptions,
@@ -93,22 +95,35 @@ class DioClient {
                     await SecureStorage.instance.saveRefreshToken(newRefreshToken);
                   }
 
-                  // Resolve the original request
                   requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-                  final response = await _dio.fetch(requestOptions);
-                  
-                  // Trigger queued requests
-                  for (final callback in _refreshQueue) {
-                    callback(newAccessToken);
-                  }
-                  _refreshQueue.clear();
+                  try {
+                    final response = await _dio.fetch(requestOptions);
 
-                  return handler.resolve(response);
+                    for (final callback in _refreshQueue) {
+                      callback(newAccessToken);
+                    }
+                    _refreshQueue.clear();
+
+                    return handler.resolve(response);
+                  } on DioException catch (retryError) {
+                    _refreshQueue.clear();
+                    final retryException = retryError.error is ApiException
+                        ? retryError.error as ApiException
+                        : ApiException.fromDioError(retryError);
+                    return handler.next(
+                      DioException(
+                        requestOptions: requestOptions,
+                        response: retryError.response,
+                        type: retryError.type,
+                        error: retryException,
+                      ),
+                    );
+                  }
                 }
               }
             } catch (e) {
-              // Refresh failed, clear data and log out
               await SecureStorage.instance.clearAll();
+              SessionExpiredNotifier.instance.notify();
               return handler.next(
                 DioException(
                   requestOptions: error.requestOptions,
@@ -120,6 +135,22 @@ class DioClient {
             } finally {
               _isRefreshing = false;
             }
+          }
+
+          // Pass through client errors (e.g. wrong current password) without refresh.
+          if (error.response?.statusCode == 400 ||
+              error.response?.statusCode == 403 ||
+              error.response?.statusCode == 404 ||
+              error.response?.statusCode == 409) {
+            final apiException = ApiException.fromDioError(error);
+            return handler.next(
+              DioException(
+                requestOptions: error.requestOptions,
+                response: error.response,
+                type: error.type,
+                error: apiException,
+              ),
+            );
           }
 
           // Otherwise, wrap error and pass forward

@@ -37,9 +37,29 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   body: z.object({
+<<<<<<< HEAD
+    token: z.string().min(1, 'Reset token is required'),
+    newPassword: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(/[@$!]/, 'Password must contain at least one symbol (@, $, or !)'),
+    confirmPassword: z.string().min(1, 'Password confirmation is required'),
+  }).refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Password confirmation does not match',
+    path: ['confirmPassword'],
+  }),
+});
+
+export const validateResetTokenSchema = z.object({
+  query: z.object({
+    token: z.string().min(1, 'Reset token is required'),
+=======
     email: z.string().email('Invalid email address'),
     code: z.string().length(4, 'Verification code must be 4 digits'),
     newPassword: z.string().min(6, 'Password must be at least 6 characters long'),
+>>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
   }),
 });
 

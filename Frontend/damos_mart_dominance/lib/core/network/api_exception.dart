@@ -3,9 +3,15 @@ import 'package:dio/dio.dart';
 class ApiException implements Exception {
   final String message;
   final int? statusCode;
+  final String? code;
   final dynamic details;
 
-  ApiException({required this.message, this.statusCode, this.details});
+  ApiException({
+    required this.message,
+    this.statusCode,
+    this.code,
+    this.details,
+  });
 
   factory ApiException.fromDioError(DioException dioError) {
     String message = 'Oops! Terjadi kesalahan koneksi internet 😅';
@@ -27,6 +33,7 @@ class ApiException implements Exception {
         break;
       case DioExceptionType.badResponse:
         final responseData = dioError.response?.data;
+        String? errorCode;
         if (responseData != null && responseData is Map) {
           // Backend error shape: { success: false, error: { code, message, details } }
           final errorObj = responseData['error'];
@@ -37,6 +44,10 @@ class ApiException implements Exception {
             details = errorObj['details'] ??
                 responseData['errors'] ??
                 responseData['details'];
+            final rawCode = errorObj['code'];
+            if (rawCode != null) {
+              errorCode = rawCode.toString();
+            }
           } else {
             message = responseData['message'] ?? 'Ada masalah di server nih 😅';
             details = responseData['errors'] ?? responseData['details'];
@@ -44,7 +55,13 @@ class ApiException implements Exception {
         } else {
           message = 'Server merespon dengan status error: $statusCode 💥';
         }
-        break;
+
+        return ApiException(
+          message: message,
+          statusCode: statusCode,
+          code: errorCode,
+          details: details,
+        );
       case DioExceptionType.connectionError:
         message = 'Gagal terhubung ke server. Pastikan server aktif dan terhubung ke jaringan! 🌐';
         break;

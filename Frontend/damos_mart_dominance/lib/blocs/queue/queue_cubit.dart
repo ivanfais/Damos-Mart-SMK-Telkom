@@ -110,10 +110,19 @@ class QueueCubit extends Cubit<QueueState> {
   }
   
   // Custom update trigger (e.g. from WebSockets without full loading state)
-  void updateActiveQueuesSilently() async {
-    if (state is QueueActiveLoaded) {
-      await _refreshActiveQueuesInBackground();
+  Future<void> updateActiveQueuesSilently() async {
+    await _refreshActiveQueuesInBackground();
+    if (_cachedActiveQueues != null) {
+      emit(_cachedActiveQueues!);
     }
+  }
+
+  int readyPickupCount() {
+    final cached = _cachedActiveQueues;
+    if (cached == null) return 0;
+    return cached.activeQueues
+        .where((queue) => queue.status == QueueStatus.ready)
+        .length;
   }
 
   void updateQueueDetailSilently(String queueId) async {

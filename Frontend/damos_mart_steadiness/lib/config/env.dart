@@ -24,7 +24,14 @@ class Env {
   static bool get isStaging => appEnv == 'staging';
   static bool get isDevelopment => appEnv == 'development';
 
-  static String get baseUrl => '$_normalizedApiBase/api/v1';
+  static String get baseUrl {
+    final normalized = _normalizedApiBase;
+    if (normalized.endsWith('/api/v1')) {
+      return normalized;
+    }
+    return '$normalized/api/v1';
+  }
+
   static String get webSocketUrl => _normalizedApiBase;
 
   static String get _normalizedApiBase {
@@ -37,4 +44,10 @@ class Env {
 
   static const int connectTimeoutMs = 10000;
   static const int receiveTimeoutMs = 30000;
+
+  /// Origin web tunggal, mis. `https://damosmart.app` (tanpa trailing slash).
+  static const String appWebOrigin = String.fromEnvironment(
+    'APP_WEB_ORIGIN',
+    defaultValue: '',
+  );
 }

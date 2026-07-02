@@ -7,10 +7,23 @@ import {
   TokenPayload,
 } from '../../utils/jwt';
 import { AppError } from '../../middlewares/error.middleware';
+<<<<<<< HEAD
+import { env } from '../../config/env';
+import { sendPasswordResetEmail } from '../../services/email.service';
+import crypto from 'crypto';
+import {
+  RegisterInput,
+  LoginInput,
+  SsoLoginInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from './auth.schema';
+=======
 import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
 
 /** Dummy verification code for password reset (development/demo). */
 const RESET_PASSWORD_CODE = '1234';
+>>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
 
 /**
  * Strips password hash from user object.
@@ -295,6 +308,53 @@ export class AuthService {
     }
   }
 
+<<<<<<< HEAD
+  private hashResetToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Sends password reset link to the user's email if the account exists.
+   */
+  async forgotPassword(input: ForgotPasswordInput) {
+    const user = await prisma.user.findUnique({
+      where: { email: input.email.toLowerCase().trim() },
+    });
+
+    if (!user || !user.isActive) {
+      return {
+        message:
+          'Jika email terdaftar, link reset password telah dikirim ke email Anda.',
+      };
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashResetToken(rawToken);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+    });
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    const resetUrl = `${env.RESET_PASSWORD_URL}${rawToken}`;
+    await sendPasswordResetEmail(user.email, resetUrl);
+
+    return {
+      message:
+        'Jika email terdaftar, link reset password telah dikirim ke email Anda.',
+=======
   /**
    * Validates that an email is registered before password reset.
    */
@@ -314,10 +374,49 @@ export class AuthService {
     return {
       email: user.email,
       message: 'Kode verifikasi telah dikirim (demo: gunakan 1234)',
+>>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
     };
   }
 
   /**
+<<<<<<< HEAD
+   * Validates whether a reset token is still usable.
+   */
+  async validateResetToken(token: string) {
+    const tokenHash = this.hashResetToken(token);
+    const record = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    });
+
+    const valid =
+      !!record &&
+      !record.usedAt &&
+      record.expiresAt > new Date();
+
+    return { valid };
+  }
+
+  /**
+   * Resets password using a one-time token from email.
+   */
+  async resetPassword(input: ResetPasswordInput) {
+    const tokenHash = this.hashResetToken(input.token);
+    const record = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!record || record.usedAt || record.expiresAt <= new Date()) {
+      throw new AppError(
+        400,
+        'INVALID_RESET_TOKEN',
+        'Link reset password tidak valid atau sudah kedaluwarsa',
+      );
+    }
+
+    if (!record.user.isActive) {
+      throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif');
+=======
    * Resets password after dummy verification code check.
    */
   async resetPassword(input: ResetPasswordInput) {
@@ -335,10 +434,29 @@ export class AuthService {
 
     if (!user.isActive) {
       throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+>>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
     }
 
     const hashed = await hashPassword(input.newPassword);
 
+<<<<<<< HEAD
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash: hashed },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: record.userId },
+      }),
+    ]);
+
+    return {
+      message: 'Password berhasil diperbarui. Silakan login kembali.',
+=======
     await prisma.user.update({
       where: { id: user.id },
       data: { passwordHash: hashed },
@@ -351,6 +469,7 @@ export class AuthService {
     return {
       email: user.email,
       message: 'Password berhasil diperbarui',
+>>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
     };
   }
 }

@@ -126,6 +126,33 @@ class PopUpAlert extends StatelessWidget {
     );
   }
 
+  static Future<void> showPaymentSuccess({
+    required BuildContext context,
+    Duration autoDismiss = const Duration(milliseconds: 2200),
+    String description =
+        'Pesananmu sedang diproses. Nomor antrian akan diberikan segera.',
+  }) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (dialogContext) {
+        Future.delayed(autoDismiss, () {
+          if (dialogContext.mounted && Navigator.of(dialogContext).canPop()) {
+            Navigator.of(dialogContext).pop();
+          }
+        });
+
+        return PopUpAlert(
+          title: 'Pembayaran berhasil!',
+          description: description,
+          isError: false,
+          showActions: false,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final iconData = isError ? Icons.error_outline : Icons.check_circle_outline;

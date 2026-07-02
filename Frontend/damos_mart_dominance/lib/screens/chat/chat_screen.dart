@@ -9,17 +9,8 @@ import '../../core/utils/date_formatter.dart';
 import '../../data/models/chat_message_model.dart';
 import '../../widgets/common/error_state.dart';
 import '../../config/app_constants.dart';
+import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
-
-class _Ds {
-  static const Color primary = Color(0xFF1B8C2E);
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color hint = Color(0xFF9CA3AF);
-  static const Color readReceipt = Color(0xFF1A3C8F);
-  static const Color bgChat = Color(0xFFF2F2F2);
-  static const Color inputBg = Color(0xFFF2F2F2);
-}
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -164,8 +155,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final maxWidth = MediaQuery.of(context).size.width * 0.72;
     final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
 
-    final bubbleColor = isMe ? _Ds.primary : Colors.white;
-    final textColor = isMe ? Colors.white : _Ds.textPrimary;
+    final bubbleColor = isMe ? DamosDominanceColors.primary : Colors.white;
+    final textColor = isMe ? Colors.white : DamosDominanceColors.textPrimary;
     final borderRadius = isMe
         ? const BorderRadius.only(
             topLeft: Radius.circular(16),
@@ -207,14 +198,14 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               Text(
                 DateFormatter.formatTimeOnly(message.createdAt),
-                style: const TextStyle(fontSize: 11, color: _Ds.hint),
+                style: const TextStyle(fontSize: 11, color: DamosDominanceColors.textHint),
               ),
               if (isMe) ...[
                 const SizedBox(width: 4),
                 const Icon(
                   Icons.done_all,
                   size: 14,
-                  color: _Ds.readReceipt,
+                  color: DamosDominanceColors.primary,
                 ),
               ],
             ],
@@ -235,14 +226,14 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.add, color: _Ds.textSecondary),
+            icon: const Icon(Icons.add, color: DamosDominanceColors.textSecondary),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 44),
           ),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: _Ds.inputBg,
+                color: DamosDominanceColors.fieldFill,
                 borderRadius: BorderRadius.circular(24),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -250,10 +241,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 controller: _messageController,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendMessage(),
-                style: const TextStyle(fontSize: 14, color: _Ds.textPrimary),
+                style: const TextStyle(fontSize: 14, color: DamosDominanceColors.textPrimary),
                 decoration: const InputDecoration(
                   hintText: 'Tulis pesan...',
-                  hintStyle: TextStyle(fontSize: 14, color: _Ds.textSecondary),
+                  hintStyle: TextStyle(fontSize: 14, color: DamosDominanceColors.textSecondary),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 12),
                   isDense: true,
@@ -268,7 +259,7 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: isSending ? _Ds.primary.withValues(alpha: 0.5) : _Ds.primary,
+                color: isSending ? DamosDominanceColors.primary.withValues(alpha: 0.5) : DamosDominanceColors.primary,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.send, color: Colors.white, size: 20),
@@ -282,7 +273,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _Ds.bgChat,
+      backgroundColor: DamosDominanceColors.screenBackground,
       body: BlocConsumer<ChatCubit, ChatState>(
         listener: (context, state) {
           if (state is ChatRoomLoaded) {
@@ -296,7 +287,7 @@ class _ChatScreenState extends State<ChatScreen> {
         builder: (context, state) {
           if (state is ChatLoading) {
             return const Center(
-              child: CircularProgressIndicator(color: _Ds.primary),
+              child: CircularProgressIndicator(color: DamosDominanceColors.primary),
             );
           }
 
@@ -318,7 +309,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ? Center(
                           child: Text(
                             'Mulai percakapan dengan admin koperasi.',
-                            style: TextStyle(fontSize: 14, color: _Ds.textSecondary),
+                            style: TextStyle(fontSize: 14, color: DamosDominanceColors.textSecondary),
                           ),
                         )
                       : ListView.builder(

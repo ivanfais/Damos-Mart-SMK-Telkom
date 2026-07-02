@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/disc/disc_app_launcher.dart';
+import '../../core/disc/disc_app_config.dart';
 import '../../core/disc/disc_variant.dart';
 import '../../core/storage/prefs_storage.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
@@ -25,16 +28,26 @@ class _DiscThemeSettingsScreenState extends State<DiscThemeSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _selected = PrefsStorage.instance.getSelectedDiscVariant();
+    _selected = DiscAppLauncher.activeVariant;
   }
 
   Future<void> _applyVariant(DiscVariant variant) async {
     if (_selected == variant) return;
 
     setState(() => _selected = variant);
-    await PrefsStorage.instance.setSelectedDiscVariant(variant);
 
+    final redirected = await DiscAppLauncher.switchToVariant(variant);
     if (!mounted) return;
+    if (redirected) return;
+
+    if (kIsWeb && variant != DiscAppConfig.hostVariant) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(DiscAppLauncher.singleBuildSwitchHint)),
+      );
+      setState(() => _selected = DiscAppLauncher.activeVariant);
+      return;
+    }
+
     context.go('/');
   }
 

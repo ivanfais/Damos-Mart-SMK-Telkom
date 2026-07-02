@@ -86,11 +86,19 @@ export class AuthController {
   }
 
   /**
+<<<<<<< HEAD
+   * HTTP Handler to request password reset link via email.
+   */
+  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await authService.forgotPassword(req.body);
+=======
    * HTTP Handler for forgot password (validate registered email).
    */
   async forgotPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const data = await authService.requestPasswordReset(req.body);
+>>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
       return res.status(200).json({
         success: true,
         data,
@@ -102,7 +110,27 @@ export class AuthController {
   }
 
   /**
+<<<<<<< HEAD
+   * HTTP Handler to validate reset token before showing reset form.
+   */
+  async validateResetToken(req: Request, res: Response, next: NextFunction) {
+    try {
+      const token = String(req.query.token ?? '');
+      const data = await authService.validateResetToken(token);
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * HTTP Handler to reset password using email token.
+=======
    * HTTP Handler for reset password with verification code.
+>>>>>>> 58529ed1321260144e21ae22a4aaacbfa419a7ed
    */
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {

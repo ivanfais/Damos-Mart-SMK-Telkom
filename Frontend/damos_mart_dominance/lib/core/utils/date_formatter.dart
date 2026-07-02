@@ -20,4 +20,17 @@ class DateFormatter {
     final day = DateFormat('EEEE', 'id_ID').format(dateTime);
     return '$day, ${formatTimeOnly(dateTime)}';
   }
+
+  static String formatOrderDetailHeader(DateTime dateTime) {
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    final time = DateFormat('HH.mm').format(dateTime);
+    return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year} pukul $time';
+  }
+
+  static String formatOrderHistoryDate(DateTime dateTime) {
+    return DateFormat('dd/MM/yyyy').format(dateTime);
+  }
 }

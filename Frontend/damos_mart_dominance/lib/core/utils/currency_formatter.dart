@@ -8,10 +8,12 @@ class CurrencyFormatter {
   );
 
   static String format(num number) {
-    return _formatter.format(number);
+    final safe = number.isNaN || number.isInfinite ? 0 : number;
+    return _formatter.format(safe);
   }
 
   static String formatDouble(double number) {
-    return _formatter.format(number);
+    final safe = number.isNaN || number.isInfinite ? 0 : number;
+    return _formatter.format(safe);
   }
 }

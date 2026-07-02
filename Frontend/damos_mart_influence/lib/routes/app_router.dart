@@ -11,6 +11,7 @@ import '../screens/disc/disc_picker_screen.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/catalog/product_detail_screen.dart';
@@ -67,7 +68,8 @@ class AppRouter {
         final isLoggedIn = token != null && token.isNotEmpty;
         print('DEBUG ROUTER: isLoggedIn=$isLoggedIn');
 
-        final isAuthPath = path == '/login' || path == '/register';
+        final isAuthPath =
+            path == '/login' || path == '/register' || path == '/forgot-password';
 
         if (isSplash || isDiscPicker) {
           print('DEBUG ROUTER: splash/disc-picker path, returning null');
@@ -116,6 +118,18 @@ class AppRouter {
       GoRoute(
         path: '/register',
         pageBuilder: (context, state) => _page(state, const RegisterScreen()),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return _page(
+            state,
+            ForgotPasswordScreen(
+              prefillEmail: extra?['email'] as String?,
+            ),
+          );
+        },
       ),
 
       // Shell Route for bottom navigation tabs

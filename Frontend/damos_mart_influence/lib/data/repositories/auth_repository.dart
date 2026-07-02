@@ -91,6 +91,28 @@ class AuthRepository {
     );
   }
 
+  Future<void> requestPasswordReset(String email) async {
+    await _client.post(
+      ApiConfig.forgotPassword,
+      data: {'email': email},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _client.post(
+      ApiConfig.resetPassword,
+      data: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      },
+    );
+  }
+
   Future<UserModel> updateMe({
     required String fullName,
     String? phone,

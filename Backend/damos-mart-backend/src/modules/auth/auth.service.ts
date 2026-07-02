@@ -7,7 +7,10 @@ import {
   TokenPayload,
 } from '../../utils/jwt';
 import { AppError } from '../../middlewares/error.middleware';
-import { RegisterInput, LoginInput, SsoLoginInput } from './auth.schema';
+import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
+
+/** Dummy verification code for password reset (development/demo). */
+const RESET_PASSWORD_CODE = '1234';
 
 /**
  * Strips password hash from user object.
@@ -290,6 +293,65 @@ export class AuthService {
     } catch {
       // Fail silently if token is already deleted or not found
     }
+  }
+
+  /**
+   * Validates that an email is registered before password reset.
+   */
+  async requestPasswordReset(input: ForgotPasswordInput) {
+    const user = await prisma.user.findUnique({
+      where: { email: input.email },
+    });
+
+    if (!user) {
+      throw new AppError(404, 'USER_NOT_FOUND', 'Email tidak terdaftar');
+    }
+
+    if (!user.isActive) {
+      throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+    }
+
+    return {
+      email: user.email,
+      message: 'Kode verifikasi telah dikirim (demo: gunakan 1234)',
+    };
+  }
+
+  /**
+   * Resets password after dummy verification code check.
+   */
+  async resetPassword(input: ResetPasswordInput) {
+    if (input.code !== RESET_PASSWORD_CODE) {
+      throw new AppError(400, 'INVALID_CODE', 'Kode verifikasi salah');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: input.email },
+    });
+
+    if (!user) {
+      throw new AppError(404, 'USER_NOT_FOUND', 'Email tidak terdaftar');
+    }
+
+    if (!user.isActive) {
+      throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+    }
+
+    const hashed = await hashPassword(input.newPassword);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: hashed },
+    });
+
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id },
+    });
+
+    return {
+      email: user.email,
+      message: 'Password berhasil diperbarui',
+    };
   }
 }
 export default AuthService;

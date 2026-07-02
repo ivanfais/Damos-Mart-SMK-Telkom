@@ -96,18 +96,16 @@ export class OrdersService {
         data: orderItemsData,
       });
 
-      if (data.paymentMethod === 'QRIS') {
-        const queueNumber = await generateNextQueueNumber(tx);
-        await tx.queue.create({
-          data: {
-            orderId: order.id,
-            userId,
-            queueNumber,
-            queueDate: new Date(),
-            status: 'WAITING',
-          },
-        });
-      }
+      const queueNumber = await generateNextQueueNumber(tx);
+      await tx.queue.create({
+        data: {
+          orderId: order.id,
+          userId,
+          queueNumber,
+          queueDate: new Date(),
+          status: 'WAITING',
+        },
+      });
 
       return tx.order.findUnique({
         where: { id: order.id },

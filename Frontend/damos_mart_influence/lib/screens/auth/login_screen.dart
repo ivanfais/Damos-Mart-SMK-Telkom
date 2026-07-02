@@ -294,11 +294,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
                         onTap: () {
-                          PopUpAlert.show(
-                            context: context,
-                            title: 'Lupa Password? 🔑',
-                            description:
-                                'Silakan hubungi petugas koperasi atau admin IT sekolah untuk mereset password kamu ya! 😊',
+                          final email = _emailController.text.trim();
+                          context.push(
+                            '/forgot-password',
+                            extra: email.isNotEmpty ? {'email': email} : null,
                           );
                         },
                         child: const Text(

@@ -63,7 +63,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return;
     }
 
-    context.read<OrderCubit>().checkoutAndPay(
+    context.read<OrderCubit>().checkout(
           cartItemIds: cartItemIds,
           paymentMethod: methodStr,
           notes: '',

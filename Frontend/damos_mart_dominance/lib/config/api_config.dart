@@ -17,6 +17,9 @@ class ApiConfig {
   static const String loginSso = '/auth/login/sso';
   static const String refreshToken = '/auth/refresh';
   static const String logout = '/auth/logout';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String validateResetToken = '/auth/reset-password/validate';
+  static const String resetPassword = '/auth/reset-password';
 
   // Users
   static const String userMe = '/users/me';
@@ -53,6 +56,16 @@ class ApiConfig {
   // Chat
   static const String chatRoom = '/chat/room';
   static String chatMessages(String roomId) => '/chat/room/$roomId/messages';
+
+  // Complaints
+  static const String complaints = '/complaints';
+  static const String myComplaints = '/complaints/me';
+
+  // Favorites
+  static const String favorites = '/favorites';
+  static const String favoriteIds = '/favorites/ids';
+  static String favoriteToggle(String productId) => '/favorites/$productId/toggle';
+  static String favoriteProduct(String productId) => '/favorites/$productId';
 
   // Cooperative Info
   static const String operatingHours = '/cooperative/hours';

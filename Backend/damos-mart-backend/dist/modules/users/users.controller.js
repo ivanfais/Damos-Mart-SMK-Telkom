@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersController = void 0;
+const error_middleware_1 = require("../../middlewares/error.middleware");
 const users_service_1 = require("./users.service");
 const usersService = new users_service_1.UsersService();
 class UsersController {
@@ -48,6 +49,9 @@ class UsersController {
         try {
             const userId = req.user.userId;
             const { currentPassword, newPassword } = req.body;
+            if (!currentPassword || !newPassword) {
+                return next(new error_middleware_1.AppError(400, 'VALIDATION_ERROR', 'Current and new password are required'));
+            }
             await usersService.changePassword(userId, currentPassword, newPassword);
             return res.status(200).json({
                 success: true,

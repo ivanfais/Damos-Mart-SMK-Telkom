@@ -1,4 +1,4 @@
-const rawOrigin = (import.meta.env.VITE_API_URL || 'http://localhost:3000').trim();
+const rawOrigin = (import.meta.env.VITE_API_URL || 'https://damos-mart-smk-telkom-production.up.railway.app').trim();
 const apiOrigin = rawOrigin.replace(/\/$/, '');
 
 export const API_ORIGIN = apiOrigin;

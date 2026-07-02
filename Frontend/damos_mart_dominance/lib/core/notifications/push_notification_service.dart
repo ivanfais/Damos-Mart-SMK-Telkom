@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../storage/prefs_storage.dart';
+import 'notification_payload.dart';
+
+typedef NotificationTapCallback = void Function(String? payload);
 
 /// Shows native push notifications in the device status bar (Android/iOS).
 class PushNotificationService {
@@ -20,8 +23,13 @@ class PushNotificationService {
 
   bool _initialized = false;
   bool _permissionRequested = false;
+  NotificationTapCallback? _tapHandler;
 
   bool get isSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+  void registerTapHandler(NotificationTapCallback handler) {
+    _tapHandler = handler;
+  }
 
   Future<void> init() async {
     if (!isSupported || _initialized) return;
@@ -33,7 +41,10 @@ class PushNotificationService {
       iOS: iosSettings,
     );
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: _handleNotificationResponse,
+    );
 
     if (Platform.isAndroid) {
       const channel = AndroidNotificationChannel(
@@ -46,11 +57,16 @@ class PushNotificationService {
       );
 
       await _plugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(channel);
     }
 
     _initialized = true;
+  }
+
+  void _handleNotificationResponse(NotificationResponse response) {
+    _tapHandler?.call(response.payload);
   }
 
   Future<void> ensurePermission() async {
@@ -59,7 +75,8 @@ class PushNotificationService {
 
     if (Platform.isAndroid) {
       await _plugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
       return;
     }
@@ -71,20 +88,32 @@ class PushNotificationService {
     }
   }
 
-  Future<void> showQueueReady({required String queueNumber}) {
+  Future<void> showQueueReady({
+    required String queueNumber,
+    String? orderId,
+    String? orderNumber,
+  }) {
+    final label = orderNumber ?? queueNumber;
     return show(
-      id: _idFor('queue_ready', queueNumber),
+      id: _idFor('queue_ready', orderId ?? queueNumber),
       title: 'Pesanan Siap Diambil!',
       body:
-          'Pesanan $queueNumber Anda sudah siap diambil di kasir. Silakan ambil sekarang.',
+          'Pesanan $label siap diambil. Buka detail pesanan dan tunjukkan QR Pengambilan di kasir.',
+      payload: orderId != null ? NotificationPayload.orderDetail(orderId) : null,
     );
   }
 
-  Future<void> showQueueCalled({required String queueNumber}) {
+  Future<void> showQueueCalled({
+    required String queueNumber,
+    String? orderId,
+    String? orderNumber,
+  }) {
+    final label = orderNumber ?? queueNumber;
     return show(
-      id: _idFor('queue_called', queueNumber),
+      id: _idFor('queue_called', orderId ?? queueNumber),
       title: 'Antrean Dipanggil',
-      body: 'Pesanan $queueNumber Anda sedang disiapkan oleh petugas koperasi.',
+      body: 'Pesanan $label sedang disiapkan oleh petugas koperasi.',
+      payload: orderId != null ? NotificationPayload.orderDetail(orderId) : null,
     );
   }
 
@@ -92,6 +121,7 @@ class PushNotificationService {
     required int id,
     required String title,
     required String body,
+    String? payload,
   }) async {
     if (!isSupported || !_initialized) return;
     if (!PrefsStorage.instance.getNotificationsEnabled()) return;
@@ -117,10 +147,11 @@ class PushNotificationService {
       title,
       body,
       NotificationDetails(android: androidDetails, iOS: iosDetails),
+      payload: payload,
     );
   }
 
-  int _idFor(String type, String queueNumber) {
-    return '$type:$queueNumber'.hashCode.abs() % 100000;
+  int _idFor(String type, String key) {
+    return '$type:$key'.hashCode.abs() % 100000;
   }
 }

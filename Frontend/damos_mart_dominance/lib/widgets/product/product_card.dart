@@ -187,9 +187,17 @@ class _ProductCardState extends State<ProductCard> {
                             const SizedBox(height: 4),
                             // Stock Status
                             Text(
-                              hasStock ? 'Tersedia ✅' : 'Stok Habis 😔',
+                              widget.product.isPreorder
+                                  ? 'Pre-Order 📦'
+                                  : hasStock
+                                      ? 'Tersedia ✅'
+                                      : 'Stok Habis 😔',
                               style: AppTextStyles.labelSmall.copyWith(
-                                color: hasStock ? AppColors.inStock : AppColors.outOfStock,
+                                color: widget.product.isPreorder
+                                    ? AppColors.primary
+                                    : hasStock
+                                        ? AppColors.inStock
+                                        : AppColors.outOfStock,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),

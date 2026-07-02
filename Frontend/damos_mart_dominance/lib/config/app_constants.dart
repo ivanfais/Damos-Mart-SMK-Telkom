@@ -13,7 +13,7 @@ class AppConstants {
   static const String keySelectedDiscVariant = 'selected_disc_variant';
 
   // Asset paths
-  static const String imageLogo = 'assets/images/logo damos.png';
+  static const String imageLogo = 'assets/images/logo_koperasi.png';
   static const String imageProductHighlight = 'assets/images/produk higlight.png';
   static const String imageSplashBg = 'assets/images/splash_bg.png';
   static const String imageEmptyCart = 'assets/images/empty_cart.png';

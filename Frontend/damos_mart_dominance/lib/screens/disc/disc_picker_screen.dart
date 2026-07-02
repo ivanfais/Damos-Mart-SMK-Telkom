@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/disc/disc_app_launcher.dart';
+import '../../core/disc/disc_app_config.dart';
 import '../../core/disc/disc_variant.dart';
-import '../../core/storage/prefs_storage.dart';
 import '../../config/app_constants.dart';
 
 class _Ds {
@@ -16,10 +18,18 @@ class DiscPickerScreen extends StatelessWidget {
   const DiscPickerScreen({super.key});
 
   Future<void> _selectVariant(BuildContext context, DiscVariant variant) async {
-    await PrefsStorage.instance.setSelectedDiscVariant(variant);
-    if (context.mounted) {
-      context.go('/');
+    final redirected = await DiscAppLauncher.switchToVariant(variant);
+    if (!context.mounted) return;
+    if (redirected) return;
+
+    if (kIsWeb && variant != DiscAppConfig.hostVariant) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(DiscAppLauncher.singleBuildSwitchHint)),
+      );
+      return;
     }
+
+    context.go('/');
   }
 
   @override

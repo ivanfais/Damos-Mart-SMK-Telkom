@@ -28,6 +28,7 @@ const chat_routes_1 = __importDefault(require("./modules/chat/chat.routes"));
 const cooperative_routes_1 = __importDefault(require("./modules/cooperative/cooperative.routes"));
 const notifications_routes_1 = __importDefault(require("./modules/notifications/notifications.routes"));
 const complaints_routes_1 = __importDefault(require("./modules/complaints/complaints.routes"));
+const favorites_routes_1 = __importDefault(require("./modules/favorites/favorites.routes"));
 const admin_routes_1 = __importDefault(require("./modules/admin/admin.routes"));
 const app = (0, express_1.default)();
 exports.app = app;
@@ -63,6 +64,7 @@ app.use(`${apiPrefix}/chat`, chat_routes_1.default);
 app.use(`${apiPrefix}/cooperative`, cooperative_routes_1.default);
 app.use(`${apiPrefix}/notifications`, notifications_routes_1.default);
 app.use(`${apiPrefix}/complaints`, complaints_routes_1.default);
+app.use(`${apiPrefix}/favorites`, favorites_routes_1.default);
 app.use(`${apiPrefix}/admin`, admin_routes_1.default);
 // 5. Swagger API Docs Endpoint
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));

@@ -1,14 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../routes/app_router.dart';
-
-class _Ds {
-  static const Color primary = Color(0xFF1B8C2E);
-  static const Color greenLight = Color(0xFFE8F5E9);
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color hint = Color(0xFF9CA3AF);
-  static const Color timeLabel = Color(0xFF1A3C8F);
-}
+import '../../theme/damos_dominance_colors.dart';
 
 class NotificationBanner extends StatelessWidget {
   final String title;
@@ -87,7 +79,8 @@ class NotificationBanner extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: DamosDominanceColors.fieldBorder),
           boxShadow: const [
             BoxShadow(
               color: Color(0x1A000000),
@@ -102,11 +95,15 @@ class NotificationBanner extends StatelessWidget {
             Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(
-                color: _Ds.greenLight,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F5E9),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.notifications_active_outlined, size: 24, color: _Ds.primary),
+              child: const Icon(
+                Icons.notifications_active_outlined,
+                size: 24,
+                color: DamosDominanceColors.primary,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -121,7 +118,7 @@ class NotificationBanner extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: _Ds.textPrimary,
+                            color: DamosDominanceColors.textPrimary,
                           ),
                         ),
                       ),
@@ -130,13 +127,17 @@ class NotificationBanner extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: _Ds.timeLabel,
+                          color: DamosDominanceColors.primary,
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: onClose ?? hide,
-                        child: const Icon(Icons.close, size: 18, color: _Ds.hint),
+                        child: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: DamosDominanceColors.textHint,
+                        ),
                       ),
                     ],
                   ),
@@ -145,10 +146,21 @@ class NotificationBanner extends StatelessWidget {
                     message,
                     style: const TextStyle(
                       fontSize: 13,
-                      color: _Ds.textSecondary,
+                      color: DamosDominanceColors.textSecondary,
                       height: 1.45,
                     ),
                   ),
+                  if (onTap != null) ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Ketuk untuk lihat QR Pengambilan',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: DamosDominanceColors.primary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

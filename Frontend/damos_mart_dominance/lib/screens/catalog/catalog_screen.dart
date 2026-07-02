@@ -1,24 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../blocs/product/product_cubit.dart';
 import '../../blocs/cart/cart_cubit.dart';
+import '../../blocs/favorite/favorite_cubit.dart';
+import '../../blocs/product/product_cubit.dart';
 import '../../data/models/category_model.dart';
-import '../../data/models/product_model.dart';
-import '../../widgets/common/damos_screen_header.dart';
-import '../../core/utils/product_grid_layout.dart';
-import '../../widgets/product/damos_product_grid_card.dart';
-import '../../widgets/common/loading_shimmer.dart';
+import '../../theme/damos_dominance_colors.dart';
+import '../../widgets/catalog/damos_catalog_category_chips.dart';
+import '../../widgets/catalog/damos_catalog_header.dart';
+import '../../widgets/catalog/damos_catalog_product_card.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/error_state.dart';
-import '../../widgets/common/pop_up_alert.dart';
-
-class _Ds {
-  static const Color primary = Color(0xFF1B8C2E);
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color border = Color(0xFFD1D5DB);
-  static const Color red = Color(0xFFD42427);
-}
+import '../../widgets/common/loading_shimmer.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -28,14 +21,6 @@ class CatalogScreen extends StatefulWidget {
 }
 
 class _CatalogScreenState extends State<CatalogScreen> {
-  static const List<String> _chipOptions = [
-    'Semua Produk',
-    'Makanan',
-    'Minuman',
-    'Alat Tulis',
-    'Atribut Sekolah',
-  ];
-
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -51,6 +36,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
     } else if (state is! ProductLoading) {
       productCubit.loadCatalog();
     }
+
+    final cartState = context.read<CartCubit>().state;
+    if (cartState is! CartLoaded) {
+      context.read<CartCubit>().loadCart();
+    }
+
+    final favoriteState = context.read<FavoriteCubit>().state;
+    if (favoriteState is FavoriteInitial) {
+      context.read<FavoriteCubit>().loadFavoriteIds();
+    }
   }
 
   @override
@@ -62,7 +57,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       context.read<ProductCubit>().loadMore();
     }
   }
@@ -72,27 +68,27 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   String _chipLabelForCategoryId(String selectedCategoryId, List<CategoryModel> categories) {
-    if (selectedCategoryId.isEmpty) return 'Semua Produk';
+    if (selectedCategoryId.isEmpty) return 'Semua';
 
     final category = categories.where((c) => c.id == selectedCategoryId).firstOrNull;
-    if (category == null) return 'Semua Produk';
+    if (category == null) return 'Semua';
 
     final name = category.name.toLowerCase();
     if (name.contains('makan')) return 'Makanan';
     if (name.contains('minum')) return 'Minuman';
-    if (name.contains('tulis')) return 'Alat Tulis';
     if (name.contains('atribut') || name.contains('seragam')) return 'Atribut Sekolah';
-    return 'Semua Produk';
+    if (name.contains('tulis') || name.contains('sekolah')) return 'Alat Tulis';
+    return 'Semua';
   }
 
   String _categoryIdForChip(String chipLabel, List<CategoryModel> categories) {
-    if (chipLabel == 'Semua Produk') return '';
+    if (chipLabel == 'Semua') return '';
 
     final keyword = switch (chipLabel) {
       'Makanan' => 'makan',
       'Minuman' => 'minum',
-      'Alat Tulis' => 'tulis',
       'Atribut Sekolah' => 'atribut',
+      'Alat Tulis' => 'tulis',
       _ => '',
     };
 
@@ -109,102 +105,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return match?.id ?? '';
   }
 
-  Future<void> _addToCart(ProductModel product) async {
-    if (product.isPreorder) {
-      context.push('/preorder/${product.id}');
-      return;
-    }
-
-    if (product.variants.length > 1) {
-      context.push('/catalog/${product.id}');
-      return;
-    }
-
-    final variantId = product.variants.isNotEmpty ? product.variants.first.id : null;
-
-    await context.read<CartCubit>().addToCart(
-      productId: product.id,
-      variantId: variantId,
-      quantity: 1,
-    );
-
-    if (!mounted) return;
-
-    final cartState = context.read<CartCubit>().state;
-    if (cartState is CartError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menambahkan ke keranjang: ${cartState.message}'),
-          backgroundColor: _Ds.red,
-        ),
-      );
-      return;
-    }
-
-    PopUpAlert.showAddedToCart(context: context, productName: product.name);
-  }
-
-  Widget _buildCategoryChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? _Ds.primary : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? _Ds.primary : _Ds.border),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : _Ds.textPrimary,
-          ),
-        ),
-      ),
+  Widget _buildHeader() {
+    return DamosCatalogHeader(
+      searchController: _searchController,
+      onSearchSubmitted: _triggerSearch,
     );
   }
 
   Widget _buildCategorySection(String selectedCategoryId, List<CategoryModel> categories) {
     final selectedChip = _chipLabelForCategoryId(selectedCategoryId, categories);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text(
-            'Kategori',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: _chipOptions.map((label) {
-              final isSelected = selectedChip == label;
-              return _buildCategoryChip(
-                label: label,
-                isSelected: isSelected,
-                onTap: () {
-                  final categoryId = _categoryIdForChip(label, categories);
-                  context.read<ProductCubit>().filterByCategory(categoryId);
-                },
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 16),
+      child: DamosCatalogCategoryChips(
+        selectedLabel: selectedChip,
+        onSelected: (label) {
+          final categoryId = _categoryIdForChip(label, categories);
+          context.read<ProductCubit>().filterByCategory(categoryId);
+        },
+      ),
     );
   }
 
@@ -216,9 +135,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
           padding: const EdgeInsets.only(top: 40),
           child: EmptyState(
             emoji: '🔍',
-            title: 'Produk tidak ditemukan 😔',
+            title: 'Produk tidak ditemukan',
             subtitle: 'Coba cari dengan kata kunci lain ya!',
-            actionButtonText: 'Reset Filter 🔁',
+            actionButtonText: 'Reset Filter',
             onActionButtonPressed: () {
               _searchController.clear();
               context.read<ProductCubit>().loadCatalog();
@@ -231,33 +150,50 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final itemCount = state.products.length + (state.isLoadMoreRunning ? 2 : 0);
 
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       sliver: SliverGrid(
-        gridDelegate: ProductGridLayout.responsiveSliverDelegate(context),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          mainAxisExtent: DamosCatalogProductCard.cardHeight,
+        ),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             if (index >= state.products.length) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Color(0xFFE5E7EB)),
-                ),
-                child: const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: _Ds.primary),
+              return SizedBox(
+                width: DamosCatalogProductCard.cardWidth,
+                height: DamosCatalogProductCard.cardHeight,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: DamosDominanceColors.primary,
+                      ),
+                    ),
                   ),
                 ),
               );
             }
 
             final product = state.products[index];
-            return DamosProductGridCard(
-              product: product,
-              onTap: () => context.push('/catalog/${product.id}'),
-              onAddToCart: () => _addToCart(product),
+            return BlocBuilder<FavoriteCubit, FavoriteState>(
+              builder: (context, favoriteState) {
+                final isFavorite = context.read<FavoriteCubit>().isFavorite(product.id);
+                return DamosCatalogProductCard(
+                  product: product,
+                  isFavorite: isFavorite,
+                  onTap: () => context.push('/catalog/${product.id}'),
+                  onFavoriteTap: () => context.read<FavoriteCubit>().toggleFavorite(product.id),
+                );
+              },
             );
           },
           childCount: itemCount,
@@ -268,48 +204,60 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   Widget _buildScrollableBody(ProductState state) {
     if (state is ProductError) {
-      return SingleChildScrollView(
+      return CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DamosScreenHeader(
-              searchController: _searchController,
-              onSearchSubmitted: _triggerSearch,
-            ),
-            ErrorState(
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader()),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: ErrorState(
               message: state.message,
               onRetry: () => context.read<ProductCubit>().loadCatalog(),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     if (state is ProductLoading || state is ProductInitial || state is ProductDetailLoaded) {
-      return SingleChildScrollView(
+      return CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DamosScreenHeader(
-              searchController: _searchController,
-              onSearchSubmitted: _triggerSearch,
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Text(
-                'Kategori',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader()),
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(top: 16, bottom: 16),
+              child: SizedBox(
+                height: 40,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: DamosDominanceColors.primary,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: ProductGridShimmer(),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                mainAxisExtent: DamosCatalogProductCard.cardHeight,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (_, __) => const LoadingShimmer(
+                  width: DamosCatalogProductCard.cardWidth,
+                  height: DamosCatalogProductCard.cardHeight,
+                  borderRadius: 8,
+                ),
+                childCount: 6,
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -318,34 +266,27 @@ class _CatalogScreenState extends State<CatalogScreen> {
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          SliverToBoxAdapter(
-            child: DamosScreenHeader(
-              searchController: _searchController,
-              onSearchSubmitted: _triggerSearch,
-            ),
-          ),
+          SliverToBoxAdapter(child: _buildHeader()),
           SliverToBoxAdapter(
             child: _buildCategorySection(state.selectedCategoryId, state.categories),
           ),
           _buildProductGridSliver(state),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       );
     }
 
-    return SingleChildScrollView(
+    return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      child: DamosScreenHeader(
-        searchController: _searchController,
-        onSearchSubmitted: _triggerSearch,
-      ),
+      slivers: [
+        SliverToBoxAdapter(child: _buildHeader()),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: DamosDominanceColors.screenBackground,
       body: BlocConsumer<ProductCubit, ProductState>(
         listener: (context, state) {
           if (state is ProductCatalogLoaded) {
@@ -357,7 +298,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         builder: (context, state) {
           if (state is ProductCatalogLoaded) {
             return RefreshIndicator(
-              color: _Ds.primary,
+              color: DamosDominanceColors.primary,
               onRefresh: () async {
                 await context.read<ProductCubit>().loadCatalog(
                       categoryId: state.selectedCategoryId,
@@ -369,7 +310,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           }
 
           return RefreshIndicator(
-            color: _Ds.primary,
+            color: DamosDominanceColors.primary,
             onRefresh: () => context.read<ProductCubit>().loadCatalog(),
             child: _buildScrollableBody(state),
           );

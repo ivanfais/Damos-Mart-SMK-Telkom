@@ -4,244 +4,371 @@ import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
-import '../../data/models/user_model.dart';
 import '../../core/storage/prefs_storage.dart';
-import '../../widgets/common/pop_up_alert.dart';
-import '../../widgets/common/user_avatar.dart';
+import '../../data/models/user_model.dart';
+import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/user_avatar.dart';
+import '../../widgets/profile/damos_logout_confirm_dialog.dart';
 
-class _Ds {
-  static const Color primary = Color(0xFF1B8C2E);
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color borderLight = Color(0xFFE5E7EB);
-  static const Color bgGrey = Color(0xFFF2F2F2);
-  static const Color red = Color(0xFFD42427);
-}
-
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  void _showLogoutConfirmation(BuildContext context) {
-    PopUpAlert.show(
-      context: context,
-      title: 'Logout',
-      description: 'Apakah Anda yakin ingin keluar dari akun?',
-      confirmText: 'Logout',
-      cancelText: 'Batal',
-      onConfirm: () {
-        context.read<AuthBloc>().add(LoggedOut());
-        context.go('/login');
-      },
-    );
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _discPickerSwitch = false;
+
+  Future<void> _showLogoutConfirmation(BuildContext context) async {
+    final confirmed = await DamosLogoutConfirmDialog.show(context);
+    if (!confirmed || !context.mounted) return;
+
+    context.read<AuthBloc>().add(LoggedOut());
   }
 
-  String _displayPhone(UserModel user) {
-    if (user.phone != null && user.phone!.trim().isNotEmpty) {
-      return user.phone!;
-    }
-    return '-';
+
+  Future<void> _onDiscPickerSwitchChanged(bool value) async {
+    setState(() => _discPickerSwitch = value);
+    if (!value) return;
+
+    await context.push('/profile/disc-theme');
+    if (!mounted) return;
+    setState(() => _discPickerSwitch = false);
   }
 
-  Widget _buildAvatar(BuildContext context, UserModel user) {
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        UserAvatar(
-          avatarUrl: user.avatarUrl,
-          radius: 52,
-          iconSize: 48,
-        ),
-        Positioned(
-          right: 4,
-          bottom: 4,
-          child: GestureDetector(
-            onTap: () => context.push('/profile/edit'),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: _Ds.textPrimary,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMenuTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color? iconColor,
-    Color? textColor,
-  }) {
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: Icon(icon, color: iconColor ?? _Ds.textPrimary, size: 22),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: textColor ?? _Ds.textPrimary,
-        ),
-      ),
-      trailing: Icon(Icons.chevron_right, color: textColor ?? _Ds.textSecondary, size: 22),
-    );
-  }
-
-  Widget _buildMenuContainer(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _Ds.borderLight),
-      ),
-      child: Column(children: children),
-    );
+  String _activeDiscLabel() {
+    final variant = PrefsStorage.instance.getSelectedDiscVariant();
+    return variant?.label ?? 'Dominance';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          if (state is Authenticated) {
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (previous, current) =>
+          current is Unauthenticated &&
+          (previous is Authenticated || previous is AuthLoading),
+      listener: (context, state) {
+        context.go('/login');
+      },
+      child: Scaffold(
+        backgroundColor: DamosDominanceColors.screenBackground,
+        body: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            if (state is! Authenticated) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: DamosDominanceColors.primary,
+                ),
+              );
+            }
+
             final user = state.user;
 
             return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const DamosPageHeader(
-                    title: 'Informasi Pengguna',
-                    showBackButton: true,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 16),
-                        Center(child: _buildAvatar(context, user)),
-                  const SizedBox(height: 16),
-                  Text(
-                    user.fullName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _displayPhone(user),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, color: _Ds.textSecondary),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 160),
-                      child: SizedBox(
-                        height: 40,
-                        child: ElevatedButton.icon(
-                          onPressed: () => context.push('/profile/edit'),
-                          icon: const Icon(Icons.edit, size: 16),
-                          label: const Text(
-                            'Edit Profile',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _Ds.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                          ),
-                        ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const DamosPageHeader(
+                  title: 'PENGATURAN PROFIL',
+                  showBackButton: false,
+                  titleWidget: Center(
+                    child: Text(
+                      'PENGATURAN PROFIL',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'AKTIVITAS & KEAMANAN',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _Ds.textSecondary,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildMenuContainer([
-                    _buildMenuTile(
-                      icon: Icons.palette_outlined,
-                      title: 'Gaya Aplikasi DISC',
-                      onTap: () => context.push('/profile/disc-theme'),
-                    ),
-                    if (PrefsStorage.instance.getSelectedDiscVariant() != null) ...[
-                      const Divider(height: 1, color: _Ds.borderLight),
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        leading: const Icon(Icons.check_circle_outline, color: _Ds.primary, size: 22),
-                        title: Text(
-                          'Aktif: ${PrefsStorage.instance.getSelectedDiscVariant()!.label}',
-                          style: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
-                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _UserSummaryCard(user: user),
+                      const SizedBox(height: 24),
+                      const _SectionLabel('Account'),
+                      const SizedBox(height: 8),
+                      _SettingsCard(
+                        children: [
+                          _ProfileMenuRow(
+                            icon: Icons.person_outline,
+                            title: 'Edit Profil',
+                            subtitle: 'Ganti Foto Profil, Nomor Telepon, E-mail',
+                            onTap: () => context.push('/profile/edit'),
+                          ),
+                          const _SettingsDivider(),
+                          _ProfileMenuRow(
+                            icon: Icons.lock_outline,
+                            title: 'Ubah Password',
+                            subtitle: 'Perbarui Keamanan akunmu',
+                            onTap: () => context.push('/profile/change-password'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      const _SectionLabel('General'),
+                      const SizedBox(height: 8),
+                      _SettingsCard(
+                        children: [
+                          _ProfileMenuRow(
+                            icon: Icons.help_outline,
+                            iconBackground: const Color(0xFFE8F0FE),
+                            iconColor: const Color(0xFF1A73E8),
+                            titleColor: const Color(0xFF1A73E8),
+                            title: 'Bantuan & Komplain',
+                            subtitle: 'Sampaikan Keluhan anda',
+                            onTap: () => context.push('/complaints'),
+                          ),
+                          const _SettingsDivider(),
+                          _ProfileMenuRow(
+                            icon: Icons.favorite,
+                            iconBackground: DamosDominanceColors.primary.withValues(alpha: 0.12),
+                            iconColor: DamosDominanceColors.primary,
+                            titleColor: DamosDominanceColors.primary,
+                            title: 'Favorite Saya',
+                            subtitle: 'Daftar barang kesukaan Anda',
+                            onTap: () => context.push('/favorites'),
+                          ),
+                          const _SettingsDivider(),
+                          _ProfileMenuRow(
+                            icon: Icons.palette_outlined,
+                            iconBackground: DamosDominanceColors.primary.withValues(alpha: 0.12),
+                            iconColor: DamosDominanceColors.primary,
+                            titleColor: DamosDominanceColors.primary,
+                            title: 'Gaya Aplikasi DISC',
+                            subtitle: 'Aktif: ${_activeDiscLabel()} · Ketuk switch untuk ganti',
+                            trailing: Switch.adaptive(
+                              value: _discPickerSwitch,
+                              thumbColor: WidgetStateProperty.resolveWith((states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return DamosDominanceColors.primary;
+                                }
+                                return null;
+                              }),
+                              trackColor: WidgetStateProperty.resolveWith((states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return DamosDominanceColors.primary.withValues(alpha: 0.35);
+                                }
+                                return null;
+                              }),
+                              onChanged: _onDiscPickerSwitchChanged,
+                            ),
+                          ),
+                          const _SettingsDivider(),
+                          _ProfileMenuRow(
+                            icon: Icons.logout,
+                            iconBackground: DamosDominanceColors.error.withValues(alpha: 0.12),
+                            iconColor: DamosDominanceColors.error,
+                            titleColor: DamosDominanceColors.error,
+                            title: 'Log Out',
+                            subtitle: 'Keluar dari aplikasi',
+                            onTap: () => _showLogoutConfirmation(context),
+                          ),
+                        ],
                       ),
                     ],
-                  ]),
-                  const SizedBox(height: 12),
-                  _buildMenuContainer([
-                    _buildMenuTile(
-                      icon: Icons.history,
-                      title: 'Riwayat Pesanan',
-                      onTap: () => context.push('/profile/history'),
-                    ),
-                    const Divider(height: 1, color: _Ds.borderLight),
-                    _buildMenuTile(
-                      icon: Icons.chat_bubble_outline,
-                      title: 'Hubungi Admin',
-                      onTap: () => context.push('/profile/chat'),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  _buildMenuContainer([
-                    _buildMenuTile(
-                      icon: Icons.logout,
-                      title: 'Logout',
-                      iconColor: _Ds.red,
-                      textColor: _Ds.red,
-                      onTap: () => _showLogoutConfirmation(context),
-                    ),
-                  ]),
-                  const SizedBox(height: 40),
-                  const Text(
-                    'Damos Mart',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Ds.textSecondary),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'SMK Telkom Jakarta',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: _Ds.textSecondary),
-                  ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return const Center(child: Text('Memuat data profil...'));
+                ),
+              ],
+            ),
+          );
         },
+      ),
+      ),
+    );
+  }
+}
+
+class _UserSummaryCard extends StatelessWidget {
+  const _UserSummaryCard({required this.user});
+
+  final UserModel user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: DamosDominanceColors.fieldBorder),
+      ),
+      child: Row(
+        children: [
+          UserAvatar(
+            avatarUrl: user.avatarUrl,
+            radius: 32,
+            iconSize: 32,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.fullName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: DamosDominanceColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  user.email,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: DamosDominanceColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: DamosDominanceColors.textSecondary,
+      ),
+    );
+  }
+}
+
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: DamosDominanceColors.fieldBorder),
+      ),
+      child: Column(children: children),
+    );
+  }
+}
+
+class _SettingsDivider extends StatelessWidget {
+  const _SettingsDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(
+      height: 1,
+      thickness: 1,
+      color: DamosDominanceColors.fieldBorder,
+      indent: 16,
+      endIndent: 16,
+    );
+  }
+}
+
+class _ProfileMenuRow extends StatelessWidget {
+  const _ProfileMenuRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.iconBackground,
+    this.iconColor,
+    this.titleColor,
+    this.onTap,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color? iconBackground;
+  final Color? iconColor;
+  final Color? titleColor;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedIconColor = iconColor ?? DamosDominanceColors.textPrimary;
+    final resolvedTitleColor = titleColor ?? DamosDominanceColors.textPrimary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconBackground ?? Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 22, color: resolvedIconColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: resolvedTitleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DamosDominanceColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null)
+                trailing!
+              else
+                const Icon(
+                  Icons.chevron_right,
+                  color: DamosDominanceColors.textHint,
+                  size: 22,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

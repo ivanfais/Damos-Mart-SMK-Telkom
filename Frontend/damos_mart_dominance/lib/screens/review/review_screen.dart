@@ -9,19 +9,10 @@ import '../../config/api_config.dart';
 import '../../core/network/api_exception.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/review_repository.dart';
+import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/pop_up_alert.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
-
-class _Ds {
-  static const Color primary = Color(0xFF1B8C2E);
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color border = Color(0xFFD1D5DB);
-  static const Color borderLight = Color(0xFFE5E7EB);
-  static const Color bgGrey = Color(0xFFF2F2F2);
-  static const Color star = Color(0xFFFFC107);
-}
 
 class _DashedBorderPainter extends CustomPainter {
   final Color color;
@@ -206,7 +197,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _Ds.borderLight),
+          border: Border.all(color: DamosDominanceColors.fieldBorder),
         ),
         child: const Row(
           children: [
@@ -235,7 +226,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _Ds.borderLight),
+        border: Border.all(color: DamosDominanceColors.fieldBorder),
       ),
       child: Row(
         children: [
@@ -243,7 +234,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: _Ds.bgGrey,
+              color: DamosDominanceColors.fieldFill,
               borderRadius: BorderRadius.circular(8),
             ),
             child: ClipRRect(
@@ -253,9 +244,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       imageUrl: ApiConfig.imageUrl(imageUrl),
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) =>
-                          const Icon(Icons.image_outlined, color: _Ds.textSecondary, size: 22),
+                          const Icon(Icons.image_outlined, color: DamosDominanceColors.textSecondary, size: 22),
                     )
-                  : const Icon(Icons.image_outlined, color: _Ds.textSecondary, size: 22),
+                  : const Icon(Icons.image_outlined, color: DamosDominanceColors.textSecondary, size: 22),
             ),
           ),
           const SizedBox(width: 12),
@@ -265,12 +256,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _Ds.textPrimary),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: DamosDominanceColors.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   category,
-                  style: const TextStyle(fontSize: 12, color: _Ds.textSecondary),
+                  style: const TextStyle(fontSize: 12, color: DamosDominanceColors.textSecondary),
                 ),
               ],
             ),
@@ -295,7 +286,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             child: Icon(
               isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
               size: 40,
-              color: isFilled ? _Ds.star : _Ds.borderLight,
+              color: isFilled ? const Color(0xFFFFC107) : DamosDominanceColors.fieldBorder,
             ),
           ),
         );
@@ -307,16 +298,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return GestureDetector(
       onTap: _pickImage,
       child: CustomPaint(
-        painter: _DashedBorderPainter(color: _Ds.border, borderRadius: 10),
+        painter: _DashedBorderPainter(color: DamosDominanceColors.fieldBorder, borderRadius: 10),
         child: const SizedBox(
           width: 64,
           height: 64,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add_a_photo_outlined, size: 22, color: _Ds.textSecondary),
+              Icon(Icons.add_a_photo_outlined, size: 22, color: DamosDominanceColors.textSecondary),
               SizedBox(height: 4),
-              Text('Upload', style: TextStyle(fontSize: 10, color: _Ds.textSecondary)),
+              Text('Upload', style: TextStyle(fontSize: 10, color: DamosDominanceColors.textSecondary)),
             ],
           ),
         ),
@@ -346,7 +337,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               width: 20,
               height: 20,
               decoration: const BoxDecoration(
-                color: _Ds.textPrimary,
+                color: DamosDominanceColors.textPrimary,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.close, size: 12, color: Colors.white),
@@ -376,7 +367,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const Text(
             'Bagaimana kualitas produk ini?',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DamosDominanceColors.textPrimary),
           ),
           const SizedBox(height: 12),
           _buildStarRating(),
@@ -384,40 +375,40 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const Text(
             'Pilih bintang untuk memberi rating',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: _Ds.textSecondary),
+            style: TextStyle(fontSize: 13, color: DamosDominanceColors.textSecondary),
           ),
           const SizedBox(height: 28),
           const Text(
             'Ulasan Anda',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DamosDominanceColors.textPrimary),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _commentController,
             maxLines: 5,
-            style: const TextStyle(fontSize: 14, color: _Ds.textPrimary),
+            style: const TextStyle(fontSize: 14, color: DamosDominanceColors.textPrimary),
             decoration: InputDecoration(
               hintText: 'Tulis ulasan...',
-              hintStyle: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
+              hintStyle: const TextStyle(fontSize: 14, color: DamosDominanceColors.textSecondary),
               contentPadding: const EdgeInsets.all(14),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _Ds.border),
+                borderSide: const BorderSide(color: DamosDominanceColors.fieldBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _Ds.border),
+                borderSide: const BorderSide(color: DamosDominanceColors.fieldBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _Ds.primary, width: 1.5),
+                borderSide: const BorderSide(color: DamosDominanceColors.primary, width: 1.5),
               ),
             ),
           ),
           const SizedBox(height: 24),
           const Text(
             'Tambahkan Foto (Opsional)',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DamosDominanceColors.textPrimary),
           ),
           const SizedBox(height: 12),
           Row(
@@ -435,7 +426,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               const Expanded(
                 child: Text(
                   'Maksimal 3 foto. Format JPG atau PNG.',
-                  style: TextStyle(fontSize: 13, color: _Ds.textSecondary, height: 1.4),
+                  style: TextStyle(fontSize: 13, color: DamosDominanceColors.textSecondary, height: 1.4),
                 ),
               ),
             ],
@@ -451,7 +442,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: DamosDominanceColors.screenBackground,
       body: BlocBuilder<ProductCubit, ProductState>(
         builder: (context, productState) {
           final product = _currentProduct(productState);
@@ -468,9 +459,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submitReview,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _Ds.primary,
+                      backgroundColor: DamosDominanceColors.primary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: _Ds.primary.withValues(alpha: 0.5),
+                      disabledBackgroundColor: DamosDominanceColors.primary.withValues(alpha: 0.5),
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

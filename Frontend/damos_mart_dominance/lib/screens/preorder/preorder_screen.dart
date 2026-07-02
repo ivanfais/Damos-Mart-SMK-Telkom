@@ -7,6 +7,7 @@ import '../../blocs/cart/cart_cubit.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/product_variant_model.dart';
 import '../../data/models/cart_item_model.dart';
+import '../../core/utils/cart_navigation.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../config/api_config.dart';
 import '../../widgets/common/loading_shimmer.dart';
@@ -190,7 +191,7 @@ class _PreorderScreenState extends State<PreorderScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-            onPressed: () => context.go('/cart'),
+            onPressed: () => CartNavigation.open(context),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),

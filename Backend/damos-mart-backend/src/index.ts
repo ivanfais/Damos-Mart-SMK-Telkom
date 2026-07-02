@@ -24,6 +24,7 @@ import chatRouter from './modules/chat/chat.routes';
 import coopRouter from './modules/cooperative/cooperative.routes';
 import notificationsRouter from './modules/notifications/notifications.routes';
 import complaintsRouter from './modules/complaints/complaints.routes';
+import favoritesRouter from './modules/favorites/favorites.routes';
 import adminRouter from './modules/admin/admin.routes';
 
 const app = express();
@@ -64,6 +65,7 @@ app.use(`${apiPrefix}/chat`, chatRouter);
 app.use(`${apiPrefix}/cooperative`, coopRouter);
 app.use(`${apiPrefix}/notifications`, notificationsRouter);
 app.use(`${apiPrefix}/complaints`, complaintsRouter);
+app.use(`${apiPrefix}/favorites`, favoritesRouter);
 app.use(`${apiPrefix}/admin`, adminRouter);
 
 // 5. Swagger API Docs Endpoint

@@ -10,6 +10,7 @@ class OrderItemModel extends Equatable {
   final int quantity;
   final double subtotal;
   final String? imageUrl;
+  final String? categoryName;
 
   const OrderItemModel({
     required this.id,
@@ -21,12 +22,19 @@ class OrderItemModel extends Equatable {
     required this.quantity,
     required this.subtotal,
     this.imageUrl,
+    this.categoryName,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     String? imageUrl = json['imageUrl'] as String?;
-    if (imageUrl == null && json['product'] is Map<String, dynamic>) {
-      imageUrl = (json['product'] as Map<String, dynamic>)['imageUrl'] as String?;
+    String? categoryName = json['categoryName'] as String?;
+    if (json['product'] is Map<String, dynamic>) {
+      final product = json['product'] as Map<String, dynamic>;
+      imageUrl ??= product['imageUrl'] as String?;
+      if (categoryName == null && product['category'] is Map<String, dynamic>) {
+        categoryName =
+            (product['category'] as Map<String, dynamic>)['name'] as String?;
+      }
     }
 
     return OrderItemModel(
@@ -39,6 +47,7 @@ class OrderItemModel extends Equatable {
       quantity: json['quantity'] as int? ?? 1,
       subtotal: double.tryParse(json['subtotal'].toString()) ?? 0.0,
       imageUrl: imageUrl,
+      categoryName: categoryName,
     );
   }
 
@@ -53,7 +62,19 @@ class OrderItemModel extends Equatable {
       'quantity': quantity,
       'subtotal': subtotal,
       'imageUrl': imageUrl,
+      'categoryName': categoryName,
     };
+  }
+
+  String get displaySubtitle {
+    final label = categoryName?.trim();
+    if (label != null && label.isNotEmpty) {
+      return '$label x$quantity';
+    }
+    if (variantName != null && variantName!.isNotEmpty) {
+      return '${variantName!} x$quantity';
+    }
+    return 'x$quantity';
   }
 
   @override
@@ -67,6 +88,7 @@ class OrderItemModel extends Equatable {
         quantity,
         subtotal,
         imageUrl,
+        categoryName,
       ];
 }
 

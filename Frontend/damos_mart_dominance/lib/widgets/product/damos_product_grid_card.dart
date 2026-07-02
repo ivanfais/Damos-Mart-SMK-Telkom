@@ -153,13 +153,13 @@ class DamosProductGridCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              hasStock ? 'Tersedia' : 'Stok Habis',
+                              product.isPreorder ? 'Pre-Order' : hasStock ? 'Tersedia' : 'Stok Habis',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: hasStock ? _primary : _red,
+                                color: product.isPreorder ? _primary : hasStock ? _primary : _red,
                               ),
                             ),
                           ),

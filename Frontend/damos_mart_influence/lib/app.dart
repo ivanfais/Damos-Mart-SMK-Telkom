@@ -15,6 +15,7 @@ import 'blocs/queue/queue_cubit.dart';
 import 'blocs/chat/chat_cubit.dart';
 import 'blocs/notification/notification_cubit.dart';
 import 'blocs/cooperative/cooperative_cubit.dart';
+import 'core/disc/disc_build_guard.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/socket/socket_service.dart';
 import 'core/utils/damos_system_ui.dart';
@@ -180,6 +181,9 @@ class _DamosMartAppState extends State<DamosMartApp> {
           debugShowCheckedModeBanner: false,
           routerConfig: AppRouter.router,
           builder: (context, child) {
+            final content = DiscBuildGuard(
+              child: child ?? const SizedBox.shrink(),
+            );
             if (kIsWeb) {
               // Keep a straight, centered mobile-width viewport on web (no tilted frame).
               return ColoredBox(
@@ -187,12 +191,12 @@ class _DamosMartAppState extends State<DamosMartApp> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 430),
-                    child: child ?? const SizedBox.shrink(),
+                    child: content,
                   ),
                 ),
               );
             }
-            return child ?? const SizedBox.shrink();
+            return content;
           },
         ),
       ),

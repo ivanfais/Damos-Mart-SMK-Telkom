@@ -113,7 +113,10 @@ export class OrdersService {
           orderItems: {
             include: {
               product: {
-                select: { imageUrl: true },
+                select: {
+                  imageUrl: true,
+                  category: { select: { name: true } },
+                },
               },
             },
           },
@@ -316,7 +319,10 @@ export class OrdersService {
           orderItems: {
             include: {
               product: {
-                select: { imageUrl: true },
+                select: {
+                  imageUrl: true,
+                  category: { select: { name: true } },
+                },
               },
             },
           },
@@ -344,7 +350,10 @@ export class OrdersService {
         orderItems: {
           include: {
             product: {
-              select: { imageUrl: true },
+              select: {
+                imageUrl: true,
+                category: { select: { name: true } },
+              },
             },
           },
         },

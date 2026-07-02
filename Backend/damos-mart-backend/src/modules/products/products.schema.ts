@@ -4,7 +4,7 @@ export const productQuerySchema = z.object({
   query: z.object({
     category: z.string().optional(),
     search: z.string().optional(),
-    inStock: z.enum(['true', 'false']).optional().default('true'),
+    inStock: z.enum(['true', 'false']).optional(),
     isPreorder: z.enum(['true', 'false']).optional(),
     sort: z.enum(['newest', 'price_asc', 'price_desc', 'rating_desc', 'popular']).optional().default('newest'),
     page: z.coerce.number().int().min(1).optional().default(1),

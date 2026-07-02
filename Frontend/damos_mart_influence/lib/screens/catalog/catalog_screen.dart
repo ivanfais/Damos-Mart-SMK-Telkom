@@ -256,7 +256,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
             final product = state.products[index];
             return DamosProductGridCard(
               product: product,
-              onTap: () => context.push('/catalog/${product.id}'),
+              onTap: () {
+                if (product.isPreorder) {
+                  context.push('/preorder/${product.id}');
+                } else {
+                  context.push('/catalog/${product.id}');
+                }
+              },
               onAddToCart: () => _addToCart(product),
             );
           },

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../core/network/api_exception.dart';
 import '../../data/models/order_model.dart';
 import '../../data/repositories/order_repository.dart';
 
@@ -14,6 +15,8 @@ abstract class OrderState extends Equatable {
 class OrderInitial extends OrderState {}
 
 class OrderLoading extends OrderState {}
+
+class OrderHistoryLoading extends OrderState {}
 
 class OrderCreated extends OrderState {
   final OrderModel order;
@@ -31,6 +34,16 @@ class OrderHistoryLoaded extends OrderState {
 
   @override
   List<Object?> get props => [orders];
+}
+
+class OrderHistoryError extends OrderState {
+  final String message;
+  final int? statusCode;
+
+  const OrderHistoryError(this.message, {this.statusCode});
+
+  @override
+  List<Object?> get props => [message, statusCode];
 }
 
 class OrderDetailLoaded extends OrderState {
@@ -54,6 +67,9 @@ class OrderError extends OrderState {
 // Cubit
 class OrderCubit extends Cubit<OrderState> {
   final OrderRepository _repository;
+  List<OrderModel>? _cachedHistoryOrders;
+
+  List<OrderModel>? get cachedHistoryOrders => _cachedHistoryOrders;
 
   OrderCubit({OrderRepository? repository})
       : _repository = repository ?? OrderRepository(),
@@ -102,17 +118,19 @@ class OrderCubit extends Cubit<OrderState> {
   }
 
   Future<void> loadMyOrders() async {
-    emit(OrderLoading());
+    emit(OrderHistoryLoading());
     try {
       final orders = await _repository.getMyOrders();
+      _cachedHistoryOrders = orders;
       emit(OrderHistoryLoaded(orders));
+    } on ApiException catch (e) {
+      emit(OrderHistoryError(e.message, statusCode: e.statusCode));
     } catch (e) {
-      emit(OrderError(e.toString()));
+      emit(OrderHistoryError(e.toString()));
     }
   }
 
   Future<void> loadOrderDetail(String orderId) async {
-    emit(OrderLoading());
     try {
       final order = await _repository.getOrderDetails(orderId);
       emit(OrderDetailLoaded(order));

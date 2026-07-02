@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../core/storage/prefs_storage.dart';
 import '../../core/disc/disc_variant.dart';
 import '../../config/api_config.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/dio_client.dart';
 import '../models/user_model.dart';
 
@@ -86,8 +87,68 @@ class AuthRepository {
     await _client.post(
       ApiConfig.logout,
       data: {
-        'token': refreshToken,
+        'refreshToken': refreshToken,
       },
+    );
+  }
+
+  Future<String> forgotPassword(String email) async {
+    final response = await _client.post(
+      ApiConfig.forgotPassword,
+      data: {'email': email},
+    );
+
+    return response.data['message'] as String? ??
+        'Jika email terdaftar, link reset password telah dikirim ke email Anda.';
+  }
+
+  Future<bool> validateResetToken(String token) async {
+    final response = await _client.get(
+      ApiConfig.validateResetToken,
+      queryParameters: {'token': token},
+    );
+
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    return data['valid'] as bool? ?? false;
+  }
+
+  Future<String> resetPassword({
+    required String token,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _client.post(
+      ApiConfig.resetPassword,
+      data: {
+        'token': token,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+    );
+
+    return response.data['message'] as String? ?? 'Password berhasil diperbarui.';
+  }
+
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await _client.put(
+      ApiConfig.changePassword,
+      data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+
+    final data = response.data;
+    if (data is Map && data['success'] == true) {
+      return data['message'] as String? ?? 'Password berhasil diperbarui.';
+    }
+
+    throw ApiException(
+      message: 'Gagal mengubah password',
+      statusCode: response.statusCode,
     );
   }
 

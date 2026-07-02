@@ -83,7 +83,7 @@ export const ProductFormPage: React.FC = () => {
       formData.append('categoryId', categoryId);
       formData.append('description', description);
       formData.append('price', String(price));
-      formData.append('stock', String(stock));
+      formData.append('stock', String(isPreorder ? 0 : stock));
       formData.append('isPreorder', String(isPreorder));
       formData.append('preorderEstimation', preorderEstimation);
       formData.append('isActive', String(isActive));
@@ -130,7 +130,7 @@ export const ProductFormPage: React.FC = () => {
         .post(`/admin/products/${id}/variants`, {
           variantName: newVarName,
           additionalPrice: newVarPrice,
-          stock: newVarStock,
+          stock: isPreorder ? 0 : newVarStock,
         })
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
@@ -145,7 +145,7 @@ export const ProductFormPage: React.FC = () => {
         {
           variantName: newVarName,
           additionalPrice: newVarPrice,
-          stock: newVarStock,
+          stock: isPreorder ? 0 : newVarStock,
         },
       ]);
       setNewVarName('');
@@ -184,7 +184,7 @@ export const ProductFormPage: React.FC = () => {
       .put(`/admin/products/${id}/variants/${v.id}`, {
         variantName: v.variantName,
         additionalPrice: Number(v.additionalPrice) || 0,
-        stock: Number(v.stock) || 0,
+        stock: isPreorder ? 0 : Number(v.stock) || 0,
       })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
@@ -276,7 +276,15 @@ export const ProductFormPage: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={isPreorder}
-                    onChange={(e) => setIsPreorder(e.target.checked)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsPreorder(checked);
+                      if (checked) {
+                        setStock(0);
+                        setNewVarStock(0);
+                        setVariants((prev) => prev.map((v) => ({ ...v, stock: 0 })));
+                      }
+                    }}
                     className="w-4.5 h-4.5 rounded bg-slate-50 border-slate-200 text-brand-600 focus:ring-brand-500"
                   />
                   <div className="flex flex-col">
@@ -318,7 +326,7 @@ export const ProductFormPage: React.FC = () => {
             </div>
 
             {/* Price and Stock */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={`grid grid-cols-1 ${isPreorder ? '' : 'md:grid-cols-2'} gap-6`}>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Harga Dasar (Rp)</label>
                 <input
@@ -331,6 +339,7 @@ export const ProductFormPage: React.FC = () => {
                 />
               </div>
 
+              {!isPreorder && (
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Stok Utama</label>
                 {hasVariants ? (
@@ -349,6 +358,7 @@ export const ProductFormPage: React.FC = () => {
                   />
                 )}
               </div>
+              )}
             </div>
           </div>
 
@@ -356,7 +366,11 @@ export const ProductFormPage: React.FC = () => {
           <div className="glass-panel p-6 rounded-2xl shadow-xl space-y-6">
             <div>
               <h2 className="font-extrabold text-slate-900 text-base">Varian Produk (Ukuran/Warna/Tipe)</h2>
-              <p className="text-xs text-slate-400 mt-1">Tambahkan opsi varian barang (seperti ukuran seragam) dengan stok tersendiri.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {isPreorder
+                  ? 'Pre-order tidak memakai stok. Siswa memesan dulu, produk diproduksi setelahnya.'
+                  : 'Tambahkan opsi varian barang (seperti ukuran seragam) dengan stok tersendiri.'}
+              </p>
             </div>
 
             {/* Variants table lists (editable) */}
@@ -367,7 +381,7 @@ export const ProductFormPage: React.FC = () => {
                     <tr className="border-b border-slate-200 bg-slate-50/40 text-slate-500 font-bold uppercase">
                       <th className="p-3">Nama Varian</th>
                       <th className="p-3">Harga Tambahan</th>
-                      <th className="p-3">Stok Varian</th>
+                      {!isPreorder && <th className="p-3">Stok Varian</th>}
                       <th className="p-3 text-right w-20">Aksi</th>
                     </tr>
                   </thead>
@@ -391,6 +405,7 @@ export const ProductFormPage: React.FC = () => {
                             className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-500"
                           />
                         </td>
+                        {!isPreorder && (
                         <td className="p-2">
                           <input
                             type="number"
@@ -400,6 +415,7 @@ export const ProductFormPage: React.FC = () => {
                             className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-500"
                           />
                         </td>
+                        )}
                         <td className="p-2 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {isEditMode && v.id && (
@@ -435,7 +451,7 @@ export const ProductFormPage: React.FC = () => {
             )}
 
             {/* Add Variant Formlet */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className={`grid grid-cols-1 ${isPreorder ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200`}>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Varian</label>
                 <input
@@ -456,7 +472,8 @@ export const ProductFormPage: React.FC = () => {
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-500"
                 />
               </div>
-              <div className="flex items-end gap-3">
+              <div className={`flex items-end gap-3 ${isPreorder ? '' : ''}`}>
+                {!isPreorder && (
                 <div className="flex-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Stok Varian</label>
                   <input
@@ -467,6 +484,7 @@ export const ProductFormPage: React.FC = () => {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-500"
                   />
                 </div>
+                )}
                 <button
                   type="button"
                   onClick={handleAddVariantLocal}

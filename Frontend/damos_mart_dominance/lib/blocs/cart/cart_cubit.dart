@@ -64,7 +64,9 @@ class CartCubit extends Cubit<CartState> {
         super(CartInitial());
 
   Future<void> loadCart() async {
-    emit(CartLoading());
+    if (state is CartInitial) {
+      emit(CartLoading());
+    }
     try {
       final result = await _repository.getCart();
       emit(CartLoaded(
@@ -146,6 +148,10 @@ class CartCubit extends Cubit<CartState> {
     } catch (e) {
       emit(CartError(e.toString()));
     }
+  }
+
+  void resetSession() {
+    emit(CartInitial());
   }
 }
 

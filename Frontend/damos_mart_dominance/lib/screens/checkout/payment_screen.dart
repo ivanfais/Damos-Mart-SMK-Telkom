@@ -1,25 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/cart/cart_cubit.dart';
 import '../../blocs/order/order_cubit.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/preorder_date_utils.dart';
 import '../../data/models/cart_item_model.dart';
 import '../../data/models/order_model.dart';
-import '../../config/api_config.dart';
-import '../../widgets/common/pop_up_alert.dart';
+import '../../data/repositories/product_repository.dart';
+import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/pop_up_alert.dart';
 
-class _Ds {
-  static const Color primary = Color(0xFF1B8C2E);
-  static const Color greenLight = Color(0xFFE8F5E9);
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color border = Color(0xFFD1D5DB);
-  static const Color borderLight = Color(0xFFE5E7EB);
-  static const Color bgGrey = Color(0xFFF2F2F2);
+class _CheckoutStyle {
+  static const double cardRadius = 12;
+  static const Color cardBorder = DamosDominanceColors.fieldBorder;
+  static const Color selectedFill = Color(0xFFE8F5E9);
+  static const Color iconInactiveFill = Color(0xFFF3F4F6);
 }
 
 class PaymentScreen extends StatefulWidget {
@@ -34,16 +31,55 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   PaymentMethod _selectedMethod = PaymentMethod.qris;
   bool _redirectToQris = false;
+  bool _redirectToCash = false;
+  String? _preorderEstimateRange;
+  bool _loadingPreorderEstimate = false;
 
-  double _calculateTotal() {
-    return widget.items.fold(0.0, (sum, item) => sum + item.subtotal);
+  bool get _hasPreorderItems => widget.items.any((item) => item.isPreorder);
+
+  @override
+  void initState() {
+    super.initState();
+    if (_hasPreorderItems) {
+      _loadPreorderEstimate();
+    }
   }
+
+  Future<void> _loadPreorderEstimate() async {
+    setState(() => _loadingPreorderEstimate = true);
+
+    try {
+      final repo = ProductRepository();
+      var maxDays = 14;
+
+      for (final item in widget.items.where((i) => i.isPreorder)) {
+        final product = await repo.getProductDetail(item.productId);
+        final days = PreorderDateUtils.parseProductionDays(product.preorderEstimation);
+        if (days > maxDays) maxDays = days;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _preorderEstimateRange = PreorderDateUtils.completionRange(maxDays);
+        _loadingPreorderEstimate = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _preorderEstimateRange = PreorderDateUtils.completionRange(14);
+        _loadingPreorderEstimate = false;
+      });
+    }
+  }
+
+  double get _subtotal =>
+      widget.items.fold(0.0, (sum, item) => sum + item.subtotal);
 
   void _submitOrder() {
     if (widget.items.isEmpty) {
       PopUpAlert.show(
         context: context,
-        title: 'Oops! 😅',
+        title: 'Oops!',
         description: 'Keranjang belanjaanmu kosong atau tidak ada item untuk dibayar!',
         isError: true,
       );
@@ -51,7 +87,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
 
     final cartItemIds = widget.items.map((item) => item.id).toList();
-    final methodStr = _selectedMethod == PaymentMethod.qris ? 'QRIS' : 'CASH_AT_COUNTER';
+    final methodStr =
+        _selectedMethod == PaymentMethod.qris ? 'QRIS' : 'CASH_AT_COUNTER';
 
     if (_selectedMethod == PaymentMethod.qris) {
       setState(() => _redirectToQris = true);
@@ -63,88 +100,299 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return;
     }
 
-    context.read<OrderCubit>().checkoutAndPay(
+    setState(() => _redirectToCash = true);
+    context.read<OrderCubit>().checkout(
           cartItemIds: cartItemIds,
           paymentMethod: methodStr,
           notes: '',
         );
   }
 
-  Widget _buildRadio({required bool selected}) {
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: selected ? _Ds.primary : _Ds.border, width: 2),
-      ),
-      child: selected
-          ? Center(
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: const BoxDecoration(color: _Ds.primary, shape: BoxShape.circle),
-              ),
-            )
-          : null,
+  Widget _lineDivider() {
+    return const Divider(
+      height: 1,
+      thickness: 1,
+      color: _CheckoutStyle.cardBorder,
     );
   }
 
-  Widget _buildOrderItemCard(CartItemModel item) {
+  Widget _sectionCard({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _Ds.borderLight),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_CheckoutStyle.cardRadius),
+        border: Border.all(color: _CheckoutStyle.cardBorder),
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          color: DamosDominanceColors.textPrimary,
+        ),
+      ),
+    );
+  }
+
+  Widget _circleIcon({
+    required IconData icon,
+    required bool active,
+  }) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: active ? DamosDominanceColors.primary : _CheckoutStyle.iconInactiveFill,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        size: 20,
+        color: active ? Colors.white : DamosDominanceColors.textSecondary,
+      ),
+    );
+  }
+
+  Widget _buildPreorderCard() {
+    return _sectionCard(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: _Ds.bgGrey,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: item.imageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: ApiConfig.imageUrl(item.imageUrl!),
-                      fit: BoxFit.contain,
-                      errorWidget: (_, __, ___) =>
-                          const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 22),
-                    )
-                  : const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 22),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+          _sectionHeader('Produk Pre-Order (PO)'),
+          _lineDivider(),
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.productName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _Ds.textPrimary),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Jumlah: ${item.quantity}',
-                  style: const TextStyle(fontSize: 12, color: _Ds.textSecondary),
+                if (_loadingPreorderEstimate)
+                  const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Text(
+                    'Estimasi selesai ${_preorderEstimateRange ?? PreorderDateUtils.completionRange(14)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: DamosDominanceColors.textPrimary,
+                    ),
+                  ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Pesanan masuk antrean produksi setelah pembayaran diverifikasi.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: DamosDominanceColors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            CurrencyFormatter.format(item.subtotal),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _Ds.textPrimary),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPickupMethodCard() {
+    return _sectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader('Metode Pengambilan'),
+          _lineDivider(),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                _circleIcon(icon: Icons.storefront_outlined, active: true),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quick Pickup',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: DamosDominanceColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Ambil langsung di koperasi sekolah',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: DamosDominanceColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildOrderLine(CartItemModel item, {required bool showDivider}) {
+    final variantLabel = item.variantName != null && item.variantName!.isNotEmpty
+        ? 'Size: ${item.variantName} x${item.quantity}'
+        : 'x${item.quantity}';
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.productName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: DamosDominanceColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      variantLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DamosDominanceColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                CurrencyFormatter.format(item.subtotal),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: DamosDominanceColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider) _lineDivider(),
+      ],
+    );
+  }
+
+  Widget _buildOrderSummaryCard() {
+    return _sectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader('Ringkasan Pesanan'),
+          _lineDivider(),
+          ...List.generate(widget.items.length, (index) {
+            return _buildOrderLine(
+              widget.items[index],
+              showDivider: index < widget.items.length - 1,
+            );
+          }),
+          _lineDivider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Subtotal',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: DamosDominanceColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      CurrencyFormatter.format(_subtotal),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: DamosDominanceColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Biaya Layanan',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: DamosDominanceColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Gratis',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: DamosDominanceColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRadio({required bool selected}) {
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: selected
+              ? DamosDominanceColors.primary
+              : DamosDominanceColors.fieldBorder,
+          width: 2,
+        ),
+      ),
+      child: selected
+          ? Center(
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: DamosDominanceColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -152,103 +400,185 @@ class _PaymentScreenState extends State<PaymentScreen> {
     required PaymentMethod method,
     required IconData icon,
     required String label,
+    required String subtitle,
+    required bool showDivider,
   }) {
     final selected = _selectedMethod == method;
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedMethod = method),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: selected ? _Ds.greenLight : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? _Ds.primary : _Ds.borderLight,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 24, color: _Ds.textPrimary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _Ds.textPrimary),
+    return Column(
+      children: [
+        Material(
+          color: selected ? _CheckoutStyle.selectedFill : Colors.white,
+          child: InkWell(
+            onTap: () => setState(() => _selectedMethod = method),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  _circleIcon(icon: icon, active: selected),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: DamosDominanceColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: DamosDominanceColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildRadio(selected: selected),
+                ],
               ),
             ),
-            _buildRadio(selected: selected),
-          ],
+          ),
         ),
-      ),
+        if (showDivider) _lineDivider(),
+      ],
     );
   }
 
-  Widget _buildSummaryCard(double total, int itemCount) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _Ds.borderLight),
-      ),
+  Widget _buildPaymentMethodsCard() {
+    return _sectionCard(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Subtotal ($itemCount Produk)',
-                style: const TextStyle(fontSize: 14, color: _Ds.textPrimary),
-              ),
-              Text(
-                CurrencyFormatter.format(total),
-                style: const TextStyle(fontSize: 14, color: _Ds.textPrimary),
-              ),
-            ],
+          _sectionHeader('Metode Pembayaran'),
+          _lineDivider(),
+          _buildPaymentOption(
+            method: PaymentMethod.qris,
+            icon: Icons.qr_code_2_outlined,
+            label: 'QRIS',
+            subtitle: 'Scan QR Code untuk bayar',
+            showDivider: true,
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Total Harga',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
-              ),
-              Text(
-                CurrencyFormatter.format(total),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _Ds.textPrimary),
-              ),
-            ],
+          _buildPaymentOption(
+            method: PaymentMethod.cashAtCounter,
+            icon: Icons.payments_outlined,
+            label: 'Bayar di Kasir',
+            subtitle: 'Bayar langsung ke kasir koperasi',
+            showDivider: false,
           ),
         ],
       ),
     );
   }
 
+  Widget _buildBottomBar({required bool isLoading}) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: _CheckoutStyle.cardBorder),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Total Pembayaran',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DamosDominanceColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  CurrencyFormatter.format(_subtotal),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: DamosDominanceColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : _submitOrder,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DamosDominanceColors.primary,
+                  foregroundColor: DamosDominanceColors.textOnPrimary,
+                  disabledBackgroundColor: DamosDominanceColors.buttonDisabledFill,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Konfirmasi Pesanan',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final totalBill = _calculateTotal();
-    final itemCount = widget.items.length;
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: DamosDominanceColors.screenBackground,
       body: BlocConsumer<OrderCubit, OrderState>(
         listener: (context, state) {
           if (state is OrderCreated) {
-            context.read<CartCubit>().loadCart();
             if (_redirectToQris) {
               setState(() => _redirectToQris = false);
+              context.read<CartCubit>().loadCart();
               context.push('/checkout/qris/${state.order.id}', extra: state.order);
               return;
             }
-            context.go('/checkout/ticket/${state.order.id}');
+            if (_redirectToCash) {
+              setState(() => _redirectToCash = false);
+              context.read<CartCubit>().loadCart();
+              context.push('/checkout/cash/${state.order.id}', extra: state.order);
+              return;
+            }
           } else if (state is OrderError) {
             if (_redirectToQris) {
               setState(() => _redirectToQris = false);
             }
+            if (_redirectToCash) {
+              setState(() => _redirectToCash = false);
+            }
             PopUpAlert.show(
               context: context,
-              title: 'Gagal Memproses 😢',
+              title: 'Gagal Memproses',
               description: 'Terjadi kesalahan: ${state.message}. Coba lagi ya!',
               isError: true,
             );
@@ -265,44 +595,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const DamosPageHeader(
-                        title: 'Konfirmasi Pesanan',
+                        title: 'Checkout',
                         showBackButton: true,
                       ),
                       Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                      const Text(
-                        'Rincian Pesanan',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
-                      ),
-                      const Divider(height: 24, color: _Ds.borderLight),
-                      ...List.generate(widget.items.length, (index) {
-                        return Padding(
-                          padding: EdgeInsets.only(bottom: index < widget.items.length - 1 ? 10 : 0),
-                          child: _buildOrderItemCard(widget.items[index]),
-                        );
-                      }),
-                      const SizedBox(height: 28),
-                      const Text(
-                        'Metode Pembayaran',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
-                      ),
-                      const Divider(height: 24, color: _Ds.borderLight),
-                      _buildPaymentOption(
-                        method: PaymentMethod.qris,
-                        icon: Icons.qr_code_scanner,
-                        label: 'QRIS',
-                      ),
-                      const SizedBox(height: 10),
-                      _buildPaymentOption(
-                        method: PaymentMethod.cashAtCounter,
-                        icon: Icons.store_outlined,
-                        label: 'Bayar di Kasir',
-                      ),
-                      const SizedBox(height: 28),
-                      _buildSummaryCard(totalBill, itemCount),
+                            if (_hasPreorderItems) ...[
+                              _buildPreorderCard(),
+                              const SizedBox(height: 16),
+                            ],
+                            _buildPickupMethodCard(),
+                            const SizedBox(height: 16),
+                            _buildOrderSummaryCard(),
+                            const SizedBox(height: 16),
+                            _buildPaymentMethodsCard(),
                           ],
                         ),
                       ),
@@ -310,78 +618,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        height: 52,
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : _submitOrder,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _Ds.primary,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: _Ds.border,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Text(
-                                  'Bayar Sekarang',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: const TextStyle(fontSize: 12, color: _Ds.textSecondary, height: 1.4),
-                          children: [
-                            const TextSpan(text: 'Dengan menekan tombol di atas, Anda '),
-                            TextSpan(
-                              text: 'menyetujui syarat & ketentuan',
-                              style: const TextStyle(fontWeight: FontWeight.w600, color: _Ds.primary),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  PopUpAlert.show(
-                                    context: context,
-                                    title: 'Syarat & Ketentuan',
-                                    description:
-                                        'Dengan melanjutkan pembayaran, kamu menyetujui kebijakan pembelian dan pengambilan barang di Koperasi Damos Mart.',
-                                  );
-                                },
-                            ),
-                            const TextSpan(text: ' Damos Mart.'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _buildBottomBar(isLoading: isLoading),
             ],
           );
         },

@@ -48,7 +48,14 @@ class _ProductCardState extends State<ProductCard> {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasStock = widget.product.stock > 0 || widget.product.isPreorder;
+    final bool isPreorder = widget.product.isPreorder;
+    final bool hasStock = !isPreorder && widget.product.stock > 0;
+    final bool canOrder = isPreorder || hasStock;
+    final String availabilityLabel = isPreorder
+        ? 'Pre-Order 📦'
+        : hasStock
+            ? 'Tersedia ✅'
+            : 'Stok Habis 😔';
 
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -187,9 +194,9 @@ class _ProductCardState extends State<ProductCard> {
                             const SizedBox(height: 4),
                             // Stock Status
                             Text(
-                              hasStock ? 'Tersedia ✅' : 'Stok Habis 😔',
+                              availabilityLabel,
                               style: AppTextStyles.labelSmall.copyWith(
-                                color: hasStock ? AppColors.inStock : AppColors.outOfStock,
+                                color: canOrder ? AppColors.inStock : AppColors.outOfStock,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -210,7 +217,7 @@ class _ProductCardState extends State<ProductCard> {
                                 ),
                               ),
                             ),
-                            if (hasStock)
+                            if (canOrder)
                               GestureDetector(
                                 onTap: widget.onAddToCart,
                                 child: Container(

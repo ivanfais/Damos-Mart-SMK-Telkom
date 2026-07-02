@@ -203,13 +203,17 @@ export const ProductsPage: React.FC = () => {
 
                   {/* Stock */}
                   <td className="py-4 px-4">
-                    <span
-                      className={`font-mono font-bold ${
-                        product.stock < 10 ? 'text-rose-400' : 'text-slate-700'
-                      }`}
-                    >
-                      {product.stock} pcs
-                    </span>
+                    {product.isPreorder ? (
+                      <span className="text-xs font-bold text-pink-400">Pre-Order</span>
+                    ) : (
+                      <span
+                        className={`font-mono font-bold ${
+                          product.stock < 10 ? 'text-rose-400' : 'text-slate-700'
+                        }`}
+                      >
+                        {product.stock} pcs
+                      </span>
+                    )}
                   </td>
 
                   {/* Preorder */}

@@ -7,7 +7,7 @@ const priorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH']);
 export const createComplaintSchema = z.object({
   body: z.object({
     subject: z.string().min(3, 'Subjek komplain minimal 3 karakter'),
-    description: z.string().min(5, 'Deskripsi komplain minimal 5 karakter'),
+    description: z.string().min(20, 'Deskripsi komplain minimal 20 karakter'),
     category: categoryEnum.optional().default('OTHER'),
     orderId: z.string().uuid('orderId tidak valid').optional().nullable(),
   }),
@@ -17,7 +17,7 @@ export const createComplaintSchema = z.object({
 export const adminCreateComplaintSchema = z.object({
   body: z.object({
     subject: z.string().min(3, 'Subjek komplain minimal 3 karakter'),
-    description: z.string().min(5, 'Deskripsi komplain minimal 5 karakter'),
+    description: z.string().min(20, 'Deskripsi komplain minimal 20 karakter'),
     category: categoryEnum.optional().default('OTHER'),
     priority: priorityEnum.optional().default('MEDIUM'),
     userId: z.string().uuid('userId tidak valid').optional().nullable(),

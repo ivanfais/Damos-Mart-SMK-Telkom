@@ -116,7 +116,6 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> filterByCategory(String categoryId) async {
     final currentState = state;
     if (currentState is ProductCatalogLoaded) {
-      emit(ProductLoading());
       try {
         final result = await _repository.getProducts(
           category: categoryId,
@@ -139,7 +138,6 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> searchProducts(String query) async {
     final currentState = state;
     if (currentState is ProductCatalogLoaded) {
-      emit(ProductLoading());
       try {
         final result = await _repository.getProducts(
           category: currentState.selectedCategoryId,

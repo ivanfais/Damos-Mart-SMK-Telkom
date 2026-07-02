@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../core/utils/queue_display_utils.dart';
 import '../../data/models/queue_model.dart';
 import '../../data/repositories/queue_repository.dart';
 
@@ -17,17 +18,19 @@ class QueueLoading extends QueueState {}
 
 class QueueActiveLoaded extends QueueState {
   final List<QueueModel> activeQueues;
+  final List<QueueModel> passedQueues;
   final String currentServing;
   final int totalWaiting;
 
   const QueueActiveLoaded({
     required this.activeQueues,
+    this.passedQueues = const [],
     required this.currentServing,
     required this.totalWaiting,
   });
 
   @override
-  List<Object?> get props => [activeQueues, currentServing, totalWaiting];
+  List<Object?> get props => [activeQueues, passedQueues, currentServing, totalWaiting];
 }
 
 class QueueDetailLoaded extends QueueState {
@@ -58,9 +61,25 @@ class QueueCubit extends Cubit<QueueState> {
         super(QueueInitial());
 
   QueueActiveLoaded _buildActiveLoaded(List<QueueModel> queues, Map<String, dynamic> stats) {
+    final currentServing = stats['currentServing']?.toString() ?? 'N/A';
+    final activeQueues = <QueueModel>[];
+    final passedQueues = <QueueModel>[];
+
+    for (final queue in queues) {
+      if (QueueDisplayUtils.shouldShowInActive(
+        queue: queue,
+        currentServing: currentServing,
+      )) {
+        activeQueues.add(queue);
+      } else {
+        passedQueues.add(queue);
+      }
+    }
+
     return QueueActiveLoaded(
-      activeQueues: queues,
-      currentServing: stats['currentServing']?.toString() ?? 'N/A',
+      activeQueues: activeQueues,
+      passedQueues: passedQueues,
+      currentServing: currentServing,
       totalWaiting: stats['totalWaiting'] as int? ?? 0,
     );
   }
@@ -81,10 +100,11 @@ class QueueCubit extends Cubit<QueueState> {
   void restoreActiveQueuesView() {
     if (_cachedActiveQueues != null) {
       emit(_cachedActiveQueues!);
-      _refreshActiveQueuesInBackground();
-      return;
     }
-    loadActiveQueues();
+    _refreshActiveQueuesInBackground();
+    if (_cachedActiveQueues == null) {
+      loadActiveQueues();
+    }
   }
 
   Future<void> loadQueueDetail(String queueId) async {
@@ -101,19 +121,23 @@ class QueueCubit extends Cubit<QueueState> {
       final queues = await _repository.getActiveQueues();
       final stats = await _repository.getCurrentQueueState();
       _cachedActiveQueues = _buildActiveLoaded(queues, stats);
-      if (state is QueueActiveLoaded) {
+      final current = state;
+      if (current is QueueActiveLoaded || current is QueueInitial) {
         emit(_cachedActiveQueues!);
       }
     } catch (_) {
       // Keep cached list visible if refresh fails.
     }
   }
+
+  /// Always reloads and emits list state for the Antrean tab.
+  Future<void> refreshQueueList() async {
+    await loadActiveQueues();
+  }
   
   // Custom update trigger (e.g. from WebSockets without full loading state)
-  void updateActiveQueuesSilently() async {
-    if (state is QueueActiveLoaded) {
-      await _refreshActiveQueuesInBackground();
-    }
+  Future<void> updateActiveQueuesSilently() async {
+    await _refreshActiveQueuesInBackground();
   }
 
   void updateQueueDetailSilently(String queueId) async {

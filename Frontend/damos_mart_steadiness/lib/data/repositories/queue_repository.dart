@@ -19,9 +19,12 @@ class QueueRepository {
     final response = await _client.get(ApiConfig.queueDetail(queueId));
     final data = response.data['data'] as Map<String, dynamic>;
     final queueJson = Map<String, dynamic>.from(data['queue'] as Map<String, dynamic>);
-    if (queueJson['order'] == null && data['order'] != null) {
-      queueJson['order'] = data['order'];
+
+    final topOrder = data['order'];
+    if (topOrder is Map<String, dynamic>) {
+      queueJson['order'] = topOrder;
     }
+
     return QueueModel.fromJson(queueJson);
   }
 

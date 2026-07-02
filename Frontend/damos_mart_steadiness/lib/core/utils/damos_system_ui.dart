@@ -39,7 +39,9 @@ class DamosSystemUi {
     if (location == '/' || location.startsWith('/?')) {
       return lightHeader;
     }
-    if (location == '/login' || location.startsWith('/login?')) {
+    if (location == '/login' ||
+        location.startsWith('/login?') ||
+        location == '/register') {
       return lightHeader;
     }
     return greenHeader;

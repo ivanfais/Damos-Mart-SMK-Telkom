@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../blocs/queue/queue_cubit.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimensions.dart';
 import '../../theme/app_text_styles.dart';
@@ -14,8 +16,7 @@ class DamosBottomNav extends StatelessWidget {
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/catalog')) return 1;
     if (location.startsWith('/queue')) return 2;
-    if (location.startsWith('/cart')) return 3;
-    if (location.startsWith('/profile')) return 4;
+    if (location.startsWith('/profile')) return 3;
     return 0;
   }
 
@@ -28,12 +29,11 @@ class DamosBottomNav extends StatelessWidget {
         context.go('/catalog');
         break;
       case 2:
+        final queueCubit = context.read<QueueCubit>();
         context.go('/queue');
+        queueCubit.refreshQueueList();
         break;
       case 3:
-        context.go('/cart');
-        break;
-      case 4:
         context.go('/profile');
         break;
     }
@@ -43,71 +43,64 @@ class DamosBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedIndex = _getSelectedIndex(context);
 
+    const items = [
+      (icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
+      (icon: Icons.grid_view_outlined, activeIcon: Icons.grid_view, label: 'Katalog'),
+      (icon: Icons.hourglass_empty_outlined, activeIcon: Icons.hourglass_empty, label: 'Antrean'),
+      (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profil'),
+    ];
+
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
-        height: AppDimensions.bottomNavHeight,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(AppDimensions.radiusLarge),
-            topRight: Radius.circular(AppDimensions.radiusLarge),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          border: Border(top: BorderSide(color: Colors.grey.shade300)),
         ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(AppDimensions.radiusLarge),
-            topRight: Radius.circular(AppDimensions.radiusLarge),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: selectedIndex,
-            onTap: (index) => _onItemTapped(index, context),
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textSecondary,
-            selectedLabelStyle: AppTextStyles.labelSmall.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w600,
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: AppDimensions.bottomNavHeight,
+            child: Row(
+              children: List.generate(items.length, (index) {
+                final item = items[index];
+                final isSelected = selectedIndex == index;
+
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => _onItemTapped(index, context),
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                          decoration: isSelected
+                              ? BoxDecoration(
+                                  color: const Color(0xFFE8F5E9),
+                                  borderRadius: BorderRadius.circular(14),
+                                )
+                              : null,
+                          child: Icon(
+                            isSelected ? item.activeIcon : item.icon,
+                            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.label,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
             ),
-            unselectedLabelStyle: AppTextStyles.labelSmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-            elevation: 0,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home, color: AppColors.primary),
-                label: 'Beranda',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.grid_view_outlined),
-                activeIcon: Icon(Icons.grid_view, color: AppColors.primary),
-                label: 'Katalog',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.hourglass_top_outlined),
-                activeIcon: Icon(Icons.hourglass_top, color: AppColors.primary),
-                label: 'Antrean',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.shopping_cart_outlined),
-                activeIcon: Icon(Icons.shopping_cart, color: AppColors.primary),
-                label: 'Keranjang',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person, color: AppColors.primary),
-                label: 'Profil',
-              ),
-            ],
           ),
         ),
       ),

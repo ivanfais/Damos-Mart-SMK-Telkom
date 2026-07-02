@@ -11,17 +11,14 @@ import '../../config/api_config.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/error_state.dart';
 import '../../widgets/common/pop_up_alert.dart';
-import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/steadiness_app_header.dart';
 
 class _Ds {
   static const Color primary = Color(0xFF1B8C2E);
   static const Color textPrimary = Color(0xFF1A1A1A);
   static const Color textSecondary = Color(0xFF6B7280);
-  static const Color border = Color(0xFFD1D5DB);
-  static const Color borderLight = Color(0xFFE5E7EB);
-  static const Color bgGrey = Color(0xFFF2F2F2);
-  static const Color red = Color(0xFFD42427);
-  static const Color star = Color(0xFFFFC107);
+  static const Color border = Color(0xFFE0E0E0);
+  static const Color bgGrey = Color(0xFFF5F5F5);
 }
 
 class ProductDetailScreen extends StatefulWidget {
@@ -36,6 +33,7 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
   ProductVariantModel? _selectedVariant;
+  bool _isAdding = false;
 
   @override
   void initState() {
@@ -44,15 +42,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _incrementQty(int maxStock) {
-    if (_quantity < maxStock) {
-      setState(() => _quantity++);
-    }
+    if (_quantity < maxStock) setState(() => _quantity++);
   }
 
   void _decrementQty() {
-    if (_quantity > 1) {
-      setState(() => _quantity--);
-    }
+    if (_quantity > 1) setState(() => _quantity--);
   }
 
   double _displayPrice(ProductModel product) {
@@ -63,16 +57,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return price;
   }
 
-  Future<void> _addToCart(ProductModel product) async {
-    final cartCubit = context.read<CartCubit>();
+  int _displayStock(ProductModel product) {
+    return _selectedVariant?.stock ?? product.stock;
+  }
 
+  Future<bool> _addToCart(ProductModel product, {bool silent = false}) async {
+    if (_isAdding) return false;
+    setState(() => _isAdding = true);
+
+    final cartCubit = context.read<CartCubit>();
     try {
       await cartCubit.addToCart(
         productId: product.id,
         variantId: _selectedVariant?.id,
         quantity: _quantity,
       );
-      if (!mounted) return;
+      if (!mounted) return false;
 
       final cartState = cartCubit.state;
       if (cartState is CartError) {
@@ -82,214 +82,156 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           description: 'Gagal menambahkan ke keranjang: ${cartState.message}',
           isError: true,
         );
-        return;
+        return false;
       }
 
-      PopUpAlert.showAddedToCart(context: context, productName: product.name);
+      if (!silent) {
+        PopUpAlert.showAddedToCart(context: context, productName: product.name);
+      }
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       PopUpAlert.show(
         context: context,
         title: 'Gagal Menambahkan',
         description: 'Gagal menambahkan ke keranjang: ${e.toString()}',
         isError: true,
       );
+      return false;
+    } finally {
+      if (mounted) setState(() => _isAdding = false);
     }
   }
 
-  Widget _buildScrollHeader() {
-    return DamosPageHeader(
-      title: 'Damos Mart',
-      showBackButton: true,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () => context.go('/catalog'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-            onPressed: () => context.go('/cart'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-        ],
-      ),
+  Future<void> _buyNow(ProductModel product) async {
+    if (product.isPreorder) {
+      context.push('/preorder/${product.id}');
+      return;
+    }
+
+    final added = await _addToCart(product, silent: true);
+    if (!mounted || !added) return;
+    context.go('/cart');
+  }
+
+  Widget _buildProductImage(ProductModel product) {
+    return Container(
+      width: double.infinity,
+      height: 280,
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: product.imageUrl != null
+          ? CachedNetworkImage(
+              imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+              width: double.infinity,
+              height: 220,
+              fit: BoxFit.contain,
+              placeholder: (_, __) => const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: _Ds.primary),
+              ),
+              errorWidget: (_, __, ___) => const Icon(
+                Icons.shopping_bag_outlined,
+                color: _Ds.textSecondary,
+                size: 64,
+              ),
+            )
+          : const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
     );
   }
 
-  Widget _buildScrollPage(Widget child) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildScrollHeader(),
-          child,
-        ],
-      ),
-    );
-  }
+  Widget _buildVariantChips(ProductModel product) {
+    if (product.variants.isEmpty) return const SizedBox.shrink();
 
-  Widget _buildRatingRow(double rating) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.star, color: _Ds.star, size: 20),
-        const SizedBox(width: 4),
-        Text(
-          rating.toStringAsFixed(1),
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
+        const SizedBox(height: 16),
+        const Text(
+          'Pilih Varian',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: product.variants.map((variant) {
+            final selected = _selectedVariant?.id == variant.id;
+            return GestureDetector(
+              onTap: () => setState(() {
+                _selectedVariant = variant;
+                _quantity = 1;
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected ? _Ds.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: selected ? _Ds.primary : _Ds.border),
+                ),
+                child: Text(
+                  variant.variantName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : _Ds.textPrimary,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildAvailabilityBadge({required bool available, required bool isPreorder}) {
-    if (isPreorder) {
-      return _availabilityBadge('PRE-ORDER', _Ds.primary);
-    }
-    if (available) {
-      return _availabilityBadge('TERSEDIA', _Ds.primary);
-    }
-    return _availabilityBadge('STOK HABIS', _Ds.red);
-  }
-
-  Widget _availabilityBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  Widget _buildQuantityStepper({required int maxStock, required bool enabled}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _stepperButton(
+          icon: Icons.remove,
+          onTap: enabled && _quantity > 1 ? _decrementQty : null,
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 44,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border.all(color: _Ds.border),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+          child: Text(
+            '$_quantity',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 8),
+        _stepperButton(
+          icon: Icons.add,
+          onTap: enabled && _quantity < maxStock ? () => _incrementQty(maxStock) : null,
+        ),
+      ],
     );
   }
 
-  Widget _buildSizeChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
+  Widget _stepperButton({required IconData icon, VoidCallback? onTap}) {
+    return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: selected ? _Ds.primary : Colors.white,
+          border: Border.all(color: _Ds.border),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? _Ds.primary : _Ds.border),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : _Ds.textPrimary,
-          ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: onTap != null ? _Ds.textPrimary : _Ds.border,
         ),
-      ),
-    );
-  }
-
-  Widget _buildQuantitySelector({required int maxStock, required bool enabled}) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: _Ds.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _qtyButton(
-            icon: Icons.remove,
-            onTap: enabled && _quantity > 1 ? _decrementQty : null,
-          ),
-          SizedBox(
-            width: 40,
-            child: Text(
-              '$_quantity',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
-            ),
-          ),
-          _qtyButton(
-            icon: Icons.add,
-            onTap: enabled && _quantity < maxStock ? () => _incrementQty(maxStock) : null,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _qtyButton({required IconData icon, VoidCallback? onTap}) {
-    return SizedBox(
-      width: 40,
-      height: 40,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        icon: Icon(icon, size: 18, color: onTap != null ? _Ds.textPrimary : _Ds.border),
-        onPressed: onTap,
-      ),
-    );
-  }
-
-  Widget _buildReviewCard(Map<String, dynamic> review) {
-    final user = review['user'] as Map<String, dynamic>?;
-    final ratingVal = (review['rating'] as num?)?.toInt() ?? 5;
-    final comment = review['comment'] as String? ?? '';
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _Ds.borderLight),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                user?['fullName'] as String? ?? 'Siswa',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
-              ),
-              Row(
-                children: List.generate(5, (i) {
-                  return Icon(
-                    i < ratingVal ? Icons.star : Icons.star_border,
-                    size: 16,
-                    color: _Ds.star,
-                  );
-                }),
-              ),
-            ],
-          ),
-          if (comment.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              comment,
-              style: const TextStyle(fontSize: 13, color: _Ds.textSecondary, height: 1.5),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -297,43 +239,94 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _buildBottomBar({
     required ProductModel product,
     required bool isOutOfStock,
+    required int maxStock,
   }) {
+    final enabled = !isOutOfStock || product.isPreorder;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
         color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
             offset: const Offset(0, -2),
           ),
         ],
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 52,
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: product.isPreorder
-                ? () => context.push('/preorder/${product.id}')
-                : isOutOfStock
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Jumlah Pembelian',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
+                ),
+                if (enabled && !product.isPreorder)
+                  _buildQuantityStepper(maxStock: maxStock, enabled: true)
+                else
+                  Text(
+                    product.isPreorder ? 'Pre-Order' : 'Habis',
+                    style: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: !enabled || _isAdding
                     ? null
-                    : () => _addToCart(product),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _Ds.primary,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: _Ds.border,
-              disabledForegroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    : product.isPreorder
+                        ? () => context.push('/preorder/${product.id}')
+                        : () => _addToCart(product),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _Ds.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: _Ds.border,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: _isAdding
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.shopping_cart_outlined, size: 20),
+                label: Text(
+                  product.isPreorder ? 'Pre-Order Sekarang' : 'Tambah ke Keranjang',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
-            child: Text(
-              product.isPreorder ? 'Pre-Order Sekarang' : 'Masukkan Keranjang',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: !enabled || _isAdding
+                    ? null
+                    : () => _buyNow(product),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _Ds.textPrimary,
+                  side: const BorderSide(color: _Ds.border),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(
+                  product.isPreorder ? 'Lihat Detail Pre-Order' : 'Beli Sekarang',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -346,247 +339,131 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       body: BlocBuilder<ProductCubit, ProductState>(
         builder: (context, state) {
           if (state is ProductLoading) {
-            return _buildScrollPage(const ProductDetailShimmer());
-          }
-
-          if (state is ProductError) {
-            return _buildScrollPage(
-              SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.55,
-                child: ErrorState(
-                  message: state.message,
-                  onRetry: () => context.read<ProductCubit>().loadProductDetail(widget.productId),
-                ),
-              ),
-            );
-          }
-
-          if (state is ProductDetailLoaded) {
-            final product = state.product;
-            final reviews = state.reviews;
-
-            if (_selectedVariant == null && product.variants.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && _selectedVariant == null) {
-                  setState(() => _selectedVariant = product.variants.first);
-                }
-              });
-            }
-
-            final currentMaxStock = _selectedVariant?.stock ?? product.stock;
-            final isOutOfStock = currentMaxStock <= 0 && !product.isPreorder;
-            final isAvailable = !isOutOfStock;
-
-            return Column(
+            return const Column(
               children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildScrollHeader(),
-                        // Product image — full width edge-to-edge
-                        SizedBox(
-                          height: 320,
-                          width: double.infinity,
-                          child: product.imageUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                                  width: double.infinity,
-                                  height: 320,
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.center,
-                                  placeholder: (_, __) => Container(
-                                    color: _Ds.bgGrey,
-                                    alignment: Alignment.center,
-                                    child: const SizedBox(
-                                      width: 28,
-                                      height: 28,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: _Ds.primary,
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (_, __, ___) => Container(
-                                    color: _Ds.bgGrey,
-                                    alignment: Alignment.center,
-                                    child: const Icon(
-                                      Icons.shopping_bag_outlined,
-                                      color: _Ds.textSecondary,
-                                      size: 64,
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  color: _Ds.bgGrey,
-                                  alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.shopping_bag_outlined,
-                                    color: _Ds.textSecondary,
-                                    size: 64,
-                                  ),
-                                ),
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Name + rating
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      product.name,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700,
-                                        color: _Ds.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                  _buildRatingRow(product.averageRating),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-
-                              // Price
-                              Text(
-                                CurrencyFormatter.format(_displayPrice(product)),
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  color: _Ds.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Availability badge
-                              _buildAvailabilityBadge(
-                                available: isAvailable,
-                                isPreorder: product.isPreorder,
-                              ),
-
-                              const SizedBox(height: 20),
-                              const Divider(color: _Ds.borderLight),
-                              const SizedBox(height: 12),
-
-                              // Description
-                              const Text(
-                                'Deskripsi Produk',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                product.description ?? 'Belum ada deskripsi untuk produk ini.',
-                                style: const TextStyle(fontSize: 14, color: _Ds.textSecondary, height: 1.5),
-                              ),
-
-                              if (product.variants.isNotEmpty) ...[
-                                const SizedBox(height: 20),
-                                const Text(
-                                  'PILIH UKURAN',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: _Ds.textSecondary,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: product.variants.map((variant) {
-                                    final selected = _selectedVariant?.id == variant.id;
-                                    return _buildSizeChip(
-                                      label: variant.variantName,
-                                      selected: selected,
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedVariant = variant;
-                                          _quantity = 1;
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-
-                              if (isAvailable) ...[
-                                const SizedBox(height: 20),
-                                const Text(
-                                  'JUMLAH PESANAN',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: _Ds.textSecondary,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                _buildQuantitySelector(maxStock: currentMaxStock, enabled: true),
-                              ],
-
-                              const SizedBox(height: 28),
-
-                              // Reviews header
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Ulasan Pengguna (${product.totalReviews})',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: _Ds.textPrimary,
-                                    ),
-                                  ),
-                                  if (reviews.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {},
-                                      child: const Text(
-                                        'Lihat Semua',
-                                        style: TextStyle(fontSize: 14, color: _Ds.primary),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-
-                              if (reviews.isEmpty)
-                                const Text(
-                                  'Belum ada ulasan untuk produk ini.',
-                                  style: TextStyle(fontSize: 13, color: _Ds.textSecondary),
-                                )
-                              else
-                                ListView.separated(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: reviews.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    final review = reviews[index] as Map<String, dynamic>;
-                                    return _buildReviewCard(review);
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                _buildBottomBar(product: product, isOutOfStock: isOutOfStock),
+                SteadinessAppHeader(),
+                Expanded(child: ProductDetailShimmer()),
               ],
             );
           }
 
-          return const Center(child: Text('Memuat detail produk...'));
+          if (state is ProductError) {
+            return Column(
+              children: [
+                const SteadinessAppHeader(),
+                Expanded(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () => context.read<ProductCubit>().loadProductDetail(widget.productId),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          if (state is! ProductDetailLoaded) {
+            return const Center(child: CircularProgressIndicator(color: _Ds.primary));
+          }
+
+          final product = state.product;
+
+          if (_selectedVariant == null && product.variants.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _selectedVariant == null) {
+                setState(() => _selectedVariant = product.variants.first);
+              }
+            });
+          }
+
+          final currentMaxStock = _displayStock(product);
+          final isOutOfStock = currentMaxStock <= 0 && !product.isPreorder;
+
+          return Column(
+            children: [
+              const SteadinessAppHeader(),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildProductImage(product),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.name,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: _Ds.textPrimary,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              CurrencyFormatter.format(_displayPrice(product)),
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: _Ds.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _Ds.bgGrey,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: _Ds.border),
+                              ),
+                              child: Text(
+                                'Stok: ${product.isPreorder ? 'Pre-Order' : currentMaxStock}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: _Ds.textPrimary,
+                                ),
+                              ),
+                            ),
+                            _buildVariantChips(product),
+                            const SizedBox(height: 20),
+                            const Divider(color: _Ds.border, height: 1),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'Deskripsi Produk',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: _Ds.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              product.description ?? 'Belum ada deskripsi untuk produk ini.',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: _Ds.textSecondary,
+                                height: 1.6,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Divider(color: _Ds.border, height: 1),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              _buildBottomBar(
+                product: product,
+                isOutOfStock: isOutOfStock,
+                maxStock: currentMaxStock,
+              ),
+            ],
+          );
         },
       ),
     );

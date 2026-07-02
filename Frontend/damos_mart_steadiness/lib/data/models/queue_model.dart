@@ -35,7 +35,7 @@ class QueueModel extends Equatable {
   factory QueueModel.fromJson(Map<String, dynamic> json) {
     // QueueStatus mapping
     QueueStatus parsedStatus = QueueStatus.waiting;
-    switch (json['status']) {
+    switch ((json['status'] as String?)?.toUpperCase()) {
       case 'WAITING':
         parsedStatus = QueueStatus.waiting;
         break;

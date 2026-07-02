@@ -25,6 +25,7 @@ export class QueuesService {
         userId,
         status: { in: ['WAITING', 'PREPARING', 'READY'] },
         order: {
+          status: { notIn: ['COMPLETED', 'CANCELLED'] },
           OR: [
             { paymentStatus: 'PAID' },
             {

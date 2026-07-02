@@ -4,23 +4,20 @@ import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_dimensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../core/utils/validators.dart';
-import '../../widgets/common/damos_button.dart';
-import '../../widgets/common/damos_text_field.dart';
+import '../../widgets/auth/auth_shell.dart';
 import '../../widgets/common/pop_up_alert.dart';
-import '../../config/app_constants.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? prefillEmail;
   final bool justRegistered;
+  final int initialTab;
 
   const LoginScreen({
     super.key,
     this.prefillEmail,
     this.justRegistered = false,
+    this.initialTab = 0,
   });
 
   @override
@@ -28,34 +25,50 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Design system tokens
-  static const Color _primary = Color(0xFF1B8C2E);
-  static const Color _fieldBorder = Color(0xFFD1D5DB);
-  static const Color _textPrimary = Color(0xFF1A1A1A);
-  static const Color _textSecondary = Color(0xFF6B7280);
-  static const Color _red = Color(0xFFD42427);
+  int _selectedTab = 0;
 
-  final _formKey = GlobalKey<FormState>();
+  final _loginFormKey = GlobalKey<FormState>();
+  final _registerFormKey = GlobalKey<FormState>();
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _ssoController = TextEditingController();
-  bool _obscurePassword = true;
+
+  final _nameController = TextEditingController();
+  final _registerEmailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _registerPasswordController = TextEditingController();
+
+  bool _obscureLoginPassword = true;
+  bool _obscureRegisterPassword = true;
+  bool _agreeToTerms = false;
 
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.initialTab;
+
     if (widget.prefillEmail != null && widget.prefillEmail!.isNotEmpty) {
       _emailController.text = widget.prefillEmail!;
+      _registerEmailController.text = widget.prefillEmail!;
     }
+
     if (widget.justRegistered) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         PopUpAlert.showSuccess(
           context: context,
-          title: 'Daftar Berhasil! 🎉',
-          description: 'Akun kamu sudah dibuat. Silakan login pakai email & password kamu ya! 😊',
+          title: 'Daftar Berhasil!',
+          description: 'Akun kamu sudah dibuat. Silakan login pakai email dan kata sandi kamu.',
         );
       });
+    }
+  }
+
+  @override
+  void didUpdateWidget(LoginScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTab != widget.initialTab) {
+      _selectedTab = widget.initialTab;
     }
   }
 
@@ -63,361 +76,232 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _ssoController.dispose();
+    _nameController.dispose();
+    _registerEmailController.dispose();
+    _phoneController.dispose();
+    _registerPasswordController.dispose();
     super.dispose();
   }
 
   void _submitLogin() {
-    if (!_formKey.currentState!.validate()) {
+    if (!_loginFormKey.currentState!.validate()) {
       PopUpAlert.showIncompleteData(context);
       return;
     }
 
     context.read<AuthBloc>().add(
-            LoginSubmitted(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
-  }
-
-  void _showSsoDialog() {
-    _ssoController.clear();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppDimensions.paddingLarge),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    'Login SSO Sekolah 🏫',
-                    style: AppTextStyles.headingSmall.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Masukkan token SSO simulasi kamu (Format: ssoId:Nama:Email, atau ketik nama bebas untuk auto-generate).',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                DamosTextField(
-                  controller: _ssoController,
-                  labelText: 'Token SSO Sekolah',
-                  hintText: 'Contoh: sso-123:Faisal:faisal@smktelkom-jkt.sch.id',
-                  prefixIcon: Icons.vpn_key_outlined,
-                  validator: (val) => Validators.required(val, fieldName: 'Token SSO'),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DamosButton(
-                        text: 'Batal',
-                        variant: DamosButtonVariant.outline,
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DamosButton(
-                        text: 'Masuk 🚀',
-                        onPressed: () {
-                          if (_ssoController.text.trim().isNotEmpty) {
-                            final token = _ssoController.text.trim();
-                            Navigator.pop(context);
-                            context.read<AuthBloc>().add(
-                                  SsoLoginSubmitted(ssoToken: token),
-                                );
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          LoginSubmitted(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
           ),
         );
-      },
+  }
+
+  void _submitRegister() {
+    if (!_registerFormKey.currentState!.validate()) {
+      PopUpAlert.showIncompleteData(context);
+      return;
+    }
+
+    if (!_agreeToTerms) {
+      PopUpAlert.show(
+        context: context,
+        title: 'Ketentuan Layanan',
+        description:
+            'Anda harus menyetujui Ketentuan Layanan dan Kebijakan Privasi Koperasi Damos Mart untuk melanjutkan pendaftaran.',
+        isError: true,
+      );
+      return;
+    }
+
+    context.read<AuthBloc>().add(
+          RegisterSubmitted(
+            fullName: _nameController.text.trim(),
+            email: _registerEmailController.text.trim(),
+            password: _registerPasswordController.text,
+            phone: _phoneController.text.trim(),
+          ),
+        );
+  }
+
+  void _showForgotPassword() {
+    PopUpAlert.show(
+      context: context,
+      title: 'Lupa Kata Sandi?',
+      description:
+          'Silakan hubungi petugas koperasi atau admin IT sekolah untuk mereset kata sandi kamu.',
     );
   }
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    bool isPassword = false,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-    TextInputAction textInputAction = TextInputAction.next,
-    void Function(String)? onFieldSubmitted,
-  }) {
-    OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: color, width: width),
-        );
+  Widget _buildLoginForm(bool isLoading) {
+    return Form(
+      key: _loginFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthInputField(
+            controller: _emailController,
+            hintText: 'Masukkan Email',
+            prefixIcon: Icons.badge_outlined,
+            keyboardType: TextInputType.emailAddress,
+            validator: Validators.email,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 16),
+          AuthInputField(
+            controller: _passwordController,
+            label: 'Kata Sandi',
+            prefixIcon: Icons.lock_outline,
+            isPassword: true,
+            obscureText: _obscureLoginPassword,
+            onToggleVisibility: () {
+              setState(() => _obscureLoginPassword = !_obscureLoginPassword);
+            },
+            validator: Validators.password,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _submitLogin(),
+          ),
+          const SizedBox(height: 20),
+          AuthPrimaryButton(
+            label: 'Masuk',
+            isLoading: isLoading,
+            onPressed: _submitLogin,
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: _showForgotPassword,
+            child: const Text(
+              'Lupa Kata Sandi?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AuthShell.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: _textPrimary,
+  Widget _buildRegisterForm(bool isLoading) {
+    return Form(
+      key: _registerFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthInputField(
+            controller: _nameController,
+            hintText: 'Masukkan Nama Lengkap',
+            prefixIcon: Icons.person_outline,
+            validator: (val) => Validators.required(val, fieldName: 'Nama Lengkap'),
+            textInputAction: TextInputAction.next,
           ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          obscureText: isPassword && _obscurePassword,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          validator: validator,
-          onFieldSubmitted: onFieldSubmitted,
-          style: const TextStyle(fontSize: 14, color: _textPrimary),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: border(_fieldBorder, 1.2),
-            focusedBorder: border(_primary, 1.5),
-            errorBorder: border(_red, 1.2),
-            focusedErrorBorder: border(_red, 1.5),
-            suffixIcon: isPassword
-                ? GestureDetector(
-                    onTap: () => setState(() => _obscurePassword = !_obscurePassword),
-                    child: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: _textSecondary,
-                    ),
-                  )
-                : null,
+          const SizedBox(height: 16),
+          AuthInputField(
+            controller: _registerEmailController,
+            hintText: 'Masukkan Email',
+            prefixIcon: Icons.badge_outlined,
+            keyboardType: TextInputType.emailAddress,
+            validator: Validators.email,
+            textInputAction: TextInputAction.next,
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          AuthInputField(
+            controller: _phoneController,
+            hintText: 'Masukkan Nomor Telepon',
+            prefixIcon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            validator: Validators.phone,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 16),
+          AuthInputField(
+            controller: _registerPasswordController,
+            label: 'Kata Sandi',
+            prefixIcon: Icons.lock_outline,
+            isPassword: true,
+            obscureText: _obscureRegisterPassword,
+            onToggleVisibility: () {
+              setState(() => _obscureRegisterPassword = !_obscureRegisterPassword);
+            },
+            validator: Validators.password,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _submitRegister(),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Checkbox(
+                  value: _agreeToTerms,
+                  activeColor: AuthShell.primary,
+                  side: const BorderSide(color: AuthShell.border),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onChanged: (val) => setState(() => _agreeToTerms = val ?? false),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Saya menyetujui Ketentuan Layanan dan Kebijakan Privasi dari Koperasi Damos Mart.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AuthShell.textPrimary,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          AuthPrimaryButton(
+            label: 'Daftar',
+            isLoading: isLoading,
+            onPressed: (_agreeToTerms && !isLoading) ? _submitRegister : null,
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is AuthFailure) {
-            PopUpAlert.show(
-              context: context,
-              title: 'Oops! 😅',
-              description: state.error,
-              isError: true,
-            );
-          } else if (state is Authenticated) {
-            context.go('/home');
-          }
-        },
-        builder: (context, state) {
-          final isLoading = state is AuthLoading;
-
-          return SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 40),
-                    // Logo
-                    Center(
-                      child: SizedBox(
-                        width: 120,
-                        height: 88,
-                        child: Image.asset(
-                          AppConstants.imageLogo,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.shopping_bag,
-                            size: 56,
-                            color: _primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Damos Mart',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: _textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'SMK Telkom Jakarta',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: _textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-                    _buildField(
-                      controller: _emailController,
-                      label: 'Email',
-                      keyboardType: TextInputType.emailAddress,
-                      validator: Validators.email,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildField(
-                      controller: _passwordController,
-                      label: 'Password',
-                      isPassword: true,
-                      validator: Validators.password,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submitLogin(),
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () {
-                          PopUpAlert.show(
-                            context: context,
-                            title: 'Lupa Password? 🔑',
-                            description:
-                                'Silakan hubungi petugas koperasi atau admin IT sekolah untuk mereset password kamu ya! 😊',
-                          );
-                        },
-                        child: const Text(
-                          'Lupa Password?',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: _red,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // LOGIN button
-                    SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _submitLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primary,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: _primary.withOpacity(0.6),
-                          disabledForegroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : const Text(
-                                'LOGIN',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // OR divider
-                    Row(
-                      children: const [
-                        Expanded(child: Divider(color: _fieldBorder, thickness: 1)),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Text(
-                            'OR',
-                            style: TextStyle(fontSize: 13, color: _textSecondary),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: _fieldBorder, thickness: 1)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // SSO button (outline)
-                    SizedBox(
-                      height: 52,
-                      child: OutlinedButton.icon(
-                        onPressed: isLoading ? null : _showSsoDialog,
-                        icon: const Icon(Icons.people_outline, size: 20, color: _textPrimary),
-                        label: const Text(
-                          'LOGIN DENGAN SSO',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _textPrimary,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: _textPrimary, width: 1.2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    const Divider(color: _fieldBorder),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Belum Punya Akun? ',
-                          style: TextStyle(fontSize: 14, color: _textPrimary),
-                        ),
-                        GestureDetector(
-                          onTap: () => context.push('/register'),
-                          child: const Text(
-                            'Daftar Sekarang',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: _textPrimary,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                  ],
-                ),
-              ),
-            ),
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthFailure) {
+          PopUpAlert.show(
+            context: context,
+            title: 'Gagal',
+            description: state.error,
+            isError: true,
           );
-        },
-      ),
+        } else if (state is Authenticated) {
+          context.go('/home');
+        } else if (state is RegistrationSuccess) {
+          setState(() {
+            _selectedTab = 0;
+            _emailController.text = state.email;
+          });
+          PopUpAlert.showSuccess(
+            context: context,
+            title: 'Daftar Berhasil!',
+            description: 'Akun kamu sudah dibuat. Silakan login pakai email dan kata sandi kamu.',
+          );
+        }
+      },
+      builder: (context, state) {
+        final isLoading = state is AuthLoading;
+
+        return AuthShell(
+          selectedTab: _selectedTab,
+          onTabChanged: (index) => setState(() => _selectedTab = index),
+          child: _selectedTab == 0 ? _buildLoginForm(isLoading) : _buildRegisterForm(isLoading),
+        );
+      },
     );
   }
 }
-

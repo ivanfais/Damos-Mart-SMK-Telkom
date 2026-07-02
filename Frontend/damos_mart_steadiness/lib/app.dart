@@ -84,7 +84,12 @@ class _DamosMartAppState extends State<DamosMartApp> {
 
   void _refreshQueuesAfterSocketEvent() {
     final context = AppRouter.rootNavigatorKey.currentContext;
-    if (context != null) {
+    if (context == null) return;
+
+    final location = GoRouterState.of(context).uri.toString();
+    if (location == '/queue') {
+      context.read<QueueCubit>().refreshQueueList();
+    } else {
       context.read<QueueCubit>().updateActiveQueuesSilently();
     }
   }
@@ -99,6 +104,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
       if (context == null) return;
 
       context.read<OrderCubit>().loadMyOrders();
+      context.read<QueueCubit>().refreshQueueList();
 
       final location = GoRouterState.of(context).uri.toString();
       if (location.contains('/queue/$queueId/complete')) return;

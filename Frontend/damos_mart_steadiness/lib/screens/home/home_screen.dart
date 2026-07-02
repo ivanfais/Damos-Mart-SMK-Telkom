@@ -1,29 +1,30 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../blocs/product/product_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/cart/cart_cubit.dart';
-import '../../blocs/queue/queue_cubit.dart';
 import '../../blocs/cooperative/cooperative_cubit.dart';
+import '../../blocs/product/product_cubit.dart';
+import '../../blocs/queue/queue_cubit.dart';
+import '../../config/api_config.dart';
+import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/product_grid_layout.dart';
 import '../../data/models/product_model.dart';
-import '../../data/models/category_model.dart';
 import '../../data/models/queue_model.dart';
 import '../../data/repositories/product_repository.dart';
-import '../../config/app_constants.dart';
-import '../../widgets/common/damos_screen_header.dart';
 import '../../widgets/common/loading_shimmer.dart';
-import '../../core/utils/product_grid_layout.dart';
-import '../../widgets/product/damos_product_grid_card.dart';
 import '../../widgets/common/pop_up_alert.dart';
+import '../../widgets/common/steadiness_app_header.dart';
 
-/// Design system tokens (see global design system spec).
 class _Ds {
   static const Color primary = Color(0xFF1B8C2E);
-  static const Color greenLight = Color(0xFFE8F5E9);
+  static const Color background = Color(0xFFF5F5F5);
   static const Color textPrimary = Color(0xFF1A1A1A);
   static const Color textSecondary = Color(0xFF6B7280);
-  static const Color border = Color(0xFFD1D5DB);
-  static const Color borderLight = Color(0xFFE5E7EB);
+  static const Color border = Color(0xFFE0E0E0);
+  static const Color quickActionBg = Color(0xFFEEEEEE);
   static const Color red = Color(0xFFD42427);
 }
 
@@ -36,44 +37,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ProductRepository _productRepository = ProductRepository();
-  final TextEditingController _searchController = TextEditingController();
 
   List<ProductModel> _featuredProducts = [];
-  ProductModel? _highlightProduct;
   bool _isLoadingFeatured = true;
 
   @override
   void initState() {
     super.initState();
-    _loadHomeProducts();
+    _loadFeaturedProducts();
     context.read<CooperativeCubit>().loadCurrentStatus();
-    // Load the student's own active queue (if any) for the "Antrean Aktif" card.
     context.read<QueueCubit>().loadActiveQueues();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadHomeProducts() async {
-    await Future.wait([
-      _loadFeaturedProducts(),
-      _loadHighlightProduct(),
-    ]);
   }
 
   Future<void> _loadFeaturedProducts() async {
     try {
-      var products = await _productRepository.getFeaturedProducts(limit: 6);
+      var products = await _productRepository.getFeaturedProducts(limit: 4);
       if (products.isEmpty) {
-        final result = await _productRepository.getProducts(limit: 6, sort: 'newest');
+        final result = await _productRepository.getProducts(limit: 4, sort: 'newest');
         products = (result['products'] as List<ProductModel>?) ?? [];
       }
       if (mounted) {
         setState(() {
-          _featuredProducts = products;
+          _featuredProducts = products.take(4).toList();
           _isLoadingFeatured = false;
         });
       }
@@ -84,98 +69,61 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadHighlightProduct() async {
-    try {
-      ProductModel? highlight;
-
-      for (final query in ['kitkat green tea', 'kitkat', 'green tea']) {
-        final result = await _productRepository.getProducts(search: query, limit: 20);
-        final products = (result['products'] as List<ProductModel>?) ?? [];
-        highlight = _findKitKatGreenTeaProduct(products);
-        if (highlight != null) break;
-      }
-
-      if (highlight == null) {
-        final categories = await _productRepository.getCategories();
-        final foodCategory = _findFoodCategory(categories);
-        if (foodCategory != null) {
-          final result = await _productRepository.getProducts(
-            category: foodCategory.id,
-            limit: 50,
-          );
-          final products = (result['products'] as List<ProductModel>?) ?? [];
-          highlight = _findKitKatGreenTeaProduct(products);
-        }
-      }
-
-      if (mounted) {
-        setState(() => _highlightProduct = highlight);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _highlightProduct = null);
-      }
-    }
+  Future<void> _onRefresh() async {
+    setState(() => _isLoadingFeatured = true);
+    context.read<QueueCubit>().loadActiveQueues();
+    context.read<CooperativeCubit>().loadCurrentStatus();
+    await _loadFeaturedProducts();
   }
 
-  ProductModel? _findKitKatGreenTeaProduct(List<ProductModel> products) {
-    for (final product in products) {
-      final name = product.name.toLowerCase();
-      if (name.contains('kitkat') && name.contains('green')) {
-        return product;
-      }
-    }
-
-    for (final product in products) {
-      if (product.name.toLowerCase().contains('kitkat')) {
-        return product;
-      }
-    }
-
-    return null;
+  int? _queueSequence(String number) {
+    final match = RegExp(r'(\d+)$').firstMatch(number.trim());
+    return match != null ? int.tryParse(match.group(1)!) : null;
   }
 
-  void _openHighlightProductDetail() {
-    final product = _highlightProduct;
-    if (product == null) return;
-    context.push('/catalog/${product.id}');
+  int _remainingPeople(QueueModel queue, QueueActiveLoaded state) {
+    final userSeq = _queueSequence(queue.queueNumber);
+    final currentSeq = _queueSequence(state.currentServing);
+    if (userSeq == null || currentSeq == null || state.currentServing == 'N/A') {
+      return state.totalWaiting;
+    }
+    return (userSeq - currentSeq).clamp(0, 99);
   }
 
-  CategoryModel? _findFoodCategory(List<CategoryModel> categories) {
-    for (final category in categories) {
-      final name = category.name.toLowerCase();
-      if (name.contains('makan')) return category;
+  double _queueProgress(int remaining, QueueStatus status) {
+    if (status == QueueStatus.ready || status == QueueStatus.completed) {
+      return 1.0;
+    }
+    if (remaining == 0) return 0.85;
+    final total = remaining + 3;
+    return ((total - remaining) / total).clamp(0.2, 0.85);
+  }
+
+  String _waitEstimate(QueueModel queue) {
+    final minutes = queue.estimatedWaitMinutes ?? 12;
+    return '~ $minutes Menit';
+  }
+
+  QueueModel? _findActiveQueue(QueueState state) {
+    if (state is! QueueActiveLoaded) return null;
+    for (final queue in state.activeQueues) {
+      if (queue.status == QueueStatus.waiting ||
+          queue.status == QueueStatus.preparing ||
+          queue.status == QueueStatus.ready) {
+        return queue;
+      }
     }
     return null;
   }
 
-  String _bannerSubtitle() => 'Telah Tersedia!';
-
-  String _bannerTitle() {
-    return _highlightProduct?.name ?? 'KitKat Green Tea Wafer Chocolate';
-  }
-
-  List<String> _bannerTitleLines() {
-    final name = _bannerTitle();
-    const prefix = 'kitkat green tea';
-    final lower = name.toLowerCase();
-    final prefixIndex = lower.indexOf(prefix);
-
-    if (prefixIndex != -1) {
-      final rest = name.substring(prefixIndex + prefix.length).trim();
-      return [
-        'KitKat Green Tea',
-        rest.isNotEmpty ? rest : 'Wafer Chocolate',
-      ];
-    }
-
-    return [name];
-  }
-
-  void _submitSearch(String query) {
-    if (query.trim().isNotEmpty) {
-      context.read<ProductCubit>().searchProducts(query.trim());
-      context.go('/catalog');
+  Color _coopStatusColor(String condition) {
+    switch (condition.toUpperCase()) {
+      case 'RAMAI':
+        return _Ds.red;
+      case 'SEPI':
+        return _Ds.textSecondary;
+      default:
+        return _Ds.primary;
     }
   }
 
@@ -217,435 +165,113 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: RefreshIndicator(
-        color: _Ds.primary,
-        onRefresh: () async {
-          setState(() => _isLoadingFeatured = true);
-          context.read<QueueCubit>().loadActiveQueues();
-          context.read<CooperativeCubit>().loadCurrentStatus();
-          await _loadHomeProducts();
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DamosScreenHeader(
-                searchController: _searchController,
-                onSearchSubmitted: _submitSearch,
-              ),
-              _buildInfoCard(),
-              const SizedBox(height: 12),
-              _buildBannerCarousel(),
-              const SizedBox(height: 12),
-              _buildQuickActions(),
-              const SizedBox(height: 20),
-              _buildActiveQueue(),
-              _buildRecommendations(),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // 1. INFO KOPERASI
-  // ---------------------------------------------------------------------------
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'Ramai':
-        return _Ds.red;
-      case 'Sepi':
-        return _Ds.textSecondary;
-      default:
-        return _Ds.primary;
-    }
-  }
-
-  Widget _buildInfoCard() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _Ds.borderLight),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.info_outline, size: 18, color: _Ds.textPrimary),
-                const SizedBox(width: 6),
-                const Text(
-                  'INFO KOPERASI',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => context.push('/info'),
-                  child: const Text(
-                    'Detail',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _Ds.primary),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Jam Operasional',
-                          style: TextStyle(fontSize: 12, color: _Ds.textSecondary)),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: const [
-                          Icon(Icons.access_time, size: 16, color: _Ds.textPrimary),
-                          SizedBox(width: 6),
-                          Text('07:00 - 16:00',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Ds.textPrimary)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: BlocBuilder<CooperativeCubit, CooperativeState>(
-                    builder: (context, coopState) {
-                      final statusLabel = coopState is CooperativeLoaded
-                          ? coopState.currentStatus.label
-                          : 'Normal';
-                      final statusColor = _statusColor(statusLabel);
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Kepadatan Toko',
-                              style: TextStyle(fontSize: 12, color: _Ds.textSecondary)),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(statusLabel,
-                                  style: TextStyle(
-                                      fontSize: 14, fontWeight: FontWeight.w600, color: statusColor)),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // 3. PRODUK HIGHLIGHT (KitKat Green Tea)
-  // ---------------------------------------------------------------------------
-  Widget _buildBannerCarousel() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GestureDetector(
-        onTap: _highlightProduct != null ? _openHighlightProductDetail : null,
-        child: _buildHighlightBanner(),
-      ),
-    );
-  }
-
-  Widget _buildHighlightBanner() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        height: 188,
-        width: double.infinity,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              AppConstants.imageProductHighlight,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              errorBuilder: (_, __, ___) => Container(
-                color: _Ds.textPrimary,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.fastfood_outlined,
-                  color: Colors.white38,
-                  size: 48,
-                ),
-              ),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.62),
-                    Colors.black.withValues(alpha: 0.28),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.45, 0.85],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _Ds.greenLight,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'PRODUK BARU',
-                      style: TextStyle(
-                        color: _Ds.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ..._bannerTitleLines().map(
-                    (line) => Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Text(
-                        line,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _bannerSubtitle(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionIcon(IconData icon) {
-    return Icon(icon, color: _Ds.primary, size: 26);
-  }
-
-  Widget _buildInfoQuickIcon() {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: const BoxDecoration(
-        color: _Ds.primary,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: const Text(
-        'i',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          height: 1,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionItem({
-    required String label,
-    required Widget icon,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: _Ds.greenLight,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              alignment: Alignment.center,
-              child: icon,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: _Ds.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // 4. QUICK ACTIONS
-  // ---------------------------------------------------------------------------
-  Widget _buildQuickActions() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      backgroundColor: _Ds.background,
+      body: Column(
         children: [
-          _buildQuickActionItem(
-            label: 'Katalog',
-            icon: _buildQuickActionIcon(Icons.grid_view_rounded),
-            onTap: () => context.go('/catalog'),
-          ),
-          _buildQuickActionItem(
-            label: 'Antrean',
-            icon: _buildQuickActionIcon(Icons.hourglass_top_rounded),
-            onTap: () => context.go('/queue'),
-          ),
-          _buildQuickActionItem(
-            label: 'Informasi',
-            icon: _buildInfoQuickIcon(),
-            onTap: () => context.push('/info'),
-          ),
-          _buildQuickActionItem(
-            label: 'Riwayat',
-            icon: _buildQuickActionIcon(Icons.receipt_long_outlined),
-            onTap: () => context.push('/profile/history'),
+          const SteadinessAppHeader(),
+          Expanded(
+            child: RefreshIndicator(
+              color: _Ds.primary,
+              onRefresh: _onRefresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildGreeting(),
+                    const SizedBox(height: 16),
+                    _buildCooperativeCard(),
+                    const SizedBox(height: 20),
+                    _buildQueueSection(),
+                    const SizedBox(height: 20),
+                    _buildQuickActions(),
+                    const SizedBox(height: 24),
+                    _buildRecommendations(),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 5. ANTREAN AKTIF
-  // ---------------------------------------------------------------------------
-  Widget _buildActiveQueue() {
-    return BlocBuilder<QueueCubit, QueueState>(
-      builder: (context, state) {
-        // Only show this section when the student has at least one active queue
-        // (waiting / preparing / ready). Hidden entirely otherwise.
-        QueueModel? queue;
-        if (state is QueueActiveLoaded) {
-          for (final q in state.activeQueues) {
-            if (q.status == QueueStatus.waiting ||
-                q.status == QueueStatus.preparing ||
-                q.status == QueueStatus.ready) {
-              queue = q;
-              break;
-            }
-          }
-        }
-        if (queue == null) {
-          return const SizedBox.shrink();
-        }
+  Widget _buildGreeting() {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        final firstName = authState is Authenticated
+            ? authState.user.fullName.split(' ').first
+            : 'Pengguna';
 
-        final label = _queueStatusLabel(queue.status);
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Antrean Aktif',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _Ds.textPrimary)),
-                  GestureDetector(
-                    onTap: () => context.go('/queue'),
-                    child: const Text('Lihat Semua',
-                        style: TextStyle(fontSize: 14, color: _Ds.primary)),
-                  ),
-                ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Selamat Datang,',
+              style: TextStyle(fontSize: 15, color: _Ds.textSecondary),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Halo, $firstName',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: _Ds.textPrimary,
               ),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () async {
-                  await context.push('/queue/${queue!.id}');
-                  if (!mounted) return;
-                  context.read<QueueCubit>().restoreActiveQueuesView();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _Ds.borderLight),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Nomor Antrean',
-                              style: TextStyle(fontSize: 12, color: _Ds.textSecondary)),
-                          const SizedBox(height: 4),
-                          Text(queue.queueNumber,
-                              style: const TextStyle(
-                                  fontSize: 28, fontWeight: FontWeight.w800, color: _Ds.primary)),
-                        ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCooperativeCard() {
+    return BlocBuilder<CooperativeCubit, CooperativeState>(
+      builder: (context, state) {
+        final statusLabel = state is CooperativeLoaded
+            ? state.currentStatus.label
+            : 'Normal';
+        final statusColor = state is CooperativeLoaded
+            ? _coopStatusColor(state.currentStatus.condition)
+            : _Ds.primary;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _Ds.border),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.people_outline, color: _Ds.textSecondary, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Kepadatan Koperasi',
+                      style: TextStyle(fontSize: 12, color: _Ds.textSecondary),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kondisi Koperasi: $statusLabel',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _Ds.textPrimary,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _Ds.greenLight,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: _Ds.primary),
-                        ),
-                        child: Text(label,
-                            style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w700, color: _Ds.primary)),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
               ),
             ],
           ),
@@ -654,69 +280,383 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String _queueStatusLabel(QueueStatus status) {
-    switch (status) {
-      case QueueStatus.waiting:
-        return 'MENUNGGU';
-      case QueueStatus.preparing:
-        return 'DISIAPKAN';
-      case QueueStatus.ready:
-        return 'SIAP DIAMBIL';
-      case QueueStatus.completed:
-        return 'SELESAI';
-      case QueueStatus.skipped:
-        return 'TERLEWAT';
-    }
-  }
+  Widget _buildQueueSection() {
+    return BlocBuilder<QueueCubit, QueueState>(
+      builder: (context, state) {
+        final queue = _findActiveQueue(state);
+        final loaded = state is QueueActiveLoaded ? state : null;
 
-  // ---------------------------------------------------------------------------
-  // 6. REKOMENDASI PRODUK
-  // ---------------------------------------------------------------------------
-  Widget _buildRecommendations() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Rekomendasi Produk',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _Ds.textPrimary)),
-              GestureDetector(
-                onTap: () => context.go('/catalog'),
-                child: const Text('Lainnya',
-                    style: TextStyle(fontSize: 14, color: _Ds.primary)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_isLoadingFeatured)
-            const ProductGridShimmer(itemCount: 4)
-          else if (_featuredProducts.isEmpty)
-            Container(
-              height: 150,
-              alignment: Alignment.center,
-              child: const Text('Belum ada rekomendasi produk 😔',
-                  style: TextStyle(color: _Ds.textSecondary)),
-            )
-          else
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                for (final product in _featuredProducts)
-                  SizedBox(
-                    width: ProductGridLayout.itemWidth(context),
-                    child: DamosProductGridCard(
-                      product: product,
-                      onTap: () => context.push('/catalog/${product.id}'),
-                      onAddToCart: () => _addToCart(product),
+                const Text(
+                  'Status Antrean',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: _Ds.textPrimary,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    if (queue != null) {
+                      context.push('/queue/${queue.id}');
+                    } else {
+                      context.go('/queue');
+                    }
+                  },
+                  child: const Text(
+                    'Lihat Detail',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _Ds.primary,
+                      decoration: TextDecoration.underline,
+                      decorationColor: _Ds.primary,
                     ),
                   ),
+                ),
               ],
             ),
+            const SizedBox(height: 12),
+            if (queue != null && loaded != null)
+              _buildQueueCard(queue, loaded)
+            else
+              _buildEmptyQueueCard(),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildQueueCard(QueueModel queue, QueueActiveLoaded state) {
+    final remaining = _remainingPeople(queue, state);
+    final progress = _queueProgress(remaining, queue.status);
+
+    return GestureDetector(
+      onTap: () async {
+        await context.push('/queue/${queue.id}');
+        if (!mounted) return;
+        context.read<QueueCubit>().restoreActiveQueuesView();
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _Ds.primary,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'NOMOR ANTREAN ANDA',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const Text(
+                  'Estimasi Tunggu',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  queue.queueNumber,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+                Text(
+                  _waitEstimate(queue),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: Colors.white.withValues(alpha: 0.35),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              remaining > 0
+                  ? '$remaining Orang lagi sebelum giliran Anda'
+                  : 'Giliran Anda akan segera dipanggil',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyQueueCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _Ds.primary,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'NOMOR ANTREAN ANDA',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Belum ada antrean aktif',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Beli produk di katalog untuk mendapatkan nomor antrean',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Row(
+      children: [
+        _buildQuickAction(Icons.grid_view, 'Katalog', () => context.go('/catalog')),
+        const SizedBox(width: 10),
+        _buildQuickAction(Icons.hourglass_empty, 'Antrean', () => context.go('/queue')),
+        const SizedBox(width: 10),
+        _buildQuickAction(Icons.checkroom_outlined, 'Seragam', () {
+          context.read<ProductCubit>().searchProducts('seragam');
+          context.go('/catalog');
+        }),
+        const SizedBox(width: 10),
+        _buildQuickAction(Icons.help_outline, 'Komplain', () => context.push('/profile/chat')),
+      ],
+    );
+  }
+
+  Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Container(
+              height: 64,
+              decoration: BoxDecoration(
+                color: _Ds.quickActionBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: _Ds.textPrimary, size: 26),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _Ds.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendations() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Rekomendasi Produk',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: _Ds.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_isLoadingFeatured)
+          const ProductGridShimmer(itemCount: 4)
+        else if (_featuredProducts.isEmpty)
+          Container(
+            height: 120,
+            alignment: Alignment.center,
+            child: const Text(
+              'Belum ada rekomendasi produk',
+              style: TextStyle(color: _Ds.textSecondary),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final product in _featuredProducts)
+                SizedBox(
+                  width: ProductGridLayout.itemWidth(context),
+                  child: _HomeProductCard(
+                    product: product,
+                    onTap: () => context.push('/catalog/${product.id}'),
+                    onBuy: () => _addToCart(product),
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _HomeProductCard extends StatelessWidget {
+  const _HomeProductCard({
+    required this.product,
+    required this.onTap,
+    required this.onBuy,
+  });
+
+  final ProductModel product;
+  final VoidCallback onTap;
+  final VoidCallback onBuy;
+
+  static const Color _primary = _Ds.primary;
+  static const Color _textPrimary = _Ds.textPrimary;
+  static const Color _textSecondary = _Ds.textSecondary;
+  static const Color _border = _Ds.border;
+  static const Color _imageBg = Color(0xFFF2F2F2);
+
+  @override
+  Widget build(BuildContext context) {
+    final imageHeight = ProductGridLayout.itemWidth(context) * 0.85;
+    final hasStock = product.stock > 0 || product.isPreorder;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            onTap: onTap,
+            child: SizedBox(
+              height: imageHeight,
+              child: ColoredBox(
+                color: _imageBg,
+                child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => const Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => const Center(
+                          child: Icon(Icons.shopping_bag_outlined, color: _textSecondary, size: 32),
+                        ),
+                      )
+                    : const Center(
+                        child: Icon(Icons.shopping_bag_outlined, color: _textSecondary, size: 32),
+                      ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: onTap,
+                  child: Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _textPrimary,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  CurrencyFormatter.format(product.price),
+                  style: const TextStyle(fontSize: 13, color: _textSecondary),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 36,
+                  child: ElevatedButton(
+                    onPressed: hasStock ? onBuy : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: _textSecondary,
+                      elevation: 0,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.shopping_cart_outlined, size: 16),
+                        SizedBox(width: 6),
+                        Text('Beli', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

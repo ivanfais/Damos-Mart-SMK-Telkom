@@ -5,18 +5,18 @@ import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../data/models/user_model.dart';
-import '../../core/storage/prefs_storage.dart';
 import '../../widgets/common/pop_up_alert.dart';
+import '../../widgets/common/steadiness_app_header.dart';
 import '../../widgets/common/user_avatar.dart';
-import '../../widgets/common/damos_page_app_bar.dart';
 
 class _Ds {
   static const Color primary = Color(0xFF1B8C2E);
   static const Color textPrimary = Color(0xFF1A1A1A);
   static const Color textSecondary = Color(0xFF6B7280);
-  static const Color borderLight = Color(0xFFE5E7EB);
-  static const Color bgGrey = Color(0xFFF2F2F2);
-  static const Color red = Color(0xFFD42427);
+  static const Color border = Color(0xFFE0E0E0);
+  static const Color bg = Color(0xFFF5F5F5);
+  static const Color cardBg = Color(0xFFF3F4F6);
+  static const Color avatarBg = Color(0xFFE52521);
 }
 
 class ProfileScreen extends StatelessWidget {
@@ -25,10 +25,11 @@ class ProfileScreen extends StatelessWidget {
   void _showLogoutConfirmation(BuildContext context) {
     PopUpAlert.show(
       context: context,
-      title: 'Logout',
-      description: 'Apakah Anda yakin ingin keluar dari akun?',
-      confirmText: 'Logout',
+      title: 'Keluar Sesi?',
+      description: 'Apakah kamu yakin ingin keluar dari akun Damos Mart?',
+      confirmText: 'Keluar',
       cancelText: 'Batal',
+      isError: true,
       onConfirm: () {
         context.read<AuthBloc>().add(LoggedOut());
         context.go('/login');
@@ -36,37 +37,60 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  String _displayPhone(UserModel user) {
-    if (user.phone != null && user.phone!.trim().isNotEmpty) {
-      return user.phone!;
+  String _displayNis(UserModel user) {
+    if (user.ssoId != null && user.ssoId!.trim().isNotEmpty) {
+      return 'NIS: ${user.ssoId}';
     }
-    return '-';
+    return 'NIS: -';
   }
 
-  Widget _buildAvatar(BuildContext context, UserModel user) {
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
+  String _displayClassBadge(UserModel user) {
+    return 'Siswa Kelas SMK Telkom Jakarta';
+  }
+
+  String _displayFirstName(String fullName) {
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    return parts.isNotEmpty ? parts.first : fullName;
+  }
+
+  Widget _buildProfileHeader(UserModel user) {
+    return Column(
       children: [
         UserAvatar(
           avatarUrl: user.avatarUrl,
-          radius: 52,
-          iconSize: 48,
+          radius: 46,
+          backgroundColor: _Ds.avatarBg,
+          iconColor: Colors.white,
+          iconSize: 44,
         ),
-        Positioned(
-          right: 4,
-          bottom: 4,
-          child: GestureDetector(
-            onTap: () => context.push('/profile/edit'),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: _Ds.textPrimary,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+        const SizedBox(height: 14),
+        Text(
+          _displayFirstName(user.fullName),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: _Ds.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _displayNis(user),
+          style: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: _Ds.cardBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _Ds.border),
+          ),
+          child: Text(
+            _displayClassBadge(user),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: _Ds.textSecondary,
             ),
           ),
         ),
@@ -74,173 +98,198 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color? iconColor,
-    Color? textColor,
-  }) {
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: Icon(icon, color: iconColor ?? _Ds.textPrimary, size: 22),
-      title: Text(
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 10),
+      child: Text(
         title,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: textColor ?? _Ds.textPrimary,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: _Ds.textSecondary,
         ),
       ),
-      trailing: Icon(Icons.chevron_right, color: textColor ?? _Ds.textSecondary, size: 22),
     );
   }
 
-  Widget _buildMenuContainer(List<Widget> children) {
+  Widget _buildMenuCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _Ds.borderLight),
+        border: Border.all(color: _Ds.border),
       ),
       child: Column(children: children),
+    );
+  }
+
+  Widget _buildMenuTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: _Ds.textPrimary, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: subtitle == null
+                  ? Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: _Ds.textPrimary,
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: _Ds.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(fontSize: 13, color: _Ds.textSecondary),
+                        ),
+                      ],
+                    ),
+            ),
+            const Icon(Icons.chevron_right, color: _Ds.textSecondary, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return const Divider(height: 1, thickness: 1, color: _Ds.border, indent: 52);
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: () => _showLogoutConfirmation(context),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: _Ds.cardBg,
+          foregroundColor: _Ds.primary,
+          side: const BorderSide(color: _Ds.border),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        icon: const Icon(Icons.logout, size: 20),
+        label: const Text(
+          'Keluar Sesi',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _Ds.bg,
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
-          if (state is Authenticated) {
-            final user = state.user;
-
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const DamosPageHeader(
-                    title: 'Informasi Pengguna',
-                    showBackButton: true,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 16),
-                        Center(child: _buildAvatar(context, user)),
-                  const SizedBox(height: 16),
-                  Text(
-                    user.fullName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _displayPhone(user),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, color: _Ds.textSecondary),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 160),
-                      child: SizedBox(
-                        height: 40,
-                        child: ElevatedButton.icon(
-                          onPressed: () => context.push('/profile/edit'),
-                          icon: const Icon(Icons.edit, size: 16),
-                          label: const Text(
-                            'Edit Profile',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _Ds.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'AKTIVITAS & KEAMANAN',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _Ds.textSecondary,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildMenuContainer([
-                    _buildMenuTile(
-                      icon: Icons.palette_outlined,
-                      title: 'Gaya Aplikasi DISC',
-                      onTap: () => context.push('/profile/disc-theme'),
-                    ),
-                    if (PrefsStorage.instance.getSelectedDiscVariant() != null) ...[
-                      const Divider(height: 1, color: _Ds.borderLight),
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        leading: const Icon(Icons.check_circle_outline, color: _Ds.primary, size: 22),
-                        title: Text(
-                          'Aktif: ${PrefsStorage.instance.getSelectedDiscVariant()!.label}',
-                          style: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
-                        ),
-                      ),
-                    ],
-                  ]),
-                  const SizedBox(height: 12),
-                  _buildMenuContainer([
-                    _buildMenuTile(
-                      icon: Icons.history,
-                      title: 'Riwayat Pesanan',
-                      onTap: () => context.push('/profile/history'),
-                    ),
-                    const Divider(height: 1, color: _Ds.borderLight),
-                    _buildMenuTile(
-                      icon: Icons.chat_bubble_outline,
-                      title: 'Hubungi Admin',
-                      onTap: () => context.push('/profile/chat'),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  _buildMenuContainer([
-                    _buildMenuTile(
-                      icon: Icons.logout,
-                      title: 'Logout',
-                      iconColor: _Ds.red,
-                      textColor: _Ds.red,
-                      onTap: () => _showLogoutConfirmation(context),
-                    ),
-                  ]),
-                  const SizedBox(height: 40),
-                  const Text(
-                    'Damos Mart',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Ds.textSecondary),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'SMK Telkom Jakarta',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: _Ds.textSecondary),
-                  ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+          if (state is! Authenticated) {
+            return const Center(
+              child: CircularProgressIndicator(color: _Ds.primary),
             );
           }
 
-          return const Center(child: Text('Memuat data profil...'));
+          final user = state.user;
+
+          return Column(
+            children: [
+              const SteadinessAppHeader(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(child: _buildProfileHeader(user)),
+                      const SizedBox(height: 28),
+                      _buildSectionTitle('Pengaturan Akun'),
+                      _buildMenuCard([
+                        _buildMenuTile(
+                          icon: Icons.person_outline,
+                          title: 'Edit Profil',
+                          onTap: () => context.push('/profile/edit'),
+                        ),
+                        _buildDivider(),
+                        _buildMenuTile(
+                          icon: Icons.lock_outline,
+                          title: 'Ubah Kata Sandi',
+                          onTap: () {
+                            PopUpAlert.show(
+                              context: context,
+                              title: 'Ubah Kata Sandi',
+                              description:
+                                  'Fitur ubah kata sandi akan segera tersedia. Untuk sementara, silakan hubungi petugas IT sekolah.',
+                              isError: false,
+                            );
+                          },
+                        ),
+                      ]),
+                      const SizedBox(height: 22),
+                      _buildSectionTitle('Preferensi Aplikasi'),
+                      _buildMenuCard([
+                        _buildMenuTile(
+                          icon: Icons.language_outlined,
+                          title: 'Bahasa',
+                          subtitle: 'Bahasa Indonesia',
+                          onTap: () {
+                            PopUpAlert.show(
+                              context: context,
+                              title: 'Bahasa',
+                              description: 'Bahasa aplikasi saat ini: Bahasa Indonesia.',
+                              isError: false,
+                            );
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuTile(
+                          icon: Icons.notifications_none_outlined,
+                          title: 'Notifikasi',
+                          onTap: () {
+                            PopUpAlert.show(
+                              context: context,
+                              title: 'Notifikasi',
+                              description: 'Notifikasi pesanan dan antrean kamu aktif.',
+                              isError: false,
+                            );
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuTile(
+                          icon: Icons.help_outline,
+                          title: 'Komplain',
+                          onTap: () => context.push('/profile/chat'),
+                        ),
+                      ]),
+                      const SizedBox(height: 24),
+                      _buildLogoutButton(context),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
         },
       ),
     );

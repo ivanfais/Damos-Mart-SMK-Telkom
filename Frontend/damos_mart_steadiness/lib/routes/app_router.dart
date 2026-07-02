@@ -19,6 +19,7 @@ import '../screens/cart/cart_screen.dart';
 import '../data/models/cart_item_model.dart';
 import '../screens/checkout/payment_screen.dart';
 import '../screens/checkout/qris_payment_screen.dart';
+import '../screens/checkout/cash_payment_screen.dart';
 import '../screens/checkout/pickup_ticket_screen.dart';
 import '../data/models/order_model.dart';
 import '../screens/queue/queue_list_screen.dart';
@@ -171,24 +172,38 @@ class AppRouter {
       GoRoute(
         path: '/checkout',
         pageBuilder: (context, state) {
-          final items = state.extra as List<CartItemModel>? ?? [];
+          final extra = state.extra;
+          final items = extra is List<CartItemModel> ? extra : <CartItemModel>[];
           return _page(state, PaymentScreen(items: items));
         },
-      ),
-      GoRoute(
-        path: '/checkout/qris/:orderId',
-        pageBuilder: (context, state) {
-          final orderId = state.pathParameters['orderId'] ?? '';
-          final order = state.extra as OrderModel?;
-          return _page(state, QrisPaymentScreen(orderId: orderId, order: order));
-        },
-      ),
-      GoRoute(
-        path: '/checkout/ticket/:orderId',
-        pageBuilder: (context, state) {
-          final orderId = state.pathParameters['orderId'] ?? '';
-          return _page(state, PickupTicketScreen(orderId: orderId));
-        },
+        routes: [
+          GoRoute(
+            path: 'qris/:orderId',
+            parentNavigatorKey: rootNavigatorKey,
+            pageBuilder: (context, state) {
+              final orderId = state.pathParameters['orderId'] ?? '';
+              final order = state.extra as OrderModel?;
+              return _page(state, QrisPaymentScreen(orderId: orderId, order: order));
+            },
+          ),
+          GoRoute(
+            path: 'cash/:orderId',
+            parentNavigatorKey: rootNavigatorKey,
+            pageBuilder: (context, state) {
+              final orderId = state.pathParameters['orderId'] ?? '';
+              final order = state.extra as OrderModel?;
+              return _page(state, CashPaymentScreen(orderId: orderId, order: order));
+            },
+          ),
+          GoRoute(
+            path: 'ticket/:orderId',
+            parentNavigatorKey: rootNavigatorKey,
+            pageBuilder: (context, state) {
+              final orderId = state.pathParameters['orderId'] ?? '';
+              return _page(state, PickupTicketScreen(orderId: orderId));
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/queue/:id',

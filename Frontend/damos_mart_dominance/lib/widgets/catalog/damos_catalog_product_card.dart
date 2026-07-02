@@ -116,24 +116,26 @@ class DamosCatalogProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: DamosDominanceColors.textSecondary,
                     ),
                   ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   product.name,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                     color: DamosDominanceColors.textPrimary,
+                    height: 1.1,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 if (showAvailability)
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Text(
@@ -141,7 +143,7 @@ class DamosCatalogProductCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: DamosDominanceColors.primary,
                           ),
@@ -150,7 +152,7 @@ class DamosCatalogProductCard extends StatelessWidget {
                       Text(
                         product.isPreorder ? 'Pre-Order' : hasStock ? 'Tersedia' : 'Habis',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: product.isPreorder
                               ? DamosDominanceColors.primary
@@ -167,7 +169,7 @@ class DamosCatalogProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: DamosDominanceColors.primary,
                     ),

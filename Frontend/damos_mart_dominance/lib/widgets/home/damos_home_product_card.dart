@@ -20,7 +20,7 @@ class DamosHomeProductCard extends StatelessWidget {
     this.onFavoriteTap,
   });
 
-  static const double cardWidth = 165;
+  static const double cardWidth = 182;
   static const double cardHeight = 230;
 
   @override
@@ -112,20 +112,20 @@ class DamosHomeProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: DamosDominanceColors.textSecondary,
                     ),
                   ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   product.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                     color: DamosDominanceColors.textPrimary,
-                    height: 1.2,
+                    height: 1.1,
                   ),
                 ),
                 const Spacer(),
@@ -138,7 +138,7 @@ class DamosHomeProductCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: DamosDominanceColors.primary,
                         ),
@@ -147,7 +147,7 @@ class DamosHomeProductCard extends StatelessWidget {
                     Text(
                       product.isPreorder ? 'Pre-Order' : hasStock ? 'Tersedia' : 'Habis',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: product.isPreorder
                             ? DamosDominanceColors.primary

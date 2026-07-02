@@ -25,7 +25,13 @@ export class QueuesService {
         userId,
         status: { in: ['WAITING', 'PREPARING', 'READY'] },
         order: {
-          paymentStatus: 'PAID',
+          OR: [
+            { paymentStatus: 'PAID' },
+            {
+              paymentStatus: 'UNPAID',
+              paymentMethod: 'CASH_AT_COUNTER',
+            },
+          ],
         },
       },
       include: {

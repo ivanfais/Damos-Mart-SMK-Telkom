@@ -6,7 +6,6 @@ import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../core/utils/validators.dart';
 import '../../widgets/common/pop_up_alert.dart';
-import '../../widgets/common/damos_page_app_bar.dart';
 import '../../config/app_constants.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -152,21 +151,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DamosPageHeader(
-                  title: 'Register',
-                  showBackButton: true,
-                  trailing: const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: Text(
-                      'Damos Mart',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                ),
                 SafeArea(
                   top: false,
                   child: Padding(
@@ -177,33 +161,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const SizedBox(height: 28),
-                          // Logo
-                          Center(
-                      child: SizedBox(
-                        width: 110,
-                        height: 80,
-                        child: Image.asset(
-                          AppConstants.imageLogo,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.shopping_bag,
-                            size: 52,
+                          // Top green header without title text
+                          Container(
+                            width: double.infinity,
                             color: _primary,
+                            padding: EdgeInsets.only(
+                              top: MediaQuery.of(context).padding.top + 16,
+                              bottom: 16,
+                              left: 8,
+                              right: 24,
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => context.pop(),
+                                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                  splashRadius: 24,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 40,
+                                    minHeight: 40,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Buat Akun Baru',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: _textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
+                          const SizedBox(height: 24),
+                          Center(
+                            child: SizedBox(
+                              width: 110,
+                              height: 80,
+                              child: Image.asset(
+                                AppConstants.imageLogo,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                  Icons.shopping_bag,
+                                  size: 52,
+                                  color: _primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Buat Akun Baru',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: _textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
                     _buildField(
                       controller: _nameController,
                       label: 'Nama Lengkap',
@@ -268,7 +277,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   TextSpan(text: 'Saya menyetujui '),
                                   TextSpan(
                                     text: 'Ketentuan Layanan dan Kebijakan Privasi',
-                                    style: TextStyle(color: _primary, fontWeight: FontWeight.w600),
+                                    style: TextStyle(color: _red, fontWeight: FontWeight.w600),
                                   ),
                                   TextSpan(text: ' dari Koperasi Damos Mart.'),
                                 ],
@@ -322,7 +331,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: TextStyle(fontSize: 14, color: _textPrimary),
                         ),
                         GestureDetector(
-                          onTap: () => context.pop(),
+                          onTap: () => context.go('/login'),
                           child: const Text(
                             'Login Sekarang',
                             style: TextStyle(

@@ -128,6 +128,32 @@ class _ProductCardState extends State<ProductCard> {
                           ),
                         ),
                       ),
+                    if (!widget.product.isPreorder && widget.product.stock <= 0)
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppDimensions.cardRadius),
+                          child: Container(
+                            color: Colors.white.withOpacity(0.65),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.outOfStock,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Habis',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 
@@ -166,7 +192,7 @@ class _ProductCardState extends State<ProductCard> {
                               Flexible(
                                 child: Text(
                                   widget.product.name,
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTextStyles.labelMedium.copyWith(
                                     color: AppColors.textPrimary,

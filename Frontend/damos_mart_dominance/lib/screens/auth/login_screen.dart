@@ -13,10 +13,12 @@ import '../../widgets/common/pop_up_alert.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? prefillEmail;
+  final bool registered;
 
   const LoginScreen({
     super.key,
     this.prefillEmail,
+    this.registered = false,
   });
 
   @override
@@ -128,6 +130,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
+                        if (widget.registered)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: DamosDominanceColors.primary.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Akun berhasil dibuat. Silakan login untuk melanjutkan.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: DamosDominanceColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
                         const Text(
                           'Masuk ke akun anda untuk melanjutkan',
                           style: TextStyle(
@@ -227,6 +249,34 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Belum punya akun? ',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: DamosDominanceColors.textSecondary,
+                              ),
+                            ),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () => context.push('/register'),
+                                child: const Text(
+                                  'Daftar sekarang',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: DamosDominanceColors.primary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

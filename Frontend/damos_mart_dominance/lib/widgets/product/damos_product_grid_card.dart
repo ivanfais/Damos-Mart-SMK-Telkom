@@ -101,20 +101,23 @@ class DamosProductGridCard extends StatelessWidget {
                     ),
                   ),
                 if (!hasStock)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: imageHeight / 2 - 14,
-                    child: Center(
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _red,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'STOK HABIS',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                        color: Colors.white.withOpacity(0.65),
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _red,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'STOK HABIS',
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                          ),
                         ),
                       ),
                     ),

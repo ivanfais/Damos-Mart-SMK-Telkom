@@ -20,7 +20,7 @@ class DamosHomeProductCard extends StatelessWidget {
     this.onFavoriteTap,
   });
 
-  static const double cardWidth = 182;
+  static const double cardWidth = 165;
   static const double cardHeight = 230;
 
   @override
@@ -103,6 +103,32 @@ class DamosHomeProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (!hasStock && !product.isPreorder)
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            color: Colors.white.withOpacity(0.65),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: DamosDominanceColors.error,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Habis',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -119,7 +145,7 @@ class DamosHomeProductCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   product.name,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 14,

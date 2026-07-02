@@ -26,7 +26,7 @@ class DamosProductGridCard extends StatelessWidget {
   static const Color _borderLight = Color(0xFFE5E7EB);
   static const Color _bgGrey = Color(0xFFF2F2F2);
   static const Color _red = Color(0xFFD42427);
-  static const Color _star = Color(0xFFFFC107);
+  static const Color _soldOutButton = Color(0xFF9CCC9C);
 
   Widget _buildProductImage(double height) {
     return SizedBox(
@@ -61,14 +61,15 @@ class DamosProductGridCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isPreorder = product.isPreorder;
+    final bool isOutOfStock = !isPreorder && product.stock <= 0;
     final bool hasStock = !isPreorder && product.stock > 0;
     final bool canOrder = isPreorder || hasStock;
     final String availabilityLabel = isPreorder
         ? 'Pre-Order'
-        : hasStock
-            ? 'Tersedia'
-            : 'Stok Habis';
-    final Color availabilityColor = canOrder ? _primary : _red;
+        : isOutOfStock
+            ? 'Stok Habis'
+            : 'Tersedia';
+    final Color availabilityColor = isOutOfStock ? _red : _primary;
     final imageHeight = ProductGridLayout.imageHeight(context);
 
     return SizedBox(
@@ -88,6 +89,10 @@ class DamosProductGridCard extends StatelessWidget {
             child: Stack(
               children: [
                 _buildProductImage(imageHeight),
+                if (isOutOfStock)
+                  Positioned.fill(
+                    child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+                  ),
                 if (product.categoryName.isNotEmpty)
                   Positioned(
                     top: 6,
@@ -128,21 +133,24 @@ class DamosProductGridCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (!canOrder)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: imageHeight / 2 - 14,
+                if (isOutOfStock)
+                  Positioned.fill(
                     child: Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _red,
-                          borderRadius: BorderRadius.circular(6),
+                          color: _greenLight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _primary.withValues(alpha: 0.25)),
                         ),
                         child: const Text(
                           'STOK HABIS',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: _red,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
@@ -224,7 +232,7 @@ class DamosProductGridCard extends StatelessWidget {
                       : ElevatedButton(
                           onPressed: null,
                           style: ElevatedButton.styleFrom(
-                            disabledBackgroundColor: _hint,
+                            disabledBackgroundColor: _soldOutButton,
                             disabledForegroundColor: Colors.white,
                             elevation: 0,
                             padding: EdgeInsets.zero,
@@ -232,7 +240,7 @@ class DamosProductGridCard extends StatelessWidget {
                           ),
                           child: const Text(
                             'Sold Out',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                           ),
                         ),
                 ),

@@ -60,7 +60,15 @@ class DamosProductGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasStock = product.stock > 0 || product.isPreorder;
+    final bool isPreorder = product.isPreorder;
+    final bool hasStock = !isPreorder && product.stock > 0;
+    final bool canOrder = isPreorder || hasStock;
+    final String availabilityLabel = isPreorder
+        ? 'Pre-Order'
+        : hasStock
+            ? 'Tersedia'
+            : 'Stok Habis';
+    final Color availabilityColor = canOrder ? _primary : _red;
     final imageHeight = ProductGridLayout.imageHeight(context);
 
     return SizedBox(
@@ -100,7 +108,27 @@ class DamosProductGridCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (!hasStock)
+                if (isPreorder)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'PRE-ORDER',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (!canOrder)
                   Positioned(
                     left: 0,
                     right: 0,
@@ -153,13 +181,13 @@ class DamosProductGridCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              hasStock ? 'Tersedia' : 'Stok Habis',
+                              availabilityLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: hasStock ? _primary : _red,
+                                color: availabilityColor,
                               ),
                             ),
                           ),
@@ -179,7 +207,7 @@ class DamosProductGridCard extends StatelessWidget {
                 SizedBox(
                   height: 30,
                   width: double.infinity,
-                  child: hasStock
+                  child: canOrder
                       ? OutlinedButton(
                           onPressed: onAddToCart,
                           style: OutlinedButton.styleFrom(
@@ -188,9 +216,9 @@ class DamosProductGridCard extends StatelessWidget {
                             padding: EdgeInsets.zero,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text(
-                            'Add to Cart',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          child: Text(
+                            isPreorder ? 'Pre-Order' : 'Add to Cart',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         )
                       : ElevatedButton(

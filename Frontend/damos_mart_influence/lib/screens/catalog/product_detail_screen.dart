@@ -363,6 +363,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           if (state is ProductDetailLoaded) {
             final product = state.product;
+
+            if (product.isPreorder) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  context.replace('/preorder/${product.id}');
+                }
+              });
+              return const Center(child: CircularProgressIndicator(color: _Ds.primary));
+            }
+
             final reviews = state.reviews;
 
             if (_selectedVariant == null && product.variants.isNotEmpty) {

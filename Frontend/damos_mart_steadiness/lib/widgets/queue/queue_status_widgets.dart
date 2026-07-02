@@ -29,11 +29,7 @@ class QueueActiveCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: QueueDisplayColors.border),
-      ),
+      decoration: QueueDisplayColors.cardDecoration,
       child: Column(
         children: [
           const Text(
@@ -145,11 +141,7 @@ class QueueCurrentServingCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: QueueDisplayColors.border),
-      ),
+      decoration: QueueDisplayColors.cardDecoration,
       child: Column(
         children: [
           const Icon(Icons.confirmation_number_outlined, color: QueueDisplayColors.primary, size: 30),
@@ -200,11 +192,7 @@ class QueueHistorySection extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: QueueDisplayColors.border),
-            ),
+            decoration: QueueDisplayColors.cardDecoration,
             child: const Text(
               'Belum ada riwayat antrean.',
               textAlign: TextAlign.center,
@@ -213,11 +201,7 @@ class QueueHistorySection extends StatelessWidget {
           )
         else
           Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: QueueDisplayColors.border),
-            ),
+            decoration: QueueDisplayColors.cardDecoration,
             child: Column(
               children: List.generate(history.length, (index) {
                 final order = history[index];
@@ -330,11 +314,7 @@ class QueueEmptyCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 28, 18, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: QueueDisplayColors.border),
-      ),
+      decoration: QueueDisplayColors.cardDecoration,
       child: Column(
         children: [
           const Icon(Icons.hourglass_empty_outlined, size: 42, color: QueueDisplayColors.hint),
@@ -373,6 +353,104 @@ class QueueEmptyCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class QueueListBody extends StatelessWidget {
+  const QueueListBody({
+    super.key,
+    this.activeQueue,
+    required this.currentServing,
+    required this.totalWaiting,
+    required this.history,
+    this.onEmptyAction,
+    this.onPrimaryAction,
+    this.primaryActionLabel = 'QR Pengambilan',
+    this.isPrimaryActionLoading = false,
+    this.onRefresh,
+  });
+
+  final QueueModel? activeQueue;
+  final String currentServing;
+  final int totalWaiting;
+  final List<OrderModel> history;
+  final VoidCallback? onEmptyAction;
+  final VoidCallback? onPrimaryAction;
+  final String primaryActionLabel;
+  final bool isPrimaryActionLoading;
+  final Future<void> Function()? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (activeQueue != null) ...[
+            _ActiveQueueCard(
+              queue: activeQueue!,
+              currentServing: currentServing,
+              totalWaiting: totalWaiting,
+              onPrimaryAction: onPrimaryAction,
+              primaryActionLabel: primaryActionLabel,
+              isPrimaryActionLoading: isPrimaryActionLoading,
+            ),
+          ] else
+            QueueEmptyCard(onAction: onEmptyAction ?? () {}),
+          const SizedBox(height: 14),
+          QueueHistorySection(history: history),
+        ],
+      ),
+    );
+
+    if (onRefresh == null) return content;
+
+    return RefreshIndicator(
+      color: QueueDisplayColors.primary,
+      onRefresh: onRefresh!,
+      child: content,
+    );
+  }
+}
+
+class _ActiveQueueCard extends StatelessWidget {
+  const _ActiveQueueCard({
+    required this.queue,
+    required this.currentServing,
+    required this.totalWaiting,
+    this.onPrimaryAction,
+    this.primaryActionLabel = 'QR Pengambilan',
+    this.isPrimaryActionLoading = false,
+  });
+
+  final QueueModel queue;
+  final String currentServing;
+  final int totalWaiting;
+  final VoidCallback? onPrimaryAction;
+  final String primaryActionLabel;
+  final bool isPrimaryActionLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = QueueDisplayUtils.remainingPeople(
+      userQueueNumber: queue.queueNumber,
+      currentServing: currentServing,
+      totalWaiting: totalWaiting,
+    );
+    final progress = QueueDisplayUtils.queueProgress(remaining, queue.status);
+    final waitMinutes = queue.estimatedWaitMinutes ?? (remaining * 4).clamp(5, 60);
+
+    return QueueActiveCard(
+      queueNumber: queue.queueNumber,
+      remaining: remaining,
+      progress: progress,
+      estimateMinutes: waitMinutes,
+      onPrimaryAction: onPrimaryAction,
+      primaryActionLabel: primaryActionLabel,
+      isPrimaryActionLoading: isPrimaryActionLoading,
     );
   }
 }
@@ -434,8 +512,6 @@ class QueueStatusBody extends StatelessWidget {
             primaryActionLabel: primaryActionLabel,
             isPrimaryActionLoading: isPrimaryActionLoading,
           ),
-          const SizedBox(height: 14),
-          QueueCurrentServingCard(currentServing: currentServing),
           const SizedBox(height: 22),
           QueueHistorySection(history: history),
         ],

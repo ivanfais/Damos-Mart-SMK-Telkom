@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/queue/queue_cubit.dart';
 import '../../core/socket/socket_service.dart';
 import '../../core/utils/queue_display_utils.dart';
@@ -47,7 +49,10 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
     }
   }
 
-  Future<void> _loadHistory([List<QueueModel> passedQueues = const []]) async {
+  Future<void> _loadHistory(
+    List<QueueModel> passedQueues, [
+    String? userId,
+  ]) async {
     try {
       final orders = await _orderRepository.getMyOrders();
       if (!mounted) return;
@@ -55,6 +60,7 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
         () => _history = QueueDisplayUtils.historyOrdersFromList(
           orders,
           passedQueues: passedQueues,
+          userId: userId,
         ),
       );
     } catch (_) {}
@@ -66,12 +72,16 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
 
   Future<void> _refreshAll() async {
     if (!mounted) return;
-    await context.read<QueueCubit>().loadActiveQueues();
+
+    final authState = context.read<AuthBloc>().state;
+    final userId = authState is Authenticated ? authState.user.id : null;
+
+    await context.read<QueueCubit>().loadActiveQueues(userId: userId);
     if (!mounted) return;
 
     final state = context.read<QueueCubit>().state;
     final passedQueues = state is QueueActiveLoaded ? state.passedQueues : const <QueueModel>[];
-    await _loadHistory(passedQueues);
+    await _loadHistory(passedQueues, userId);
   }
 
   void _handleQueueSocketEvent(dynamic data) {
@@ -80,9 +90,14 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
 
   QueueModel? _primaryQueue(QueueActiveLoaded state) {
     for (final queue in state.activeQueues) {
-      if (queue.order?.isPreorder != true) return queue;
+      if (queue.order?.isPreorder == true) continue;
+      if (queue.status == QueueStatus.waiting ||
+          queue.status == QueueStatus.preparing ||
+          queue.status == QueueStatus.ready) {
+        return queue;
+      }
     }
-    return state.activeQueues.isNotEmpty ? state.activeQueues.first : null;
+    return null;
   }
 
   void _openPickupQr(QueueModel queue) {
@@ -97,81 +112,82 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
         children: [
           const SteadinessAppHeader(),
           Expanded(
-            child: BlocListener<QueueCubit, QueueState>(
+            child: BlocListener<AuthBloc, AuthState>(
+              listenWhen: (previous, current) {
+                if (current is Unauthenticated) return true;
+                if (current is! Authenticated) return false;
+                if (previous is! Authenticated) return true;
+                return previous.user.id != current.user.id;
+              },
+              listener: (context, authState) {
+                setState(() => _history = []);
+                if (authState is Authenticated) {
+                  _refreshAll();
+                }
+              },
+              child: BlocListener<QueueCubit, QueueState>(
               listenWhen: (previous, current) => current is QueueActiveLoaded,
               listener: (context, queueState) {
                 if (queueState is QueueActiveLoaded) {
-                  _loadHistory(queueState.passedQueues);
+                  final authState = context.read<AuthBloc>().state;
+                  final userId = authState is Authenticated ? authState.user.id : null;
+                  _loadHistory(queueState.passedQueues, userId);
                 }
               },
               child: BlocBuilder<QueueCubit, QueueState>(
-              builder: (context, queueState) {
-                if (queueState is QueueLoading) {
-                  return const SingleChildScrollView(
-                    padding: EdgeInsets.all(16),
-                    child: ProductGridShimmer(itemCount: 2),
-                  );
-                }
+                builder: (context, queueState) {
+                  if (queueState is QueueLoading) {
+                    return const SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: ProductGridShimmer(itemCount: 2),
+                    );
+                  }
 
-                if (queueState is QueueError) {
-                  return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 0.6,
-                      child: ErrorState(
-                        message: queueState.message,
-                        onRetry: () => context.read<QueueCubit>().loadActiveQueues(),
-                      ),
-                    ),
-                  );
-                }
-
-                if (queueState is! QueueActiveLoaded) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      context.read<QueueCubit>().loadActiveQueues();
-                    }
-                  });
-                  return const Center(
-                    child: CircularProgressIndicator(color: QueueDisplayColors.primary),
-                  );
-                }
-
-                final primaryQueue = _primaryQueue(queueState);
-
-                if (primaryQueue == null) {
-                  return RefreshIndicator(
-                    color: QueueDisplayColors.primary,
-                    onRefresh: _onRefresh,
-                    child: SingleChildScrollView(
+                  if (queueState is QueueError) {
+                    return SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          QueueEmptyCard(onAction: () => context.go('/catalog')),
-                          const SizedBox(height: 14),
-                          QueueCurrentServingCard(currentServing: queueState.currentServing),
-                          const SizedBox(height: 22),
-                          QueueHistorySection(history: _history),
-                        ],
+                      child: SizedBox(
+                        height: MediaQuery.sizeOf(context).height * 0.6,
+                        child: ErrorState(
+                          message: queueState.message,
+                          onRetry: () {
+                          final authState = context.read<AuthBloc>().state;
+                          final userId = authState is Authenticated ? authState.user.id : null;
+                          context.read<QueueCubit>().loadActiveQueues(userId: userId);
+                        },
+                        ),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                return QueueStatusBody(
-                  queueNumber: primaryQueue.queueNumber,
-                  currentServing: queueState.currentServing,
-                  totalWaiting: queueState.totalWaiting,
-                  status: primaryQueue.status,
-                  history: _history,
-                  estimateMinutes: primaryQueue.estimatedWaitMinutes,
-                  primaryActionLabel: 'QR Pengambilan',
-                  onPrimaryAction: () => _openPickupQr(primaryQueue),
-                  onRefresh: _onRefresh,
-                );
-              },
+                  if (queueState is! QueueActiveLoaded) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        final authState = context.read<AuthBloc>().state;
+                        final userId = authState is Authenticated ? authState.user.id : null;
+                        context.read<QueueCubit>().loadActiveQueues(userId: userId);
+                      }
+                    });
+                    return const Center(
+                      child: CircularProgressIndicator(color: QueueDisplayColors.primary),
+                    );
+                  }
+
+                  final primaryQueue = _primaryQueue(queueState);
+
+                  return QueueListBody(
+                    activeQueue: primaryQueue,
+                    currentServing: queueState.currentServing,
+                    totalWaiting: queueState.totalWaiting,
+                    history: _history,
+                    onEmptyAction: () => context.go('/catalog'),
+                    onPrimaryAction:
+                        primaryQueue != null ? () => _openPickupQr(primaryQueue) : null,
+                    primaryActionLabel: 'QR Pengambilan',
+                    onRefresh: _onRefresh,
+                  );
+                },
+              ),
             ),
             ),
           ),

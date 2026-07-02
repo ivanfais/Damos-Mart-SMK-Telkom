@@ -46,7 +46,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadFeaturedProducts();
     context.read<CooperativeCubit>().loadCurrentStatus();
-    context.read<QueueCubit>().loadActiveQueues();
+    _loadQueues();
+  }
+
+  void _loadQueues() {
+    final authState = context.read<AuthBloc>().state;
+    final userId = authState is Authenticated ? authState.user.id : null;
+    context.read<QueueCubit>().loadActiveQueues(userId: userId);
   }
 
   Future<void> _loadFeaturedProducts() async {
@@ -71,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _onRefresh() async {
     setState(() => _isLoadingFeatured = true);
-    context.read<QueueCubit>().loadActiveQueues();
+    _loadQueues();
     context.read<CooperativeCubit>().loadCurrentStatus();
     await _loadFeaturedProducts();
   }
@@ -301,13 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () {
-                    if (queue != null) {
-                      context.push('/queue/${queue.id}');
-                    } else {
-                      context.go('/queue');
-                    }
-                  },
+                  onTap: () => context.go('/queue'),
                   child: const Text(
                     'Lihat Detail',
                     style: TextStyle(

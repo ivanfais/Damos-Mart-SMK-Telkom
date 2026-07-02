@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../blocs/queue/queue_cubit.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimensions.dart';
@@ -30,8 +32,10 @@ class DamosBottomNav extends StatelessWidget {
         break;
       case 2:
         final queueCubit = context.read<QueueCubit>();
+        final authState = context.read<AuthBloc>().state;
+        final userId = authState is Authenticated ? authState.user.id : null;
         context.go('/queue');
-        queueCubit.refreshQueueList();
+        queueCubit.refreshQueueList(userId: userId);
         break;
       case 3:
         context.go('/profile');

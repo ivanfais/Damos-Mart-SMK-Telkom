@@ -12,10 +12,28 @@ class QueueDisplayColors {
   static const Color border = Color(0xFFE0E0E0);
   static const Color bg = Color(0xFFF5F5F5);
   static const Color cardBg = Color(0xFFF3F4F6);
+
+  static BoxDecoration cardDecoration = BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: border),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.04),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
+    ],
+  );
 }
 
 class QueueDisplayUtils {
   QueueDisplayUtils._();
+
+  static bool hasCurrentServing(String currentServing) {
+    final trimmed = currentServing.trim();
+    return trimmed.isNotEmpty && trimmed != 'N/A' && trimmed != '-';
+  }
 
   static int? queueSequence(String number) {
     final match = RegExp(r'(\d+)$').firstMatch(number.trim());
@@ -113,6 +131,7 @@ class QueueDisplayUtils {
   static List<OrderModel> historyOrdersFromList(
     List<OrderModel> orders, {
     List<QueueModel> passedQueues = const [],
+    String? userId,
   }) {
     final history = orders.where((order) {
       if (order.queueNumber == null || order.queueNumber!.isEmpty) return false;
@@ -131,6 +150,7 @@ class QueueDisplayUtils {
 
     final seenIds = history.map((order) => order.id).toSet();
     for (final queue in passedQueues) {
+      if (userId != null && queue.userId != userId) continue;
       final order = queue.order;
       if (order == null || seenIds.contains(order.id)) continue;
       if (order.queueNumber == null || order.queueNumber!.isEmpty) continue;

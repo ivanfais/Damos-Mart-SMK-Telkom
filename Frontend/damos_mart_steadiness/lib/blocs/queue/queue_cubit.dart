@@ -56,16 +56,30 @@ class QueueCubit extends Cubit<QueueState> {
   final QueueRepository _repository;
   QueueActiveLoaded? _cachedActiveQueues;
 
+  String? _currentUserId;
+
   QueueCubit({QueueRepository? repository})
       : _repository = repository ?? QueueRepository(),
         super(QueueInitial());
 
+  void reset() {
+    _currentUserId = null;
+    _cachedActiveQueues = null;
+    emit(QueueInitial());
+  }
+
+  List<QueueModel> _queuesForUser(List<QueueModel> queues) {
+    if (_currentUserId == null) return queues;
+    return queues.where((queue) => queue.userId == _currentUserId).toList();
+  }
+
   QueueActiveLoaded _buildActiveLoaded(List<QueueModel> queues, Map<String, dynamic> stats) {
+    final userQueues = _queuesForUser(queues);
     final currentServing = stats['currentServing']?.toString() ?? 'N/A';
     final activeQueues = <QueueModel>[];
     final passedQueues = <QueueModel>[];
 
-    for (final queue in queues) {
+    for (final queue in userQueues) {
       if (QueueDisplayUtils.shouldShowInActive(
         queue: queue,
         currentServing: currentServing,
@@ -84,7 +98,10 @@ class QueueCubit extends Cubit<QueueState> {
     );
   }
 
-  Future<void> loadActiveQueues() async {
+  Future<void> loadActiveQueues({String? userId}) async {
+    if (userId != null) {
+      _currentUserId = userId;
+    }
     emit(QueueLoading());
     try {
       final queues = await _repository.getActiveQueues();
@@ -110,6 +127,10 @@ class QueueCubit extends Cubit<QueueState> {
   Future<void> loadQueueDetail(String queueId) async {
     try {
       final queue = await _repository.getQueueDetails(queueId);
+      if (_currentUserId != null && queue.userId != _currentUserId) {
+        emit(const QueueError('Antrean tidak ditemukan.'));
+        return;
+      }
       emit(QueueDetailLoaded(queue));
     } catch (e) {
       emit(QueueError(e.toString()));
@@ -131,8 +152,8 @@ class QueueCubit extends Cubit<QueueState> {
   }
 
   /// Always reloads and emits list state for the Antrean tab.
-  Future<void> refreshQueueList() async {
-    await loadActiveQueues();
+  Future<void> refreshQueueList({String? userId}) async {
+    await loadActiveQueues(userId: userId);
   }
   
   // Custom update trigger (e.g. from WebSockets without full loading state)

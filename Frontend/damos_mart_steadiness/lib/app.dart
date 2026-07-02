@@ -175,10 +175,12 @@ class _DamosMartAppState extends State<DamosMartApp> {
             PushNotificationService.instance.ensurePermission();
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
+            context.read<QueueCubit>().loadActiveQueues(userId: state.user.id);
           } else if (state is Unauthenticated) {
             SocketService.instance.disconnect();
             _socketListenersRegistered = false;
             NotificationBanner.hide();
+            context.read<QueueCubit>().reset();
           }
         },
         child: MaterialApp.router(

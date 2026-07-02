@@ -145,13 +145,15 @@ class DamosHomeProductCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      hasStock ? 'Tersedia' : 'Habis',
+                      product.isPreorder ? 'Pre-Order' : hasStock ? 'Tersedia' : 'Habis',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: hasStock
+                        color: product.isPreorder
                             ? DamosDominanceColors.primary
-                            : DamosDominanceColors.error,
+                            : hasStock
+                                ? DamosDominanceColors.primary
+                                : DamosDominanceColors.error,
                       ),
                     ),
                   ],

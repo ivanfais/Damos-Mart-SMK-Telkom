@@ -339,13 +339,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
               const Spacer(),
               _statusTag(
-                label: isOutOfStock ? 'Habis' : 'Tersedia',
-                bg: isOutOfStock
-                    ? const Color(0xFFFFEBEE)
-                    : const Color(0xFFE8F5E9),
-                fg: isOutOfStock
-                    ? DamosDominanceColors.error
-                    : DamosDominanceColors.primary,
+                label: product.isPreorder ? 'Pre-Order' : isOutOfStock ? 'Habis' : 'Tersedia',
+                bg: product.isPreorder
+                    ? const Color(0xFFE8F5E9)
+                    : isOutOfStock
+                        ? const Color(0xFFFFEBEE)
+                        : const Color(0xFFE8F5E9),
+                fg: product.isPreorder
+                    ? DamosDominanceColors.primary
+                    : isOutOfStock
+                        ? DamosDominanceColors.error
+                        : DamosDominanceColors.primary,
               ),
             ],
           ),
@@ -518,10 +522,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       product,
                       ProductPurchaseAction.buyNow,
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
-                        'Beli Sekarang',
-                        style: TextStyle(
+                        product.isPreorder ? 'Pre-Order Sekarang' : 'Beli Sekarang',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: DamosDominanceColors.textOnPrimary,

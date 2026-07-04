@@ -62,12 +62,12 @@ class _DamosMartAppState extends State<DamosMartApp> {
         queueNumber: queueNumber,
         isReady: false,
       );
-      _refreshQueuesAfterSocketEvent();
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
     });
 
     SocketService.instance.onQueueUpdated((data) {
       _handleQueueCompleted(data);
-      _refreshQueuesAfterSocketEvent();
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
     });
 
     SocketService.instance.onQueueReady((data) {
@@ -79,15 +79,23 @@ class _DamosMartAppState extends State<DamosMartApp> {
         queueNumber: queueNumber,
         isReady: true,
       );
-      _refreshQueuesAfterSocketEvent();
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
+    });
+
+    SocketService.instance.onOrderStatusUpdated((data) {
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
     });
   }
 
-  void _refreshQueuesAfterSocketEvent() {
+  void _refreshRealtimeData({String? queueId}) {
     final context = AppRouter.rootNavigatorKey.currentContext;
-    if (context != null) {
-      context.read<QueueCubit>().updateActiveQueuesSilently();
+    if (context == null) return;
+
+    context.read<QueueCubit>().updateActiveQueuesSilently();
+    if (queueId != null && queueId.isNotEmpty) {
+      context.read<QueueCubit>().updateQueueDetailSilently(queueId);
     }
+    context.read<OrderCubit>().refreshMyOrdersSilently();
   }
 
   void _handleQueueCompleted(dynamic data) {
@@ -100,7 +108,6 @@ class _DamosMartAppState extends State<DamosMartApp> {
       if (context == null) return;
 
       context.read<OrderCubit>().loadMyOrders();
-
       final location = GoRouterState.of(context).uri.toString();
       if (location.contains('/queue/$queueId/complete')) return;
 

@@ -111,6 +111,17 @@ class OrderCubit extends Cubit<OrderState> {
     }
   }
 
+  /// Refresh order history without loading shimmer (e.g. from WebSocket).
+  Future<void> refreshMyOrdersSilently() async {
+    if (state is! OrderHistoryLoaded) return;
+    try {
+      final orders = await _repository.getMyOrders();
+      emit(OrderHistoryLoaded(orders));
+    } catch (_) {
+      // Keep current list visible if refresh fails.
+    }
+  }
+
   Future<void> loadOrderDetail(String orderId) async {
     emit(OrderLoading());
     try {

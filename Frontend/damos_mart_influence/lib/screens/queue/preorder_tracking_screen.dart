@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/queue/queue_cubit.dart';
+import '../../core/socket/socket_service.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../data/models/order_model.dart';
 import '../../config/api_config.dart';
@@ -42,6 +43,27 @@ class _PreorderTrackingScreenState extends State<PreorderTrackingScreen> {
   void initState() {
     super.initState();
     context.read<QueueCubit>().loadQueueDetail(widget.queueId);
+
+    SocketService.instance.onQueueUpdated(_handleSocketUpdate);
+    SocketService.instance.onQueueCalled(_handleSocketUpdate);
+    SocketService.instance.onQueueReady(_handleSocketUpdate);
+    SocketService.instance.onOrderStatusUpdated(_handleSocketUpdate);
+  }
+
+  @override
+  void dispose() {
+    SocketService.instance.offQueueUpdated(_handleSocketUpdate);
+    SocketService.instance.offQueueCalled(_handleSocketUpdate);
+    SocketService.instance.offQueueReady(_handleSocketUpdate);
+    SocketService.instance.offOrderStatusUpdated(_handleSocketUpdate);
+    super.dispose();
+  }
+
+  void _handleSocketUpdate(dynamic data) {
+    if (!mounted) return;
+    final queueId = data?['queueId']?.toString();
+    if (queueId != null && queueId != widget.queueId) return;
+    context.read<QueueCubit>().updateQueueDetailSilently(widget.queueId);
   }
 
   int _activeStepIndex(OrderStatus status, PaymentStatus paymentStatus) {

@@ -219,9 +219,11 @@ class OrderModel extends Equatable {
       total: double.tryParse(json['total'].toString()) ?? 0.0,
       paymentMethod: parsedMethod,
       paymentStatus: parsedPayStatus,
-      paidAt: json['paidAt'] != null ? DateTime.parse(json['paidAt'] as String) : null,
+      paidAt: json['paidAt'] != null
+          ? DateTime.parse(json['paidAt'] as String).toLocal()
+          : null,
       notes: json['notes'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       orderItems: items,
       queueId: qId,
       queueNumber: qNumber,

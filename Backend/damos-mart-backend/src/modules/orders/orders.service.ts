@@ -3,7 +3,7 @@ import { AppError } from '../../middlewares/error.middleware';
 import { getPaginationMetadata } from '../../utils/pagination';
 import { generateNextOrderNumber } from '../../utils/order-number';
 import { generateNextQueueNumber } from '../../utils/queue-number';
-import { emitNewOrderAdmin, emitQueueUpdate } from '../../socket';
+import { emitNewOrderAdmin, emitQueueUpdate, emitOrderStatusUpdate } from '../../socket';
 
 export class OrdersService {
   /**
@@ -551,28 +551,62 @@ export class OrdersService {
       return tx.order.update({
         where: { id: orderId },
         data: { status },
-        include: {
-          user: {
-            select: {
-              id: true,
-            },
-          },
+        select: {
+          id: true,
+          userId: true,
+          orderNumber: true,
+          status: true,
         },
       });
     });
+
+    const statusLabel = orderStatusLabel(status);
+    const title = 'Status Pesanan Diperbarui';
+    const body = `Status pesanan ${updated.orderNumber} diubah menjadi ${statusLabel}.`;
 
     // Create notification entry for order status change
     await prisma.notification.create({
       data: {
         userId: updated.userId,
-        title: 'Status Pesanan Diperbarui',
-        body: `Status pesanan Anda ${updated.orderNumber} diubah menjadi ${status}.`,
+        title,
+        body,
         type: 'ORDER_STATUS',
         referenceId: updated.id,
       },
     });
 
+    emitOrderStatusUpdate(updated.userId, {
+      orderId: updated.id,
+      orderNumber: updated.orderNumber,
+      status: updated.status,
+      statusLabel,
+      title,
+      body,
+    });
+
     return updated;
   }
 }
+
+function orderStatusLabel(status: string): string {
+  switch (status) {
+    case 'PENDING':
+      return 'Menunggu Pembayaran';
+    case 'PAID':
+      return 'Dibayar';
+    case 'PREPARING':
+      return 'Sedang Disiapkan';
+    case 'IN_PRODUCTION':
+      return 'Dalam Produksi';
+    case 'READY':
+      return 'Siap Diambil';
+    case 'COMPLETED':
+      return 'Selesai';
+    case 'CANCELLED':
+      return 'Dibatalkan';
+    default:
+      return status;
+  }
+}
+
 export default OrdersService;

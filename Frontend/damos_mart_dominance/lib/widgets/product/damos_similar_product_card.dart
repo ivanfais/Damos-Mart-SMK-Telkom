@@ -37,31 +37,60 @@ class DamosSimilarProductCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: ColoredBox(
-                    color: const Color(0xFFF3F4F6),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 90,
-                      child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                              fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) => const Icon(
-                                Icons.shopping_bag_outlined,
-                                color: DamosDominanceColors.textHint,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 90,
+                    child: Stack(
+                      children: [
+                        ColoredBox(
+                          color: const Color(0xFFF3F4F6),
+                          child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: 90,
+                                  errorWidget: (_, __, ___) => const Center(
+                                    child: Icon(
+                                      Icons.shopping_bag_outlined,
+                                      color: DamosDominanceColors.textHint,
+                                    ),
+                                  ),
+                                )
+                              : const Center(
+                                  child: Icon(
+                                    Icons.shopping_bag_outlined,
+                                    color: DamosDominanceColors.textHint,
+                                  ),
+                                ),
+                        ),
+                        if (!product.isPreorder && product.stock <= 0)
+                          Positioned.fill(
+                            child: Container(
+                              color: Colors.white.withOpacity(0.65),
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: DamosDominanceColors.error,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'Habis',
+                                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
                               ),
-                            )
-                          : const Icon(
-                              Icons.shopping_bag_outlined,
-                              color: DamosDominanceColors.textHint,
                             ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   product.name,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11,

@@ -129,6 +129,23 @@ class AuthRepository {
     return response.data['message'] as String? ?? 'Password berhasil diperbarui.';
   }
 
+  Future<String> resetPasswordWithEmail({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final response = await _client.post(
+      ApiConfig.resetPassword,
+      data: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      },
+    );
+
+    return response.data['message'] as String? ?? 'Password berhasil diperbarui.';
+  }
+
   Future<String> changePassword({
     required String currentPassword,
     required String newPassword,

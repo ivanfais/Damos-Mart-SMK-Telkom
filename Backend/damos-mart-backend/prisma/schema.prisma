@@ -356,6 +356,7 @@ enum NotificationType {
   ORDER_STATUS
   PROMO
   CHAT
+  COMPLAINT
 }
 
 // ==========================================

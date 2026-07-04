@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -8,11 +10,15 @@ import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../core/utils/preorder_date_utils.dart';
 import '../../data/models/order_model.dart';
+import '../../data/models/complaint_model.dart';
 import '../../data/repositories/product_repository.dart';
+import '../../data/repositories/complaint_repository.dart';
+import '../../core/notifications/complaint_realtime_service.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
 import '../../widgets/common/error_state.dart';
 import '../../widgets/order/damos_pickup_qr_card.dart';
+import '../../widgets/complaints/complaint_help_card.dart';
 
 class _Style {
   static const double cardRadius = 8;
@@ -43,6 +49,10 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   String? _preorderEstimate;
+  final _complaintRepository = ComplaintRepository();
+  List<ComplaintModel> _orderComplaints = [];
+  bool _complaintsLoaded = false;
+  StreamSubscription<Map<String, dynamic>>? _complaintRealtimeSub;
 
   @override
   void initState() {
@@ -50,8 +60,55 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<OrderCubit>().loadOrderDetail(widget.orderId);
+        _loadComplaints();
       }
     });
+    _complaintRealtimeSub =
+        ComplaintRealtimeService.instance.updates.listen((data) {
+      final orderId = data['orderId']?.toString();
+      if (orderId != null && orderId != widget.orderId) return;
+      _loadComplaints();
+    });
+  }
+
+  @override
+  void dispose() {
+    _complaintRealtimeSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadComplaints() async {
+    try {
+      final complaints =
+          await _complaintRepository.getComplaintsForOrder(widget.orderId);
+      if (!mounted) return;
+      setState(() {
+        _orderComplaints = complaints;
+        _complaintsLoaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _complaintsLoaded = true);
+    }
+  }
+
+  void _openComplaintFlow() {
+    context.push('/orders/${widget.orderId}/complaints/select');
+  }
+
+  void _openComplaintDetail(ComplaintModel complaint) {
+    context.push('/complaints/${complaint.id}');
+  }
+
+  ComplaintModel? get _latestComplaint {
+    if (_orderComplaints.isEmpty) return null;
+    return _orderComplaints.first;
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    _loadComplaints();
   }
 
   _DetailCategory _category(OrderModel order) {
@@ -510,6 +567,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       ],
                       const SizedBox(height: 12),
                       _buildProductsCard(order),
+                      if (category == _DetailCategory.completed) ...[
+                        const SizedBox(height: 12),
+                        if (_complaintsLoaded && _latestComplaint != null) ...[
+                          ComplaintStatusSummaryCard(
+                            complaint: _latestComplaint!,
+                            onTap: () => _openComplaintDetail(_latestComplaint!),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (_complaintsLoaded)
+                          ComplaintHelpCard(
+                            onComplaintPressed: _openComplaintFlow,
+                          ),
+                      ],
                       const SizedBox(height: 12),
                       _buildPaymentCard(order),
                     ],

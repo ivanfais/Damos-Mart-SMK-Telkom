@@ -11,7 +11,9 @@ import 'damos_page_transitions.dart';
 import '../screens/disc/disc_picker_screen.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/register_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
+import '../screens/auth/forgot_password_verify_screen.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/catalog/catalog_screen.dart';
@@ -28,10 +30,13 @@ import '../screens/info/coop_info_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/profile/change_password_screen.dart';
-import '../screens/profile/complaint_form_screen.dart';
-import '../screens/profile/complaint_submitted_screen.dart';
 import '../screens/profile/favorites_screen.dart';
 import '../screens/profile/disc_theme_settings_screen.dart';
+import '../screens/complaints/complaint_form_screen.dart';
+import '../screens/complaints/complaint_submitted_screen.dart';
+import '../screens/complaints/complaint_product_selection_screen.dart';
+import '../screens/complaints/complaint_detail_screen.dart';
+import '../data/models/complaint_category_option.dart';
 import '../screens/history/purchase_history_screen.dart';
 import '../screens/order/order_detail_screen.dart';
 import '../screens/chat/chat_screen.dart';
@@ -72,7 +77,9 @@ class AppRouter {
         print('DEBUG ROUTER: isLoggedIn=$isLoggedIn');
 
         final isAuthPath = path == '/login' ||
+            path == '/register' ||
             path == '/forgot-password' ||
+            path == '/forgot-password/verify' ||
             path == '/reset-password';
 
         if (isSplash || isDiscPicker) {
@@ -114,13 +121,26 @@ class AppRouter {
             state,
             LoginScreen(
               prefillEmail: extra?['email'] as String?,
+              registered: extra?['registered'] as bool? ?? false,
             ),
           );
         },
       ),
       GoRoute(
+        path: '/register',
+        pageBuilder: (context, state) => _page(state, const RegisterScreen()),
+      ),
+      GoRoute(
         path: '/forgot-password',
         pageBuilder: (context, state) => _page(state, const ForgotPasswordScreen()),
+      ),
+      GoRoute(
+        path: '/forgot-password/verify',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final email = extra?['email'] as String? ?? '';
+          return _page(state, ForgotPasswordVerifyScreen(email: email));
+        },
       ),
       GoRoute(
         path: '/reset-password',
@@ -202,25 +222,80 @@ class AppRouter {
       ),
 
       GoRoute(
-        path: '/complaints',
-        parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => _page(state, const ComplaintFormScreen()),
+        path: '/orders/:id',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return _page(state, OrderDetailScreen(orderId: id));
+        },
         routes: [
           GoRoute(
-            path: 'success',
+            path: 'complaints/select',
             parentNavigatorKey: rootNavigatorKey,
             pageBuilder: (context, state) {
-              final ticket = state.extra as String? ??
-                  state.uri.queryParameters['ticket'] ??
-                  '#TKT-0000';
-              final ticketNumber = ticket.startsWith('#') ? ticket : '#$ticket';
+              final orderId = state.pathParameters['id'] ?? '';
               return _page(
                 state,
-                ComplaintSubmittedScreen(ticketNumber: ticketNumber),
+                ComplaintProductSelectionScreen(orderId: orderId),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'complaints/form',
+            parentNavigatorKey: rootNavigatorKey,
+            pageBuilder: (context, state) {
+              final orderId = state.pathParameters['id'] ?? '';
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              OrderItemModel? selectedProduct;
+              if (extra['selectedProduct'] is Map) {
+                selectedProduct = OrderItemModel.fromJson(
+                  Map<String, dynamic>.from(extra['selectedProduct'] as Map),
+                );
+              }
+              final serviceIssue = ComplaintServiceIssueOption.byId(
+                extra['serviceIssueId'] as String?,
+              );
+              return _page(
+                state,
+                ComplaintFormScreen(
+                  orderId: orderId,
+                  orderNumber: extra['orderNumber'] as String? ?? '',
+                  selectedProduct: selectedProduct,
+                  serviceIssue: serviceIssue,
+                ),
               );
             },
           ),
         ],
+      ),
+
+      GoRoute(
+        path: '/complaints/success',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final ticket = extra['ticketNumber'] as String? ??
+              state.uri.queryParameters['ticket'] ??
+              'CMP-0000-000';
+          final complaintId = extra['complaintId'] as String? ?? '';
+          final orderId = extra['orderId'] as String? ?? '';
+          return _page(
+            state,
+            ComplaintSubmittedScreen(
+              ticketNumber: ticket,
+              complaintId: complaintId,
+              orderId: orderId,
+            ),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/complaints/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return _page(state, ComplaintDetailScreen(complaintId: id));
+        },
       ),
 
       // Other child screens
@@ -272,13 +347,6 @@ class AppRouter {
         redirect: (context, state) {
           final orderId = state.pathParameters['orderId'] ?? '';
           return '/orders/$orderId';
-        },
-      ),
-      GoRoute(
-        path: '/orders/:id',
-        pageBuilder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          return _page(state, OrderDetailScreen(orderId: id));
         },
       ),
       GoRoute(

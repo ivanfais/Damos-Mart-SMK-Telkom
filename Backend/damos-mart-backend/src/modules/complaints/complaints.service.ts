@@ -1,5 +1,6 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middlewares/error.middleware';
+import { emitComplaintUpdate } from '../../socket';
 
 type ComplaintCategory = 'PRODUCT' | 'SERVICE' | 'ORDER' | 'QUEUE' | 'OTHER';
 type ComplaintStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
@@ -18,6 +19,15 @@ const orderSelect = {
   total: true,
   status: true,
 } as const;
+
+const statusLabels: Record<ComplaintStatus, string> = {
+  OPEN: 'Komplain Dikirim',
+  IN_PROGRESS: 'Sedang Ditinjau',
+  RESOLVED: 'Selesai',
+  REJECTED: 'Ditolak',
+};
+
+type ComplaintWithRelations = Awaited<ReturnType<ComplaintsService['getById']>>;
 
 export class ComplaintsService {
   /**
@@ -158,6 +168,11 @@ export class ComplaintsService {
       where: { id },
       data: patch,
       include: { user: { select: userSelect }, order: { select: orderSelect } },
+    }).then(async (updated) => {
+      if (data.status) {
+        await this.notifyStudentUpdate(updated, 'status');
+      }
+      return updated;
     });
   }
 
@@ -184,6 +199,49 @@ export class ComplaintsService {
       where: { id },
       data: patch,
       include: { user: { select: userSelect }, order: { select: orderSelect } },
+    }).then(async (updated) => {
+      await this.notifyStudentUpdate(updated, 'response');
+      return updated;
+    });
+  }
+
+  /**
+   * Persists in-app notification + pushes realtime update to the student app.
+   */
+  private async notifyStudentUpdate(
+    complaint: ComplaintWithRelations,
+    kind: 'status' | 'response',
+  ) {
+    if (!complaint.userId) return;
+
+    const statusLabel = statusLabels[complaint.status as ComplaintStatus] ?? complaint.status;
+    const title = kind === 'response' ? 'Balasan Komplain' : 'Status Komplain Diperbarui';
+
+    let body = `Komplain "${complaint.subject}" kini berstatus ${statusLabel}.`;
+    if (complaint.adminResponse?.trim()) {
+      body = `Admin membalas komplain Anda: ${complaint.adminResponse.trim()}`;
+    }
+
+    await prisma.notification.create({
+      data: {
+        userId: complaint.userId,
+        title,
+        body,
+        type: 'COMPLAINT',
+        referenceId: complaint.id,
+      },
+    });
+
+    emitComplaintUpdate(complaint.userId, {
+      complaintId: complaint.id,
+      orderId: complaint.orderId,
+      status: complaint.status,
+      subject: complaint.subject,
+      adminResponse: complaint.adminResponse,
+      respondedAt: complaint.respondedAt,
+      resolvedAt: complaint.resolvedAt,
+      title,
+      body,
     });
   }
 

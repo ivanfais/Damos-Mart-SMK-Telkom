@@ -46,6 +46,26 @@ export const initSocket = (server: HttpServer) => {
   });
 
   // ==========================================
+  // COMPLAINTS NAMESPACE
+  // ==========================================
+  const complaintsNamespace = io.of('/complaints');
+
+  complaintsNamespace.on('connection', (socket: Socket) => {
+    console.log(`🔌 Client connected to /complaints: ${socket.id}`);
+
+    socket.on('complaint:subscribe', (data: { userId: string }) => {
+      if (data && data.userId) {
+        socket.join(`user:${data.userId}`);
+        console.log(`📋 User ${data.userId} subscribed to complaint updates in socket ${socket.id}`);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`🔌 Client disconnected from /complaints: ${socket.id}`);
+    });
+  });
+
+  // ==========================================
   // CHAT NAMESPACE
   // ==========================================
   const chatNamespace = io.of('/chat');
@@ -145,5 +165,23 @@ export const emitChatRead = (roomId: string, data: any) => {
 export const emitNewOrderAdmin = (order: any) => {
   if (io) {
     io.emit('order:new', order);
+  }
+};
+
+/**
+ * Notifies a student that their complaint status or admin response changed.
+ */
+export const emitComplaintUpdate = (userId: string, data: any) => {
+  if (io) {
+    io.of('/complaints').to(`user:${userId}`).emit('complaint:updated', data);
+  }
+};
+
+/**
+ * Notifies a student when admin manually updates their order status.
+ */
+export const emitOrderStatusUpdate = (userId: string, data: any) => {
+  if (io) {
+    io.of('/queues').to(`user:${userId}`).emit('order:status_updated', data);
   }
 };

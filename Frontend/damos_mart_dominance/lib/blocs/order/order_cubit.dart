@@ -158,5 +158,31 @@ class OrderCubit extends Cubit<OrderState> {
       emit(OrderError(e.toString()));
     }
   }
+
+  /// Refreshes order history without disrupting detail view state.
+  Future<void> refreshMyOrdersSilently() async {
+    try {
+      final orders = await _repository.getMyOrders();
+      _cachedHistoryOrders = orders;
+      if (state is OrderHistoryLoaded) {
+        emit(OrderHistoryLoaded(orders));
+      }
+    } catch (_) {
+      // Ignore background refresh errors.
+    }
+  }
+
+  /// Refreshes a single order detail when that screen is active.
+  Future<void> refreshOrderDetailSilently(String orderId) async {
+    try {
+      final order = await _repository.getOrderDetails(orderId);
+      final current = state;
+      if (current is OrderDetailLoaded && current.order.id == orderId) {
+        emit(OrderDetailLoaded(order));
+      }
+    } catch (_) {
+      // Ignore background refresh errors.
+    }
+  }
 }
 

@@ -24,8 +24,9 @@ class NotificationModel extends Equatable {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    final rawType = (json['type'] ?? json['notification_type'])?.toString();
     NotificationType parsedType = NotificationType.promo;
-    switch (json['type']) {
+    switch (rawType) {
       case 'QUEUE_READY':
         parsedType = NotificationType.queueReady;
         break;
@@ -40,16 +41,39 @@ class NotificationModel extends Equatable {
         break;
     }
 
+    final createdAtRaw = json['createdAt'] ?? json['created_at'];
+    DateTime createdAt;
+    if (createdAtRaw is String) {
+      createdAt = DateTime.tryParse(createdAtRaw)?.toLocal() ?? DateTime.now();
+    } else if (createdAtRaw is DateTime) {
+      createdAt = createdAtRaw.toLocal();
+    } else {
+      createdAt = DateTime.now();
+    }
+
+    final title = _readString(json, const ['title', 'subject', 'heading']);
+    final body = _readString(json, const ['body', 'message', 'content', 'description']);
+
     return NotificationModel(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      title: json['title'] as String,
-      body: json['body'] as String,
+      id: json['id']?.toString() ?? '',
+      userId: (json['userId'] ?? json['user_id'])?.toString() ?? '',
+      title: title.isNotEmpty ? title : 'Notifikasi',
+      body: body,
       type: parsedType,
-      referenceId: json['referenceId'] as String?,
-      isRead: json['isRead'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      referenceId: (json['referenceId'] ?? json['reference_id'])?.toString(),
+      isRead: json['isRead'] == true || json['is_read'] == true,
+      createdAt: createdAt,
     );
+  }
+
+  static String _readString(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+    return '';
   }
 
   Map<String, dynamic> toJson() {

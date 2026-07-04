@@ -3,6 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/cart/cart_cubit.dart';
 import '../../blocs/order/order_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
+import '../../blocs/notification/notification_cubit.dart';
+import '../../blocs/queue/queue_cubit.dart';
 import '../../config/app_constants.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/order_model.dart';
@@ -313,6 +317,10 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
 
           if (state is OrderDetailLoaded && _isVerifying) {
             context.read<CartCubit>().loadCart();
+            final authState = context.read<AuthBloc>().state;
+            final userId = authState is Authenticated ? authState.user.id : null;
+            context.read<QueueCubit>().loadActiveQueues(userId: userId);
+            context.read<NotificationCubit>().loadNotifications();
             context.go('/checkout/ticket/${state.order.id}');
           }
 

@@ -461,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _buildQuickAction(Icons.grid_view, 'Katalog', () => context.go('/catalog')),
         const SizedBox(width: 10),
-        _buildQuickAction(Icons.hourglass_empty, 'Antrean', () => context.go('/queue')),
+        _buildQuickAction(Icons.history_outlined, 'Riwayat', () => context.go('/profile?view=history')),
         const SizedBox(width: 10),
         _buildQuickAction(Icons.checkroom_outlined, 'Seragam', () {
           context.read<ProductCubit>().searchProducts('seragam');

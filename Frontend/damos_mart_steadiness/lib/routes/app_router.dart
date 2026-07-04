@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +13,7 @@ import '../screens/disc/disc_picker_screen.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/catalog/product_detail_screen.dart';
@@ -30,9 +33,13 @@ import '../screens/queue/order_complete_screen.dart';
 import '../screens/info/coop_info_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
+import '../screens/profile/change_password_screen.dart';
+import '../screens/notifications/notifications_screen.dart';
 import '../screens/profile/disc_theme_settings_screen.dart';
-import '../screens/history/purchase_history_screen.dart';
-import '../screens/chat/chat_screen.dart';
+import '../screens/profile/complaint_screen.dart';
+import '../screens/profile/complaint_tracking_screen.dart';
+import '../screens/profile/usage_guide_screen.dart';
+import '../data/models/complaint_model.dart';
 import '../screens/review/review_screen.dart';
 
 // Shell Navigation
@@ -43,6 +50,10 @@ class AppRouter {
 
   static Page<void> _page(GoRouterState state, Widget child) {
     return DamosPageTransitions.page(state: state, child: child);
+  }
+
+  static Page<void> _shellPage(GoRouterState state, Widget child) {
+    return DamosPageTransitions.instantPage(state: state, child: child);
   }
 
   static final GoRouter router = GoRouter(
@@ -68,7 +79,9 @@ class AppRouter {
         final isLoggedIn = token != null && token.isNotEmpty;
         print('DEBUG ROUTER: isLoggedIn=$isLoggedIn');
 
-        final isAuthPath = path == '/login' || path == '/register';
+        final isAuthPath = path == '/login' ||
+            path == '/register' ||
+            path == '/forgot-password';
 
         if (isSplash || isDiscPicker) {
           print('DEBUG ROUTER: splash/disc-picker path, returning null');
@@ -118,6 +131,18 @@ class AppRouter {
         path: '/register',
         pageBuilder: (context, state) => _page(state, const RegisterScreen()),
       ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return _page(
+            state,
+            ForgotPasswordScreen(
+              prefillContact: extra?['contact'] as String?,
+            ),
+          );
+        },
+      ),
 
       // Shell Route for bottom navigation tabs
       ShellRoute(
@@ -127,23 +152,33 @@ class AppRouter {
         routes: [
           GoRoute(
             path: '/home',
-            pageBuilder: (context, state) => _page(state, const HomeScreen()),
+            pageBuilder: (context, state) => _shellPage(state, const HomeScreen()),
           ),
           GoRoute(
             path: '/catalog',
-            pageBuilder: (context, state) => _page(state, const CatalogScreen()),
+            pageBuilder: (context, state) => _shellPage(state, const CatalogScreen()),
           ),
           GoRoute(
             path: '/queue',
-            pageBuilder: (context, state) => _page(state, const QueueListScreen()),
+            pageBuilder: (context, state) => _shellPage(state, const QueueListScreen()),
           ),
           GoRoute(
             path: '/cart',
-            pageBuilder: (context, state) => _page(state, const CartScreen()),
+            pageBuilder: (context, state) => _shellPage(state, const CartScreen()),
           ),
           GoRoute(
             path: '/profile',
-            pageBuilder: (context, state) => _page(state, const ProfileScreen()),
+            pageBuilder: (context, state) => _shellPage(state, const ProfileScreen()),
+            routes: [
+              GoRoute(
+                path: 'usage-guide',
+                pageBuilder: (context, state) => _shellPage(state, const UsageGuideScreen()),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/notifications',
+            pageBuilder: (context, state) => _shellPage(state, const NotificationsScreen()),
           ),
         ],
       ),
@@ -166,7 +201,13 @@ class AppRouter {
         path: '/preorder/:id',
         pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return _page(state, PreorderScreen(productId: id));
+          return _page(
+            state,
+            BlocProvider(
+              create: (_) => ProductCubit()..loadProductDetail(id),
+              child: PreorderScreen(productId: id),
+            ),
+          );
         },
       ),
       GoRoute(
@@ -242,16 +283,50 @@ class AppRouter {
         pageBuilder: (context, state) => _page(state, const EditProfileScreen()),
       ),
       GoRoute(
+        path: '/profile/change-password',
+        pageBuilder: (context, state) => _page(state, const ChangePasswordScreen()),
+      ),
+      GoRoute(
         path: '/profile/disc-theme',
         pageBuilder: (context, state) => _page(state, const DiscThemeSettingsScreen()),
       ),
       GoRoute(
         path: '/profile/history',
-        pageBuilder: (context, state) => _page(state, const PurchaseHistoryScreen()),
+        redirect: (context, state) => '/profile?view=history',
+      ),
+      GoRoute(
+        path: '/orders/history',
+        redirect: (context, state) => '/profile?view=history',
       ),
       GoRoute(
         path: '/profile/chat',
-        pageBuilder: (context, state) => _page(state, const ChatScreen()),
+        pageBuilder: (context, state) => _page(state, const ComplaintScreen()),
+        routes: [
+          GoRoute(
+            path: 'complaints/:id/track',
+            parentNavigatorKey: rootNavigatorKey,
+            pageBuilder: (context, state) {
+              final id = state.pathParameters['id'] ?? '';
+              final extra = state.extra;
+              ComplaintModel? complaint;
+              Uint8List? photoBytes;
+
+              if (extra is Map) {
+                complaint = extra['complaint'] as ComplaintModel?;
+                photoBytes = extra['photoBytes'] as Uint8List?;
+              }
+
+              return _page(
+                state,
+                ComplaintTrackingScreen(
+                  complaintId: id,
+                  initialComplaint: complaint,
+                  photoBytes: photoBytes,
+                ),
+              );
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/review/:orderId/:productId',

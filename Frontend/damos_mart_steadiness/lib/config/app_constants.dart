@@ -21,6 +21,11 @@ class AppConstants {
   static const String imageEmptyOrder = 'assets/images/empty_order.png';
   static const String imageOrderSuccess = 'assets/images/order_success.png';
   static const String imageQrisDummy = 'assets/images/qris_dummy.png';
+  static const String imageUsageLogin = 'assets/images/login.png';
+  static const String imageUsagePickProduct = 'assets/images/pilih_produk.png';
+  static const String imageUsagePayment = 'assets/images/pembayaran.png';
+  static const String imageUsageQrCode = 'assets/images/Qr_code.png';
+  static const String imageUsageComplaint = 'assets/images/Komplain.png';
 
   static const String iconHome = 'assets/icons/ic_home.svg';
   static const String iconCatalog = 'assets/icons/ic_catalog.svg';

@@ -206,7 +206,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       body: BlocConsumer<OrderCubit, OrderState>(
         listener: (context, state) {
           if (state is OrderCreated) {
-            context.read<CartCubit>().loadCart();
+            final cartItemIds = widget.items.map((item) => item.id).toList();
+            context.read<CartCubit>().removeCheckedOutItems(cartItemIds);
             if (_redirectToQris) {
               setState(() => _redirectToQris = false);
               context.push('/checkout/qris/${state.order.id}', extra: state.order);

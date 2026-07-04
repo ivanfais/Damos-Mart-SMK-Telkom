@@ -150,7 +150,8 @@ export class ComplaintsService {
     if (data.priority) patch.priority = data.priority;
     if (data.status) {
       patch.status = data.status;
-      patch.resolvedAt = data.status === 'RESOLVED' ? new Date() : null;
+      patch.resolvedAt =
+        data.status === 'RESOLVED' || data.status === 'REJECTED' ? new Date() : null;
     }
 
     return prisma.complaint.update({
@@ -172,7 +173,8 @@ export class ComplaintsService {
     };
     if (data.status) {
       patch.status = data.status;
-      patch.resolvedAt = data.status === 'RESOLVED' ? new Date() : null;
+      patch.resolvedAt =
+        data.status === 'RESOLVED' || data.status === 'REJECTED' ? new Date() : null;
     } else {
       // Default: move an untouched complaint into IN_PROGRESS once replied.
       patch.status = 'IN_PROGRESS';

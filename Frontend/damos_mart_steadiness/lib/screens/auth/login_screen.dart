@@ -125,11 +125,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showForgotPassword() {
-    PopUpAlert.show(
-      context: context,
-      title: 'Lupa Kata Sandi?',
-      description:
-          'Silakan hubungi petugas koperasi atau admin IT sekolah untuk mereset kata sandi kamu.',
+    context.push(
+      '/forgot-password',
+      extra: {
+        'contact': _emailController.text.trim(),
+      },
     );
   }
 
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 16),
           AuthInputField(
             controller: _passwordController,
-            label: 'Kata Sandi',
+            hintText: 'Masukkan Kata Sandi',
             prefixIcon: Icons.lock_outline,
             isPassword: true,
             obscureText: _obscureLoginPassword,
@@ -218,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 16),
           AuthInputField(
             controller: _registerPasswordController,
-            label: 'Kata Sandi',
+            hintText: 'Masukkan Kata Sandi',
             prefixIcon: Icons.lock_outline,
             isPassword: true,
             obscureText: _obscureRegisterPassword,

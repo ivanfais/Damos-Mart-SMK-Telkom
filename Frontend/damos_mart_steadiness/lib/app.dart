@@ -12,7 +12,7 @@ import 'blocs/product/product_cubit.dart';
 import 'blocs/cart/cart_cubit.dart';
 import 'blocs/order/order_cubit.dart';
 import 'blocs/queue/queue_cubit.dart';
-import 'blocs/chat/chat_cubit.dart';
+import 'blocs/complaint/complaint_cubit.dart';
 import 'blocs/notification/notification_cubit.dart';
 import 'blocs/cooperative/cooperative_cubit.dart';
 import 'core/notifications/push_notification_service.dart';
@@ -63,11 +63,13 @@ class _DamosMartAppState extends State<DamosMartApp> {
         isReady: false,
       );
       _refreshQueuesAfterSocketEvent();
+      _refreshNotificationsAfterSocketEvent();
     });
 
     SocketService.instance.onQueueUpdated((data) {
       _handleQueueCompleted(data);
       _refreshQueuesAfterSocketEvent();
+      _refreshNotificationsAfterSocketEvent();
     });
 
     SocketService.instance.onQueueReady((data) {
@@ -80,7 +82,21 @@ class _DamosMartAppState extends State<DamosMartApp> {
         isReady: true,
       );
       _refreshQueuesAfterSocketEvent();
+      _refreshNotificationsAfterSocketEvent();
     });
+  }
+
+  void _refreshNotificationsAfterSocketEvent() {
+    final context = AppRouter.rootNavigatorKey.currentContext;
+    if (context == null) return;
+
+    final location = GoRouterState.of(context).uri.toString();
+    final cubit = context.read<NotificationCubit>();
+    if (location.startsWith('/notifications')) {
+      cubit.loadNotifications();
+    } else {
+      cubit.refreshSilently();
+    }
   }
 
   void _refreshQueuesAfterSocketEvent() {
@@ -159,8 +175,8 @@ class _DamosMartAppState extends State<DamosMartApp> {
         BlocProvider<QueueCubit>(
           create: (context) => QueueCubit(),
         ),
-        BlocProvider<ChatCubit>(
-          create: (context) => ChatCubit(),
+        BlocProvider<ComplaintCubit>(
+          create: (context) => ComplaintCubit(),
         ),
         BlocProvider<NotificationCubit>(
           create: (context) => NotificationCubit(),
@@ -176,11 +192,15 @@ class _DamosMartAppState extends State<DamosMartApp> {
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
             context.read<QueueCubit>().loadActiveQueues(userId: state.user.id);
+            context.read<NotificationCubit>().loadNotifications();
+            context.read<CartCubit>().loadCart();
           } else if (state is Unauthenticated) {
             SocketService.instance.disconnect();
             _socketListenersRegistered = false;
             NotificationBanner.hide();
             context.read<QueueCubit>().reset();
+            context.read<NotificationCubit>().reset();
+            context.read<ComplaintCubit>().reset();
           }
         },
         child: MaterialApp.router(

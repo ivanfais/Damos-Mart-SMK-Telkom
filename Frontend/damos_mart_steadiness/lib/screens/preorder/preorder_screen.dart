@@ -12,17 +12,15 @@ import '../../config/api_config.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/error_state.dart';
 import '../../widgets/common/pop_up_alert.dart';
-import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/steadiness_app_header.dart';
 
 class _Ds {
   static const Color primary = Color(0xFF1B8C2E);
   static const Color textPrimary = Color(0xFF1A1A1A);
   static const Color textSecondary = Color(0xFF6B7280);
-  static const Color border = Color(0xFFD1D5DB);
-  static const Color borderLight = Color(0xFFE5E7EB);
-  static const Color bgGrey = Color(0xFFF2F2F2);
-  static const Color bgLight = Color(0xFFF9F9F9);
-  static const Color red = Color(0xFFD42427);
+  static const Color border = Color(0xFFE0E0E0);
+  static const Color badgeBg = Color(0xFFF0F0F0);
+  static const Color imageBorder = Color(0xFFE8E8E8);
 }
 
 class PreorderScreen extends StatefulWidget {
@@ -35,7 +33,6 @@ class PreorderScreen extends StatefulWidget {
 }
 
 class _PreorderScreenState extends State<PreorderScreen> {
-  int _quantity = 1;
   ProductVariantModel? _selectedVariant;
   bool _isSubmitting = false;
 
@@ -43,16 +40,6 @@ class _PreorderScreenState extends State<PreorderScreen> {
   void initState() {
     super.initState();
     context.read<ProductCubit>().loadProductDetail(widget.productId);
-  }
-
-  void _incrementQty() {
-    setState(() => _quantity++);
-  }
-
-  void _decrementQty() {
-    if (_quantity > 1) {
-      setState(() => _quantity--);
-    }
   }
 
   double _displayPrice(ProductModel product) {
@@ -70,37 +57,51 @@ class _PreorderScreenState extends State<PreorderScreen> {
     return matches.reduce((a, b) => a > b ? a : b);
   }
 
-  String _formatDate(DateTime date) {
-    const months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  DateTime _addBusinessDays(DateTime start, int days) {
-    var result = start;
-    var added = 0;
-    while (added < days) {
-      result = result.add(const Duration(days: 1));
-      if (result.weekday != DateTime.saturday && result.weekday != DateTime.sunday) {
-        added++;
-      }
+  String _estimationLabel(ProductModel product) {
+    final raw = product.preorderEstimation;
+    if (raw == null || raw.isEmpty) {
+      return 'Estimasi pengerjaan 14 hari kerja';
     }
-    return result;
+    final lower = raw.toLowerCase();
+    if (lower.contains('estimasi')) return raw;
+    final days = _parseProductionDays(raw);
+    return 'Estimasi pengerjaan $days hari kerja';
   }
 
-  ({String session, String production, String arrival}) _preorderInfo(ProductModel product) {
-    final production = product.preorderEstimation ?? '14 Hari Kerja';
-    final days = _parseProductionDays(product.preorderEstimation);
-    final now = DateTime.now();
-    final sessionEnd = now.add(const Duration(days: 7));
-    final arrival = _addBusinessDays(now, days);
-
-    return (
-      session: '${_formatDate(now)} - ${_formatDate(sessionEnd)}',
-      production: production,
-      arrival: _formatDate(arrival),
+  void _showSizeGuide() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text(
+          'Panduan Ukuran',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Ukuran seragam mengacu pada lingkar dada (cm):',
+                style: TextStyle(fontSize: 14, color: _Ds.textSecondary, height: 1.5),
+              ),
+              SizedBox(height: 12),
+              _SizeGuideRow(size: 'S', chest: '86 – 90'),
+              _SizeGuideRow(size: 'M', chest: '91 – 95'),
+              _SizeGuideRow(size: 'L', chest: '96 – 100'),
+              _SizeGuideRow(size: 'XL', chest: '101 – 105'),
+              _SizeGuideRow(size: 'XXL', chest: '106 – 110'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Tutup', style: TextStyle(color: _Ds.primary, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -123,7 +124,7 @@ class _PreorderScreenState extends State<PreorderScreen> {
       await context.read<CartCubit>().addToCart(
         productId: product.id,
         variantId: _selectedVariant?.id,
-        quantity: _quantity,
+        quantity: 1,
       );
 
       if (!mounted) return;
@@ -175,38 +176,43 @@ class _PreorderScreenState extends State<PreorderScreen> {
     }
   }
 
-  Widget _buildScrollHeader() {
-    return DamosPageHeader(
-      title: 'Damos Mart',
-      showBackButton: true,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () => context.go('/catalog'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-            onPressed: () => context.go('/cart'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-        ],
-      ),
+  Widget _buildHeader() {
+    return SteadinessAppHeader(
+      showNotificationButton: false,
+      showCartButton: true,
+      onCartTap: () => context.go('/cart'),
     );
   }
 
-  Widget _buildScrollPage(Widget child) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildScrollHeader(),
-          child,
-        ],
+  Widget _buildProductImage(ProductModel product) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        height: 280,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _Ds.imageBorder),
+        ),
+        padding: const EdgeInsets.all(20),
+        alignment: Alignment.center,
+        child: product.imageUrl != null
+            ? CachedNetworkImage(
+                imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: _Ds.primary),
+                ),
+                errorWidget: (_, __, ___) => const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: _Ds.textSecondary,
+                  size: 64,
+                ),
+              )
+            : const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
       ),
     );
   }
@@ -219,111 +225,134 @@ class _PreorderScreenState extends State<PreorderScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        height: 44,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? _Ds.primary : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? _Ds.primary : _Ds.border),
+          border: Border.all(
+            color: selected ? _Ds.primary : _Ds.border,
+            width: 1.5,
+          ),
         ),
         child: Text(
           label,
-          style: TextStyle(
-            fontSize: 13,
+          style: const TextStyle(
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : _Ds.textPrimary,
+            color: _Ds.textPrimary,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildQuantitySelector() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: _Ds.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildSizeSelection(ProductModel product) {
+    if (product.variants.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _qtyButton(icon: Icons.remove, onTap: _quantity > 1 ? _decrementQty : null),
-          SizedBox(
-            width: 40,
-            child: Text(
-              '$_quantity',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
+          const Text(
+            'PILIH UKURAN',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _Ds.textSecondary,
+              letterSpacing: 0.8,
             ),
           ),
-          _qtyButton(icon: Icons.add, onTap: _incrementQty),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < product.variants.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _buildSizeChip(
+                    label: product.variants[i].variantName,
+                    selected: _selectedVariant?.id == product.variants[i].id,
+                    onTap: () => setState(() => _selectedVariant = product.variants[i]),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _qtyButton({required IconData icon, VoidCallback? onTap}) {
-    return SizedBox(
-      width: 40,
-      height: 40,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        icon: Icon(icon, size: 18, color: onTap != null ? _Ds.textPrimary : _Ds.border),
-        onPressed: onTap,
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value, {bool boldValue = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: _Ds.textSecondary)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: boldValue ? FontWeight.w700 : FontWeight.w500,
-            color: _Ds.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPreorderInfoCard(ProductModel product) {
-    final info = _preorderInfo(product);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _Ds.bgLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _Ds.borderLight),
-      ),
+  Widget _buildProductInfo(ProductModel product) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.info_outline, size: 20, color: _Ds.primary),
-              SizedBox(width: 8),
-              Text(
-                'INFORMASI PRE-ORDER',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _Ds.textPrimary,
-                  letterSpacing: 0.5,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  product.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _Ds.textPrimary,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _Ds.badgeBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Pre-Order',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _Ds.textSecondary,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _buildInfoRow('Sesi Pemesanan:', info.session),
-          const SizedBox(height: 12),
-          _buildInfoRow('Estimasi Produksi:', info.production),
-          const SizedBox(height: 12),
-          _buildInfoRow('Estimasi Tiba:', info.arrival, boldValue: true),
+          const SizedBox(height: 8),
+          Text(
+            _estimationLabel(product),
+            style: const TextStyle(
+              fontSize: 14,
+              color: _Ds.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: _showSizeGuide,
+            borderRadius: BorderRadius.circular(4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.straighten_rounded, size: 18, color: _Ds.primary.withValues(alpha: 0.9)),
+                const SizedBox(width: 6),
+                Text(
+                  'Lihat Panduan Ukuran',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _Ds.primary,
+                    decoration: TextDecoration.underline,
+                    decorationColor: _Ds.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -331,41 +360,76 @@ class _PreorderScreenState extends State<PreorderScreen> {
 
   Widget _buildBottomBar(ProductModel product) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 52,
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isSubmitting ? null : () => _executePreorder(product),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _Ds.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: _isSubmitting
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                  )
-                : const Text(
-                    'Pre-Order Sekarang',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'TOTAL PEMBAYARAN',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _Ds.textSecondary,
+                      letterSpacing: 0.6,
+                    ),
                   ),
-          ),
+                  const SizedBox(height: 4),
+                  Text(
+                    CurrencyFormatter.format(_displayPrice(product)),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: _Ds.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : () => _executePreorder(product),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _Ds.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: _Ds.border,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                      )
+                    : const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Checkout',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(Icons.shopping_cart_outlined, size: 20),
+                        ],
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -378,18 +442,25 @@ class _PreorderScreenState extends State<PreorderScreen> {
       body: BlocBuilder<ProductCubit, ProductState>(
         builder: (context, state) {
           if (state is ProductLoading) {
-            return _buildScrollPage(const ProductDetailShimmer());
+            return Column(
+              children: [
+                _buildHeader(),
+                const Expanded(child: ProductDetailShimmer()),
+              ],
+            );
           }
 
           if (state is ProductError) {
-            return _buildScrollPage(
-              SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.55,
-                child: ErrorState(
-                  message: state.message,
-                  onRetry: () => context.read<ProductCubit>().loadProductDetail(widget.productId),
+            return Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () => context.read<ProductCubit>().loadProductDetail(widget.productId),
+                  ),
                 ),
-              ),
+              ],
             );
           }
 
@@ -406,143 +477,19 @@ class _PreorderScreenState extends State<PreorderScreen> {
 
             return Column(
               children: [
+                _buildHeader(),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildScrollHeader(),
-                        Container(
-                          height: 300,
-                          width: double.infinity,
-                          color: _Ds.bgGrey,
-                          child: product.imageUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                                  fit: BoxFit.contain,
-                                  errorWidget: (_, __, ___) =>
-                                      const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
-                                )
-                              : const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // PRE-ORDER badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: _Ds.red),
-                                ),
-                                child: const Text(
-                                  'PRE-ORDER',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _Ds.red),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Name + price row
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      product.name,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700,
-                                        color: _Ds.textPrimary,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        CurrencyFormatter.format(_displayPrice(product)),
-                                        style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                          color: _Ds.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'TERSEDIA',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _Ds.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 20),
-                              const Divider(color: _Ds.borderLight),
-                              const SizedBox(height: 16),
-
-                              // Size chips
-                              if (product.variants.isNotEmpty) ...[
-                                const Text(
-                                  'PILIH UKURAN',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: _Ds.textSecondary,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: product.variants.map((variant) {
-                                    final selected = _selectedVariant?.id == variant.id;
-                                    return _buildSizeChip(
-                                      label: variant.variantName,
-                                      selected: selected,
-                                      onTap: () => setState(() => _selectedVariant = variant),
-                                    );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 20),
-                              ],
-
-                              // Quantity
-                              const Text(
-                                'JUMLAH PESANAN',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _Ds.textSecondary,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              _buildQuantitySelector(),
-
-                              const SizedBox(height: 24),
-
-                              // Info card
-                              _buildPreorderInfoCard(product),
-                            ],
-                          ),
-                        ),
+                        _buildProductImage(product),
+                        _buildSizeSelection(product),
+                        _buildProductInfo(product),
                       ],
                     ),
                   ),
                 ),
-
                 _buildBottomBar(product),
               ],
             );
@@ -550,6 +497,35 @@ class _PreorderScreenState extends State<PreorderScreen> {
 
           return const Center(child: Text('Memuat pre-order...'));
         },
+      ),
+    );
+  }
+}
+
+class _SizeGuideRow extends StatelessWidget {
+  const _SizeGuideRow({required this.size, required this.chest});
+
+  final String size;
+  final String chest;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 40,
+            child: Text(
+              size,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _Ds.textPrimary),
+            ),
+          ),
+          Text(
+            '$chest cm',
+            style: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
+          ),
+        ],
       ),
     );
   }

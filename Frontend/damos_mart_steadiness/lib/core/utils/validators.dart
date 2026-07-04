@@ -55,6 +55,17 @@ class Validators {
     return null;
   }
 
+  static String? emailOrPhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Email atau nomor telepon wajib diisi ya! ⚠️';
+    }
+    final trimmed = value.trim();
+    if (trimmed.contains('@')) {
+      return email(trimmed);
+    }
+    return phone(trimmed.replaceAll(RegExp(r'[\s-]'), ''));
+  }
+
   static String? confirmPassword(String? value, String password) {
     if (value == null || value.isEmpty) {
       return 'Konfirmasi password wajib diisi ya! ⚠️';

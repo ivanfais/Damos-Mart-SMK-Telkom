@@ -131,4 +131,39 @@ class AuthRepository {
     final data = response.data['data'] as Map<String, dynamic>;
     return UserModel.fromJson(data);
   }
+
+  Future<void> requestPasswordReset(String email) async {
+    await _client.post(
+      ApiConfig.forgotPassword,
+      data: {'email': email},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _client.post(
+      ApiConfig.resetPassword,
+      data: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      },
+    );
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _client.put(
+      ApiConfig.changePassword,
+      data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+  }
 }

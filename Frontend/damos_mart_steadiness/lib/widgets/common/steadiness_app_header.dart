@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../blocs/cart/cart_cubit.dart';
+import '../../blocs/notification/notification_cubit.dart';
 import '../../config/app_constants.dart';
 
 class SteadinessHeaderColors {
@@ -8,16 +11,25 @@ class SteadinessHeaderColors {
   static const Color telkomYellow = Color(0xFFFFCC00);
 }
 
-/// Header beranda/katalog: back, logo Damos Mart, notifikasi, garis tricolor.
+/// Header beranda/katalog: back, logo Damos Mart, notifikasi/keranjang, garis tricolor.
 class SteadinessAppHeader extends StatelessWidget {
   const SteadinessAppHeader({
     super.key,
     this.onBack,
     this.bottom,
+    this.showNotificationButton = true,
+    this.onNotificationTap,
+    this.showCartButton = false,
+    this.onCartTap,
   });
 
   final VoidCallback? onBack;
   final Widget? bottom;
+  final bool showNotificationButton;
+  final VoidCallback? onNotificationTap;
+  /// Jika true, ikon kanan diganti keranjang (untuk halaman detail produk).
+  final bool showCartButton;
+  final VoidCallback? onCartTap;
 
   @override
   Widget build(BuildContext context) {
@@ -58,28 +70,90 @@ class SteadinessAppHeader extends StatelessWidget {
                   ),
                 ),
                 const SteadinessHeaderLogo(),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: headerIconSize,
-                    height: headerIconSize,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: () => context.go('/profile'),
-                      icon: const Icon(
-                        Icons.notifications_none,
-                        color: Color(0xFF424242),
-                        size: 26,
-                      ),
+                if (showCartButton)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: BlocBuilder<CartCubit, CartState>(
+                      builder: (context, state) {
+                        final hasItems = state is CartLoaded && state.totalItems > 0;
+                        return _HeaderTrailingIcon(
+                          icon: Icons.shopping_cart_outlined,
+                          showBadge: hasItems,
+                          onPressed: onCartTap ?? () => GoRouter.of(context).go('/cart'),
+                        );
+                      },
+                    ),
+                  )
+                else if (showNotificationButton)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: BlocBuilder<NotificationCubit, NotificationState>(
+                      builder: (context, state) {
+                        final hasUnread = state is NotificationLoaded && state.unreadCount > 0;
+                        return _HeaderTrailingIcon(
+                          icon: Icons.notifications_none,
+                          showBadge: hasUnread,
+                          onPressed: onNotificationTap ??
+                              () => GoRouter.of(context).go('/notifications?from=home'),
+                        );
+                      },
                     ),
                   ),
-                ),
               ],
             ),
           ),
           const SteadinessHeaderTricolorStripe(),
           if (bottom != null) bottom!,
         ],
+      ),
+    );
+  }
+}
+
+class _HeaderTrailingIcon extends StatelessWidget {
+  const _HeaderTrailingIcon({
+    required this.icon,
+    required this.onPressed,
+    this.showBadge = false,
+    this.iconColor = const Color(0xFF424242),
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool showBadge;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    const headerIconSize = 48.0;
+
+    return SizedBox(
+      width: headerIconSize,
+      height: headerIconSize,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        icon: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Icon(icon, color: iconColor, size: 26),
+            if (showBadge)
+              Positioned(
+                top: -1,
+                right: -1,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: SteadinessHeaderColors.telkomRed,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -136,11 +210,13 @@ class SteadinessTitleHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.onBack,
+    this.showNotificationButton = true,
     this.onNotificationTap,
   });
 
   final String title;
   final VoidCallback? onBack;
+  final bool showNotificationButton;
   final VoidCallback? onNotificationTap;
 
   @override
@@ -189,22 +265,22 @@ class SteadinessTitleHeader extends StatelessWidget {
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: headerIconSize,
-                    height: headerIconSize,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: onNotificationTap ?? () {},
-                      icon: const Icon(
-                        Icons.notifications_none,
-                        color: SteadinessHeaderColors.primary,
-                        size: 26,
-                      ),
+                if (showNotificationButton)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: BlocBuilder<NotificationCubit, NotificationState>(
+                      builder: (context, state) {
+                        final hasUnread = state is NotificationLoaded && state.unreadCount > 0;
+                        return _HeaderTrailingIcon(
+                          icon: Icons.notifications_none,
+                          iconColor: SteadinessHeaderColors.primary,
+                          showBadge: hasUnread,
+                          onPressed: onNotificationTap ??
+                              () => GoRouter.of(context).go('/notifications?from=home'),
+                        );
+                      },
                     ),
                   ),
-                ),
               ],
             ),
           ),

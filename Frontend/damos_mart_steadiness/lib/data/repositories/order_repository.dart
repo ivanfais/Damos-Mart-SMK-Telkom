@@ -26,11 +26,29 @@ class OrderRepository {
   }
 
   Future<List<OrderModel>> getMyOrders() async {
-    final response = await _client.get(ApiConfig.orders);
-    final dataList = response.data['data'] as List? ?? [];
-    return dataList
-        .map((json) => OrderModel.fromJson(json as Map<String, dynamic>))
-        .toList();
+    final response = await _client.get(
+      ApiConfig.orders,
+      queryParameters: const {'limit': 50},
+    );
+    final body = response.data;
+
+    if (body is Map && body['success'] == true) {
+      final dataList = body['data'];
+      if (dataList is List) {
+        final orders = <OrderModel>[];
+        for (final item in dataList) {
+          if (item is! Map) continue;
+          try {
+            orders.add(OrderModel.fromJson(Map<String, dynamic>.from(item)));
+          } catch (_) {
+            // Lewati item rusak agar daftar lain tetap tampil.
+          }
+        }
+        return orders;
+      }
+    }
+
+    return [];
   }
 
   Future<OrderModel> getOrderDetails(String id) async {

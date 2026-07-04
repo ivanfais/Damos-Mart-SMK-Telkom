@@ -45,6 +45,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/login.png
+    - assets/images/pilih_produk.png
+    - assets/images/pembayaran.png
+    - assets/images/Qr_code.png
+    - assets/images/Komplain.png
     - assets/images/logo damos.png
     - assets/images/qris_dummy.png
     - assets/icons/

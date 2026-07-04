@@ -17,6 +17,8 @@ class ApiConfig {
   static const String loginSso = '/auth/login/sso';
   static const String refreshToken = '/auth/refresh';
   static const String logout = '/auth/logout';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String resetPassword = '/auth/reset-password';
 
   // Users
   static const String userMe = '/users/me';
@@ -64,4 +66,8 @@ class ApiConfig {
   static const String notifications = '/notifications';
   static String readNotification(String id) => '/notifications/$id/read';
   static const String readAllNotifications = '/notifications/read-all';
+
+  // Complaints
+  static const String complaints = '/complaints';
+  static const String myComplaints = '/complaints/me';
 }

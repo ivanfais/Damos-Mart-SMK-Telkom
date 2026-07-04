@@ -103,15 +103,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  Future<void> _buyNow(ProductModel product) async {
+  void _continueShopping(ProductModel product) {
     if (product.isPreorder) {
       context.push('/preorder/${product.id}');
       return;
     }
-
-    final added = await _addToCart(product, silent: true);
-    if (!mounted || !added) return;
-    context.go('/cart');
+    context.go('/catalog');
   }
 
   Widget _buildProductImage(ProductModel product) {
@@ -312,16 +309,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               width: double.infinity,
               height: 48,
               child: OutlinedButton(
-                onPressed: !enabled || _isAdding
-                    ? null
-                    : () => _buyNow(product),
+                onPressed: _isAdding ? null : () => _continueShopping(product),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _Ds.textPrimary,
                   side: const BorderSide(color: _Ds.border),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 child: Text(
-                  product.isPreorder ? 'Lihat Detail Pre-Order' : 'Beli Sekarang',
+                  product.isPreorder ? 'Lihat Detail Pre-Order' : 'Lanjut Belanja',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -332,6 +327,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  Widget _buildHeader() {
+    return SteadinessAppHeader(
+      showNotificationButton: false,
+      showCartButton: true,
+      onCartTap: () => context.go('/cart'),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -339,9 +342,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       body: BlocBuilder<ProductCubit, ProductState>(
         builder: (context, state) {
           if (state is ProductLoading) {
-            return const Column(
+            return Column(
               children: [
-                SteadinessAppHeader(),
+                _buildHeader(),
                 Expanded(child: ProductDetailShimmer()),
               ],
             );
@@ -350,7 +353,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           if (state is ProductError) {
             return Column(
               children: [
-                const SteadinessAppHeader(),
+                _buildHeader(),
                 Expanded(
                   child: ErrorState(
                     message: state.message,
@@ -367,6 +370,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           final product = state.product;
 
+          if (product.isPreorder) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) context.replace('/preorder/${product.id}');
+            });
+            return Column(
+              children: [
+                _buildHeader(),
+                const Expanded(
+                  child: Center(
+                    child: CircularProgressIndicator(color: _Ds.primary),
+                  ),
+                ),
+              ],
+            );
+          }
+
           if (_selectedVariant == null && product.variants.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted && _selectedVariant == null) {
@@ -380,7 +399,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           return Column(
             children: [
-              const SteadinessAppHeader(),
+              _buildHeader(),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(

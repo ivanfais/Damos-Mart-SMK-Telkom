@@ -19,6 +19,7 @@ class _Ds {
   static const Color border = Color(0xFFE0E0E0);
   static const Color bg = Color(0xFFF5F5F5);
   static const Color bgGrey = Color(0xFFF3F4F6);
+  static const Color red = Color(0xFFD42427);
   static const double adminFee = 500;
 }
 
@@ -66,6 +67,18 @@ class _CartScreenState extends State<CartScreen> {
     context.push('/checkout', extra: validItems);
   }
 
+  void _confirmRemoveItem(CartItemModel item) {
+    PopUpAlert.show(
+      context: context,
+      title: 'Hapus Produk?',
+      description: 'Yakin ingin menghapus "${item.productName}" dari keranjang?',
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      isError: true,
+      onConfirm: () => context.read<CartCubit>().removeCartItem(item.id),
+    );
+  }
+
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 10),
@@ -110,7 +123,11 @@ class _CartScreenState extends State<CartScreen> {
       children: [
         _qtyButton(
           icon: Icons.remove,
-          onTap: enabled && quantity > 1 ? () => onChanged(quantity - 1) : null,
+          onTap: enabled && quantity > 1
+              ? () => onChanged(quantity - 1)
+              : enabled && quantity == 1
+                  ? () => onChanged(0)
+                  : null,
         ),
         const SizedBox(width: 6),
         Container(
@@ -173,16 +190,30 @@ class _CartScreenState extends State<CartScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.productName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: _Ds.textPrimary,
-                    height: 1.3,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.productName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: _Ds.textPrimary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _confirmRemoveItem(item),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      icon: const Icon(Icons.delete_outline, color: _Ds.red, size: 22),
+                      tooltip: 'Hapus',
+                    ),
+                  ],
                 ),
                 if (item.variantName != null && item.variantName!.isNotEmpty) ...[
                   const SizedBox(height: 2),
@@ -204,6 +235,10 @@ class _CartScreenState extends State<CartScreen> {
                       maxQty: maxQty > 0 ? maxQty : 1,
                       enabled: item.inStock || item.isPreorder,
                       onChanged: (qty) {
+                        if (qty <= 0) {
+                          _confirmRemoveItem(item);
+                          return;
+                        }
                         context.read<CartCubit>().updateQuantity(cartItemId: item.id, quantity: qty);
                       },
                     ),

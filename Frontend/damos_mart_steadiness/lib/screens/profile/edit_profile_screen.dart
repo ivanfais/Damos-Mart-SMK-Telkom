@@ -1,21 +1,25 @@
 import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../config/api_config.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_dimensions.dart';
-import '../../theme/app_text_styles.dart';
-import '../../widgets/common/damos_button.dart';
-import '../../widgets/common/damos_text_field.dart';
 import '../../widgets/common/pop_up_alert.dart';
-import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/steadiness_app_header.dart';
+
+class _Ds {
+  static const Color primary = Color(0xFF1B8C2E);
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color hint = Color(0xFF9CA3AF);
+  static const Color border = Color(0xFFE0E0E0);
+  static const Color fieldBg = Color(0xFFF3F4F6);
+}
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -26,10 +30,10 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
+  late TextEditingController _fullNameController;
+  late TextEditingController _nicknameController;
   late TextEditingController _phoneController;
-  late TextEditingController _emailController; // disabled
-  
+
   Uint8List? _localAvatarBytes;
   String? _localAvatarFilename;
   final ImagePicker _picker = ImagePicker();
@@ -38,33 +42,69 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final authState = context.read<AuthBloc>().state;
-    String initialName = '';
-    String initialPhone = '';
-    String initialEmail = '';
+    _initFromAuth(context.read<AuthBloc>().state);
+  }
+
+  void _initFromAuth(AuthState authState) {
+    var fullName = '';
+    var phoneLocal = '';
 
     if (authState is Authenticated) {
-      initialName = authState.user.fullName;
-      initialPhone = authState.user.phone ?? '';
-      initialEmail = authState.user.email;
+      final user = authState.user;
+      fullName = user.fullName;
+      phoneLocal = _localPhoneNumber(user.phone);
     }
 
-    _nameController = TextEditingController(text: initialName);
-    _phoneController = TextEditingController(text: initialPhone);
-    _emailController = TextEditingController(text: initialEmail);
+    _fullNameController = TextEditingController(text: fullName);
+    _nicknameController = TextEditingController(text: _nicknameFromFullName(fullName));
+    _phoneController = TextEditingController(text: phoneLocal);
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _fullNameController.dispose();
+    _nicknameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     super.dispose();
+  }
+
+  String _nicknameFromFullName(String fullName) {
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    return parts.isNotEmpty ? parts.first : fullName;
+  }
+
+  String _mergeFullName(String fullName, String nickname) {
+    final trimmedNickname = nickname.trim();
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    if (parts.length <= 1) return trimmedNickname;
+    return '$trimmedNickname ${parts.sublist(1).join(' ')}';
+  }
+
+  String _resolvedFullName() {
+    final fullName = _fullNameController.text.trim();
+    final nickname = _nicknameController.text.trim();
+    if (nickname.isEmpty) return fullName;
+    if (nickname == _nicknameFromFullName(fullName)) return fullName;
+    return _mergeFullName(fullName, nickname);
+  }
+
+  String _localPhoneNumber(String? phone) {
+    if (phone == null || phone.trim().isEmpty) return '';
+    var digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('62')) digits = digits.substring(2);
+    if (digits.startsWith('0')) digits = digits.substring(1);
+    return digits;
+  }
+
+  String? _phoneForApi(String localDigits) {
+    final digits = localDigits.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return null;
+    return '0$digits';
   }
 
   Future<void> _pickAvatar() async {
     try {
-      final XFile? image = await _picker.pickImage(
+      final image = await _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 60,
         maxWidth: 400,
@@ -94,47 +134,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
+      final fullName = _resolvedFullName();
+
       final repository = AuthRepository();
       final updatedUser = await repository.updateMe(
-        fullName: _nameController.text.trim(),
-        phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+        fullName: fullName,
+        phone: _phoneForApi(_phoneController.text.trim()),
         localAvatarBytes: _localAvatarBytes,
         localAvatarFilename: _localAvatarFilename,
       );
 
-      if (mounted) {
-        // Dispatch to AuthBloc to update state globally
-        context.read<AuthBloc>().add(UserUpdated(updatedUser));
-        
-        PopUpAlert.showSuccess(
-          context: context,
-          title: 'Profil Diperbarui!',
-          description: 'Perubahan data profil kamu berhasil disimpan.',
-          onConfirm: () {
-            context.pop();
-          },
-        );
-      }
+      if (!mounted) return;
+      context.read<AuthBloc>().add(UserUpdated(updatedUser));
+
+      await PopUpAlert.showSuccess(
+        context: context,
+        title: 'Profil Diperbarui!',
+        description: 'Perubahan data profil kamu berhasil disimpan.',
+        onConfirm: () {
+          if (context.canPop()) context.pop();
+        },
+      );
     } catch (e) {
-      if (mounted) {
-        PopUpAlert.show(
-          context: context,
-          title: 'Gagal Menyimpan',
-          description: 'Penyimpanan gagal: ${e.toString()}. Coba sesaat lagi!',
-          isError: true,
-        );
-      }
+      if (!mounted) return;
+      PopUpAlert.show(
+        context: context,
+        title: 'Gagal Menyimpan',
+        description: 'Penyimpanan gagal: ${e.toString()}. Coba sesaat lagi!',
+        isError: true,
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -148,156 +181,310 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const DamosPageHeader(
-              title: 'Edit Profil',
-              showBackButton: true,
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      // Avatar Edit Section
-                      Center(
-                  child: Column(
-                    children: [
-                      Stack(
-                        children: [
-                          // Avatar circle
-                          Container(
-                            width: AppDimensions.avatarLarge,
-                            height: AppDimensions.avatarLarge,
-                            decoration: BoxDecoration(
-                              color: AppColors.primarySurface,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary, width: 2.5),
-                            ),
-                            child: ClipOval(
-                              child: _localAvatarBytes != null
-                                  ? Image.memory(
-                                      _localAvatarBytes!,
-                                      width: AppDimensions.avatarLarge,
-                                      height: AppDimensions.avatarLarge,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : currentAvatarUrl != null
-                                      ? CachedNetworkImage(
-                                          imageUrl: ApiConfig.imageUrl(currentAvatarUrl),
-                                          width: AppDimensions.avatarLarge,
-                                          height: AppDimensions.avatarLarge,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) => const Center(
-                                            child: CircularProgressIndicator(strokeWidth: 2),
-                                          ),
-                                          errorWidget: (context, url, error) => const Center(
-                                            child: Text('✨🤩', style: TextStyle(fontSize: 36)),
-                                          ),
-                                        )
-                                      : const Center(
-                                          child: Text('✨🤩', style: TextStyle(fontSize: 36)),
-                                        ),
-                            ),
-                          ),
-
-                          // Camera overlay notch
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: _pickAvatar,
-                              child: const CircleAvatar(
-                                radius: 18,
-                                backgroundColor: AppColors.primary,
-                                child: Icon(Icons.camera_alt_outlined, color: Colors.white, size: 18),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: _pickAvatar,
-                        child: Text(
-                          'Ganti Foto Profil',
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Full Name Input
-                DamosTextField(
-                  controller: _nameController,
-                  labelText: 'Nama Lengkap',
-                  hintText: 'Masukkan nama lengkap kamu...',
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nama lengkap tidak boleh kosong.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // Phone Input
-                DamosTextField(
-                  controller: _phoneController,
-                  labelText: 'Nomor WhatsApp / HP',
-                  hintText: 'Masukkan nomor WhatsApp aktif...',
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 20),
-
-                // Email (Read-only)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
+        children: [
+          const SteadinessAppHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Email Sekolah / Akun (Tidak Bisa Diubah)',
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    _buildAvatarSection(currentAvatarUrl),
+                    const SizedBox(height: 28),
+                    _buildTextField(
+                      label: 'Nama Lengkap',
+                      controller: _fullNameController,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Nama lengkap tidak boleh kosong.';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _emailController,
-                      enabled: false,
-                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
-                      decoration: const InputDecoration(
-                        fillColor: AppColors.surface,
-                        filled: true,
-                      ),
+                    const SizedBox(height: 18),
+                    _buildTextField(
+                      label: 'Nama Panggilan',
+                      controller: _nicknameController,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Nama panggilan tidak boleh kosong.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    _buildPhoneField(),
+                    const SizedBox(height: 32),
+                    _buildPrimaryButton(
+                      label: 'Simpan Perubahan',
+                      onPressed: _isLoading ? null : _saveProfile,
+                      isLoading: _isLoading,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSecondaryButton(
+                      label: 'Batal',
+                      onPressed: _isLoading ? null : () => context.pop(),
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                // Save button
-                DamosButton(
-                  text: 'Simpan Perubahan',
-                  isLoading: _isLoading,
-                  onPressed: _isLoading ? null : _saveProfile,
+  Widget _buildAvatarSection(String? currentAvatarUrl) {
+    const size = 108.0;
+
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: _Ds.border, width: 2),
+              ),
+              child: ClipOval(
+                child: _localAvatarBytes != null
+                    ? Image.memory(
+                        _localAvatarBytes!,
+                        width: size,
+                        height: size,
+                        fit: BoxFit.cover,
+                      )
+                    : currentAvatarUrl != null && currentAvatarUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: ApiConfig.imageUrl(currentAvatarUrl),
+                            width: size,
+                            height: size,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => const ColoredBox(
+                              color: _Ds.fieldBg,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: _Ds.primary,
+                                ),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => const ColoredBox(
+                              color: _Ds.fieldBg,
+                              child: Icon(Icons.person, size: 48, color: _Ds.hint),
+                            ),
+                          )
+                        : const ColoredBox(
+                            color: _Ds.fieldBg,
+                            child: Icon(Icons.person, size: 48, color: _Ds.hint),
+                          ),
+              ),
+            ),
+            Positioned(
+              right: 2,
+              bottom: 2,
+              child: GestureDetector(
+                onTap: _pickAvatar,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    color: _Ds.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.edit_outlined, color: Colors.white, size: 16),
                 ),
-                const SizedBox(height: 10),
-                    ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: _pickAvatar,
+          child: const Text(
+            'Ubah Foto',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _Ds.primary,
+              decoration: TextDecoration.underline,
+              decorationColor: _Ds.primary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _Ds.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          validator: validator,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: _Ds.textPrimary,
+          ),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _Ds.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _Ds.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _Ds.primary, width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Nomor Telepon',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _Ds.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 72,
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _Ds.fieldBg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _Ds.border),
+              ),
+              child: const Text(
+                '+62',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _Ds.textSecondary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _Ds.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _Ds.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _Ds.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _Ds.primary, width: 1.5),
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+    bool isLoading = false,
+  }) {
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _Ds.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _Ds.primary.withValues(alpha: 0.6),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                label,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _Ds.fieldBg,
+          foregroundColor: _Ds.textPrimary,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
     );

@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
+import '../../core/constants/profile_menu_icons.dart';
 import '../../data/models/user_model.dart';
 import '../../widgets/common/pop_up_alert.dart';
 import '../../widgets/common/steadiness_app_header.dart';
 import '../../widgets/common/user_avatar.dart';
+import '../../widgets/history/purchase_history_content.dart';
 
 class _Ds {
   static const Color primary = Color(0xFF1B8C2E);
@@ -17,10 +19,42 @@ class _Ds {
   static const Color bg = Color(0xFFF5F5F5);
   static const Color cardBg = Color(0xFFF3F4F6);
   static const Color avatarBg = Color(0xFFE52521);
+  static const Color logoutRed = Color(0xFFE52521);
 }
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _showHistory = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final uri = GoRouterState.of(context).uri;
+    final fromRoute = uri.queryParameters['view'] == 'history';
+    if (fromRoute != _showHistory) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _showHistory = fromRoute);
+      });
+    }
+  }
+
+  void _openHistory() {
+    setState(() => _showHistory = true);
+  }
+
+  void _closeHistory() {
+    setState(() => _showHistory = false);
+    final uri = GoRouterState.of(context).uri;
+    if (uri.queryParameters['view'] == 'history') {
+      context.go('/profile');
+    }
+  }
 
   void _showLogoutConfirmation(BuildContext context) {
     PopUpAlert.show(
@@ -35,17 +69,6 @@ class ProfileScreen extends StatelessWidget {
         context.go('/login');
       },
     );
-  }
-
-  String _displayNis(UserModel user) {
-    if (user.ssoId != null && user.ssoId!.trim().isNotEmpty) {
-      return 'NIS: ${user.ssoId}';
-    }
-    return 'NIS: -';
-  }
-
-  String _displayClassBadge(UserModel user) {
-    return 'Siswa Kelas SMK Telkom Jakarta';
   }
 
   String _displayFirstName(String fullName) {
@@ -70,28 +93,6 @@ class ProfileScreen extends StatelessWidget {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _displayNis(user),
-          style: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: _Ds.cardBg,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _Ds.border),
-          ),
-          child: Text(
-            _displayClassBadge(user),
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: _Ds.textSecondary,
-            ),
           ),
         ),
       ],
@@ -136,7 +137,7 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: _Ds.textPrimary, size: 22),
+            Icon(icon, color: _Ds.primary, size: ProfileMenuIcons.size),
             const SizedBox(width: 14),
             Expanded(
               child: subtitle == null
@@ -186,14 +187,18 @@ class ProfileScreen extends StatelessWidget {
         onPressed: () => _showLogoutConfirmation(context),
         style: OutlinedButton.styleFrom(
           backgroundColor: _Ds.cardBg,
-          foregroundColor: _Ds.primary,
+          foregroundColor: _Ds.logoutRed,
           side: const BorderSide(color: _Ds.border),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        icon: const Icon(Icons.logout, size: 20),
+        icon: const Icon(ProfileMenuIcons.logout, size: 20, color: _Ds.logoutRed),
         label: const Text(
           'Keluar Sesi',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: _Ds.logoutRed,
+          ),
         ),
       ),
     );
@@ -215,78 +220,79 @@ class ProfileScreen extends StatelessWidget {
 
           return Column(
             children: [
-              const SteadinessAppHeader(),
+              SteadinessAppHeader(
+                onBack: _showHistory ? _closeHistory : null,
+              ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(child: _buildProfileHeader(user)),
-                      const SizedBox(height: 28),
-                      _buildSectionTitle('Pengaturan Akun'),
-                      _buildMenuCard([
-                        _buildMenuTile(
-                          icon: Icons.person_outline,
-                          title: 'Edit Profil',
-                          onTap: () => context.push('/profile/edit'),
+                child: _showHistory
+                    ? const PurchaseHistoryContent()
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Center(child: _buildProfileHeader(user)),
+                            const SizedBox(height: 28),
+                            _buildSectionTitle('Pengaturan Akun'),
+                            _buildMenuCard([
+                              _buildMenuTile(
+                                icon: ProfileMenuIcons.editProfile,
+                                title: 'Edit Profil',
+                                onTap: () => context.push('/profile/edit'),
+                              ),
+                              _buildDivider(),
+                              _buildMenuTile(
+                                icon: ProfileMenuIcons.changePassword,
+                                title: 'Ubah Kata Sandi',
+                                onTap: () => context.push('/profile/change-password'),
+                              ),
+                            ]),
+                            const SizedBox(height: 22),
+                            _buildSectionTitle('Preferensi Aplikasi'),
+                            _buildMenuCard([
+                              _buildMenuTile(
+                                icon: ProfileMenuIcons.language,
+                                title: 'Bahasa',
+                                subtitle: 'Bahasa Indonesia',
+                                onTap: () {
+                                  PopUpAlert.show(
+                                    context: context,
+                                    title: 'Bahasa',
+                                    description: 'Bahasa aplikasi saat ini: Bahasa Indonesia.',
+                                    isError: false,
+                                  );
+                                },
+                              ),
+                              _buildDivider(),
+                              _buildMenuTile(
+                                icon: ProfileMenuIcons.notifications,
+                                title: 'Notifikasi',
+                                onTap: () => context.go('/notifications?from=profile'),
+                              ),
+                              _buildDivider(),
+                              _buildMenuTile(
+                                icon: ProfileMenuIcons.orderHistory,
+                                title: 'Riwayat Pemesanan',
+                                onTap: _openHistory,
+                              ),
+                              _buildDivider(),
+                              _buildMenuTile(
+                                icon: ProfileMenuIcons.complaint,
+                                title: 'Komplain',
+                                onTap: () => context.push('/profile/chat'),
+                              ),
+                              _buildDivider(),
+                              _buildMenuTile(
+                                icon: ProfileMenuIcons.usageGuide,
+                                title: 'Tata Cara Penggunaan',
+                                onTap: () => context.push('/profile/usage-guide'),
+                              ),
+                            ]),
+                            const SizedBox(height: 24),
+                            _buildLogoutButton(context),
+                          ],
                         ),
-                        _buildDivider(),
-                        _buildMenuTile(
-                          icon: Icons.lock_outline,
-                          title: 'Ubah Kata Sandi',
-                          onTap: () {
-                            PopUpAlert.show(
-                              context: context,
-                              title: 'Ubah Kata Sandi',
-                              description:
-                                  'Fitur ubah kata sandi akan segera tersedia. Untuk sementara, silakan hubungi petugas IT sekolah.',
-                              isError: false,
-                            );
-                          },
-                        ),
-                      ]),
-                      const SizedBox(height: 22),
-                      _buildSectionTitle('Preferensi Aplikasi'),
-                      _buildMenuCard([
-                        _buildMenuTile(
-                          icon: Icons.language_outlined,
-                          title: 'Bahasa',
-                          subtitle: 'Bahasa Indonesia',
-                          onTap: () {
-                            PopUpAlert.show(
-                              context: context,
-                              title: 'Bahasa',
-                              description: 'Bahasa aplikasi saat ini: Bahasa Indonesia.',
-                              isError: false,
-                            );
-                          },
-                        ),
-                        _buildDivider(),
-                        _buildMenuTile(
-                          icon: Icons.notifications_none_outlined,
-                          title: 'Notifikasi',
-                          onTap: () {
-                            PopUpAlert.show(
-                              context: context,
-                              title: 'Notifikasi',
-                              description: 'Notifikasi pesanan dan antrean kamu aktif.',
-                              isError: false,
-                            );
-                          },
-                        ),
-                        _buildDivider(),
-                        _buildMenuTile(
-                          icon: Icons.help_outline,
-                          title: 'Komplain',
-                          onTap: () => context.push('/profile/chat'),
-                        ),
-                      ]),
-                      const SizedBox(height: 24),
-                      _buildLogoutButton(context),
-                    ],
-                  ),
-                ),
+                      ),
               ),
             ],
           );

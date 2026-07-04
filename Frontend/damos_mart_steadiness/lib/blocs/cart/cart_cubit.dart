@@ -138,6 +138,33 @@ class CartCubit extends Cubit<CartState> {
     }
   }
 
+  /// Hapus item yang sudah masuk pesanan setelah checkout berhasil.
+  Future<void> removeCheckedOutItems(List<String> cartItemIds) async {
+    if (cartItemIds.isEmpty) return;
+
+    final currentState = state;
+    if (currentState is CartLoaded) {
+      emit(currentState.copyWith(isUpdating: true));
+    } else {
+      emit(CartLoading());
+    }
+
+    try {
+      for (final id in cartItemIds) {
+        await _repository.removeCartItem(id);
+      }
+      final result = await _repository.getCart();
+      emit(CartLoaded(
+        items: result['items'] as List<CartItemModel>,
+        totalItems: result['totalItems'] as int,
+        totalPrice: result['totalPrice'] as double,
+        isUpdating: false,
+      ));
+    } catch (e) {
+      emit(CartError(e.toString()));
+    }
+  }
+
   Future<void> clearCart() async {
     emit(CartLoading());
     try {

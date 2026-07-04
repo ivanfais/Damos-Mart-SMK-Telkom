@@ -24,20 +24,21 @@ class OrderItemModel extends Equatable {
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
-    String? imageUrl = json['imageUrl'] as String?;
-    if (imageUrl == null && json['product'] is Map<String, dynamic>) {
-      imageUrl = (json['product'] as Map<String, dynamic>)['imageUrl'] as String?;
+    String? imageUrl = json['imageUrl']?.toString();
+    if ((imageUrl == null || imageUrl.isEmpty) && json['product'] is Map) {
+      final product = json['product'] as Map;
+      imageUrl = product['imageUrl']?.toString();
     }
 
     return OrderItemModel(
-      id: json['id'] as String,
-      productId: json['productId'] as String,
-      variantId: json['variantId'] as String?,
-      productName: json['productName'] as String,
-      variantName: json['variantName'] as String?,
-      productPrice: double.tryParse(json['productPrice'].toString()) ?? 0.0,
-      quantity: json['quantity'] as int? ?? 1,
-      subtotal: double.tryParse(json['subtotal'].toString()) ?? 0.0,
+      id: json['id']?.toString() ?? '',
+      productId: json['productId']?.toString() ?? '',
+      variantId: json['variantId']?.toString(),
+      productName: json['productName']?.toString() ?? 'Produk',
+      variantName: json['variantName']?.toString(),
+      productPrice: double.tryParse(json['productPrice']?.toString() ?? '') ?? 0.0,
+      quantity: int.tryParse(json['quantity']?.toString() ?? '') ?? (json['quantity'] as int? ?? 1),
+      subtotal: double.tryParse(json['subtotal']?.toString() ?? '') ?? 0.0,
       imageUrl: imageUrl,
     );
   }
@@ -172,10 +173,14 @@ class OrderModel extends Equatable {
 
     // Order items mapping
     List<OrderItemModel> items = [];
-    if (json['orderItems'] != null && json['orderItems'] is List) {
-      items = (json['orderItems'] as List)
-          .map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>))
-          .toList();
+    final rawItems = json['orderItems'];
+    if (rawItems is List) {
+      for (final item in rawItems) {
+        if (item is! Map) continue;
+        try {
+          items.add(OrderItemModel.fromJson(Map<String, dynamic>.from(item)));
+        } catch (_) {}
+      }
     }
 
     // Extract queue info if included
@@ -183,23 +188,29 @@ class OrderModel extends Equatable {
     String? qNumber;
     String? qStatus;
     if (json['queue'] != null && json['queue'] is Map) {
-      qId = json['queue']['id'] as String?;
-      qNumber = json['queue']['queueNumber'] as String?;
-      qStatus = json['queue']['status'] as String?;
+      final queue = Map<String, dynamic>.from(json['queue'] as Map);
+      qId = queue['id']?.toString();
+      qNumber = queue['queueNumber']?.toString();
+      qStatus = queue['status']?.toString();
     }
 
+    final createdAtRaw = json['createdAt'];
+    final createdAt = createdAtRaw != null
+        ? DateTime.tryParse(createdAtRaw.toString()) ?? DateTime.now()
+        : DateTime.now();
+
     return OrderModel(
-      id: json['id'] as String,
-      orderNumber: json['orderNumber'] as String,
+      id: json['id']?.toString() ?? '',
+      orderNumber: json['orderNumber']?.toString() ?? '-',
       status: parsedStatus,
       isPreorder: json['isPreorder'] as bool? ?? false,
-      subtotal: double.tryParse(json['subtotal'].toString()) ?? 0.0,
-      total: double.tryParse(json['total'].toString()) ?? 0.0,
+      subtotal: double.tryParse(json['subtotal']?.toString() ?? '') ?? 0.0,
+      total: double.tryParse(json['total']?.toString() ?? '') ?? 0.0,
       paymentMethod: parsedMethod,
       paymentStatus: parsedPayStatus,
-      paidAt: json['paidAt'] != null ? DateTime.parse(json['paidAt'] as String) : null,
-      notes: json['notes'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      paidAt: json['paidAt'] != null ? DateTime.tryParse(json['paidAt'].toString()) : null,
+      notes: json['notes']?.toString(),
+      createdAt: createdAt,
       orderItems: items,
       queueId: qId,
       queueNumber: qNumber,

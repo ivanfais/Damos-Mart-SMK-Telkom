@@ -46,4 +46,16 @@ class DamosPageTransitions {
       },
     );
   }
+
+  /// Tab/shell screens: no slide animation (avoids Flutter Web list paint bugs).
+  static NoTransitionPage<void> instantPage({
+    required GoRouterState state,
+    required Widget child,
+  }) {
+    return NoTransitionPage<void>(
+      key: state.pageKey,
+      name: state.name ?? state.uri.toString(),
+      child: child,
+    );
+  }
 }

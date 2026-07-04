@@ -18,14 +18,16 @@ class NotificationLoading extends NotificationState {}
 class NotificationLoaded extends NotificationState {
   final List<NotificationModel> notifications;
   final int unreadCount;
+  final DateTime updatedAt;
 
   const NotificationLoaded({
     required this.notifications,
     required this.unreadCount,
+    required this.updatedAt,
   });
 
   @override
-  List<Object?> get props => [notifications, unreadCount];
+  List<Object?> get props => [notifications, unreadCount, updatedAt];
 }
 
 class NotificationError extends NotificationState {
@@ -45,15 +47,39 @@ class NotificationCubit extends Cubit<NotificationState> {
       : _repository = repository ?? NotificationRepository(),
         super(NotificationInitial());
 
-  Future<void> loadNotifications() async {
-    emit(NotificationLoading());
+  Future<void> loadNotifications({bool showLoading = true}) async {
+    if (showLoading || state is! NotificationLoaded) {
+      emit(NotificationLoading());
+    }
     try {
       final list = await _repository.getNotifications();
-      final unread = list.where((n) => !n.isRead).length;
-      emit(NotificationLoaded(notifications: list, unreadCount: unread));
+      _emitLoaded(list);
     } catch (e) {
       emit(NotificationError(e.toString()));
     }
+  }
+
+  Future<void> refreshSilently() async {
+    if (state is NotificationLoading) return;
+    try {
+      final list = await _repository.getNotifications();
+      _emitLoaded(list);
+    } catch (_) {}
+  }
+
+  void _emitLoaded(List<NotificationModel> list) {
+    final unread = list.where((n) => !n.isRead).length;
+    emit(
+      NotificationLoaded(
+        notifications: List.unmodifiable(list),
+        unreadCount: unread,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  void reset() {
+    emit(NotificationInitial());
   }
 
   Future<void> markAsRead(String id) async {
@@ -79,7 +105,13 @@ class NotificationCubit extends Cubit<NotificationState> {
         }).toList();
 
         final unread = updatedList.where((n) => !n.isRead).length;
-        emit(NotificationLoaded(notifications: updatedList, unreadCount: unread));
+        emit(
+          NotificationLoaded(
+            notifications: List.unmodifiable(updatedList),
+            unreadCount: unread,
+            updatedAt: DateTime.now(),
+          ),
+        );
       } catch (e) {
         emit(NotificationError(e.toString()));
       }
@@ -105,7 +137,13 @@ class NotificationCubit extends Cubit<NotificationState> {
           );
         }).toList();
 
-        emit(NotificationLoaded(notifications: updatedList, unreadCount: 0));
+        emit(
+          NotificationLoaded(
+            notifications: List.unmodifiable(updatedList),
+            unreadCount: 0,
+            updatedAt: DateTime.now(),
+          ),
+        );
       } catch (e) {
         emit(NotificationError(e.toString()));
       }

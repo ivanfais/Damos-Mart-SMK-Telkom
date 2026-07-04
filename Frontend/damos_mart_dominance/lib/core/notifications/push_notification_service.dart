@@ -16,19 +16,30 @@ class PushNotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
-  static const String _channelId = 'damos_queue_channel';
-  static const String _channelName = 'Status Pesanan';
-  static const String _channelDescription =
+  static const String _queueChannelId = 'damos_queue_channel';
+  static const String _queueChannelName = 'Status Pesanan';
+  static const String _queueChannelDescription =
       'Notifikasi status antrean dan pesanan siap diambil';
+
+  static const String _complaintChannelId = 'damos_complaint_channel';
+  static const String _complaintChannelName = 'Status Komplain';
+  static const String _complaintChannelDescription =
+      'Notifikasi pembaruan status dan balasan komplain';
 
   bool _initialized = false;
   bool _permissionRequested = false;
   NotificationTapCallback? _tapHandler;
+  String? _pendingColdStartPayload;
 
   bool get isSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
   void registerTapHandler(NotificationTapCallback handler) {
     _tapHandler = handler;
+    final pending = _pendingColdStartPayload;
+    if (pending != null) {
+      _pendingColdStartPayload = null;
+      handler(pending);
+    }
   }
 
   Future<void> init() async {
@@ -47,19 +58,35 @@ class PushNotificationService {
     );
 
     if (Platform.isAndroid) {
-      const channel = AndroidNotificationChannel(
-        _channelId,
-        _channelName,
-        description: _channelDescription,
-        importance: Importance.max,
-        playSound: true,
-        enableVibration: true,
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _queueChannelId,
+          _queueChannelName,
+          description: _queueChannelDescription,
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        ),
       );
 
-      await _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _complaintChannelId,
+          _complaintChannelName,
+          description: _complaintChannelDescription,
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+    }
+
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp == true) {
+      _pendingColdStartPayload = launchDetails!.notificationResponse?.payload;
     }
 
     _initialized = true;
@@ -100,6 +127,9 @@ class PushNotificationService {
       body:
           'Pesanan $label siap diambil. Buka detail pesanan dan tunjukkan QR Pengambilan di kasir.',
       payload: orderId != null ? NotificationPayload.orderDetail(orderId) : null,
+      channelId: _queueChannelId,
+      channelName: _queueChannelName,
+      channelDescription: _queueChannelDescription,
     );
   }
 
@@ -114,6 +144,41 @@ class PushNotificationService {
       title: 'Antrean Dipanggil',
       body: 'Pesanan $label sedang disiapkan oleh petugas koperasi.',
       payload: orderId != null ? NotificationPayload.orderDetail(orderId) : null,
+      channelId: _queueChannelId,
+      channelName: _queueChannelName,
+      channelDescription: _queueChannelDescription,
+    );
+  }
+
+  Future<void> showOrderStatusUpdate({
+    required String orderId,
+    required String title,
+    required String body,
+  }) {
+    return show(
+      id: _idFor('order_status', orderId),
+      title: title,
+      body: body,
+      payload: NotificationPayload.orderDetail(orderId),
+      channelId: _queueChannelId,
+      channelName: _queueChannelName,
+      channelDescription: _queueChannelDescription,
+    );
+  }
+
+  Future<void> showComplaintUpdate({
+    required String complaintId,
+    required String title,
+    required String body,
+  }) {
+    return show(
+      id: _idFor('complaint', complaintId),
+      title: title,
+      body: body,
+      payload: NotificationPayload.complaintDetail(complaintId),
+      channelId: _complaintChannelId,
+      channelName: _complaintChannelName,
+      channelDescription: _complaintChannelDescription,
     );
   }
 
@@ -122,14 +187,17 @@ class PushNotificationService {
     required String title,
     required String body,
     String? payload,
+    required String channelId,
+    required String channelName,
+    required String channelDescription,
   }) async {
     if (!isSupported || !_initialized) return;
     if (!PrefsStorage.instance.getNotificationsEnabled()) return;
 
     final androidDetails = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDescription,
+      channelId,
+      channelName,
+      channelDescription: channelDescription,
       importance: Importance.max,
       priority: Priority.high,
       ticker: title,

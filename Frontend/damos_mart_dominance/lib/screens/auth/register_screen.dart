@@ -153,200 +153,208 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 SafeArea(
                   top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SizedBox(height: 28),
-                          // Top green header without title text
-                          Container(
-                            width: double.infinity,
-                            color: _primary,
-                            padding: EdgeInsets.only(
-                              top: MediaQuery.of(context).padding.top + 16,
-                              bottom: 16,
-                              left: 8,
-                              right: 24,
-                            ),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () => context.pop(),
-                                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                                  splashRadius: 24,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 40,
-                                    minHeight: 40,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Center(
-                            child: SizedBox(
-                              width: 110,
-                              height: 80,
-                              child: Image.asset(
-                                AppConstants.imageLogo,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.shopping_bag,
-                                  size: 52,
-                                  color: _primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Buat Akun Baru',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: _textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-                    _buildField(
-                      controller: _nameController,
-                      label: 'Nama Lengkap',
-                      validator: (val) => Validators.required(val, fieldName: 'Nama Lengkap'),
+                  child: Container(
+                    width: double.infinity,
+                    color: _primary,
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 16,
+                      bottom: 16,
+                      left: 16,
+                      right: 16,
                     ),
-                    const SizedBox(height: 20),
-                    _buildField(
-                      controller: _emailController,
-                      label: 'Alamat Email',
-                      keyboardType: TextInputType.emailAddress,
-                      validator: Validators.email,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildField(
-                      controller: _phoneController,
-                      label: 'Nomor Telepon',
-                      keyboardType: TextInputType.phone,
-                      validator: Validators.phone,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildField(
-                      controller: _passwordController,
-                      label: 'Password',
-                      isPassword: true,
-                      validator: Validators.password,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submitRegister(),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: Checkbox(
-                            value: _agreeToTerms,
-                            activeColor: _primary,
-                            side: const BorderSide(color: _fieldBorder, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            onChanged: (val) {
-                              setState(() {
-                                _agreeToTerms = val ?? false;
-                              });
-                            },
+                        IconButton(
+                          onPressed: () => context.pop(),
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          splashRadius: 24,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 40,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Text.rich(
-                              TextSpan(
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: _textPrimary,
-                                  height: 1.4,
-                                ),
-                                children: const [
-                                  TextSpan(text: 'Saya menyetujui '),
-                                  TextSpan(
-                                    text: 'Ketentuan Layanan dan Kebijakan Privasi',
-                                    style: TextStyle(color: _red, fontWeight: FontWeight.w600),
-                                  ),
-                                  TextSpan(text: ' dari Koperasi Damos Mart.'),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // DAFTAR button (disabled with 0.4 opacity until terms agreed)
-                    SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: (_agreeToTerms && !isLoading) ? _submitRegister : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primary,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: _primary.withOpacity(0.4),
-                          disabledForegroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : const Text(
-                                'DAFTAR',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                        const SizedBox(width: 12),
                         const Text(
-                          'Sudah punya akun? ',
-                          style: TextStyle(fontSize: 14, color: _textPrimary),
-                        ),
-                        GestureDetector(
-                          onTap: () => context.go('/login'),
-                          child: const Text(
-                            'Login Sekarang',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: _textPrimary,
-                              decoration: TextDecoration.underline,
-                            ),
+                          'Register',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
-                        ],
-                      ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 28),
+                        const SizedBox(height: 24),
+                        Center(
+                          child: SizedBox(
+                            width: 110,
+                            height: 80,
+                            child: Image.asset(
+                              AppConstants.imageLogo,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => const Icon(
+                                Icons.shopping_bag,
+                                size: 52,
+                                color: _primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Buat Akun Baru',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: _textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        _buildField(
+                          controller: _nameController,
+                          label: 'Nama Lengkap',
+                          validator: (val) => Validators.required(val, fieldName: 'Nama Lengkap'),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildField(
+                          controller: _emailController,
+                          label: 'Alamat Email',
+                          keyboardType: TextInputType.emailAddress,
+                          validator: Validators.email,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildField(
+                          controller: _phoneController,
+                          label: 'Nomor Telepon',
+                          keyboardType: TextInputType.phone,
+                          validator: Validators.phone,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildField(
+                          controller: _passwordController,
+                          label: 'Password',
+                          isPassword: true,
+                          validator: Validators.password,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submitRegister(),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                value: _agreeToTerms,
+                                activeColor: _primary,
+                                side: const BorderSide(color: _fieldBorder, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _agreeToTerms = val ?? false;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Text.rich(
+                                  TextSpan(
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: _textPrimary,
+                                      height: 1.4,
+                                    ),
+                                    children: const [
+                                      TextSpan(text: 'Saya menyetujui '),
+                                      TextSpan(
+                                        text: 'Ketentuan Layanan dan Kebijakan Privasi',
+                                        style: TextStyle(color: _red, fontWeight: FontWeight.w600),
+                                      ),
+                                      TextSpan(text: ' dari Koperasi Damos Mart.'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        // DAFTAR button (disabled with 0.4 opacity until terms agreed)
+                        SizedBox(
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: (_agreeToTerms && !isLoading) ? _submitRegister : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: _primary.withOpacity(0.4),
+                              disabledForegroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text(
+                                    'DAFTAR',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Sudah punya akun? ',
+                              style: TextStyle(fontSize: 14, color: _textPrimary),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.go('/login'),
+                              child: const Text(
+                                'Login Sekarang',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textPrimary,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                      ],
                     ),
                   ),
                 ),

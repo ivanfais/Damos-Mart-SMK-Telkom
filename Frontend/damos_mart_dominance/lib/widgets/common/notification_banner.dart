@@ -35,11 +35,11 @@ class NotificationBanner extends StatelessWidget {
   }) {
     hide();
 
-    final ctx = context ?? AppRouter.rootNavigatorKey.currentContext;
-    if (ctx == null) return;
+    final overlay = AppRouter.rootNavigatorKey.currentState?.overlay;
+    if (overlay == null) return;
 
-    final overlay = Overlay.of(ctx, rootOverlay: true);
-    final topPadding = MediaQuery.paddingOf(ctx).top;
+    final ctx = context ?? AppRouter.rootNavigatorKey.currentContext;
+    final topPadding = ctx != null ? MediaQuery.paddingOf(ctx).top : 0.0;
 
     _overlayEntry = OverlayEntry(
       builder: (overlayContext) {

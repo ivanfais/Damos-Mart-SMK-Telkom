@@ -117,16 +117,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _SettingsCard(
                         children: [
                           _ProfileMenuRow(
-                            icon: Icons.help_outline,
-                            iconBackground: const Color(0xFFE8F0FE),
-                            iconColor: const Color(0xFF1A73E8),
-                            titleColor: const Color(0xFF1A73E8),
-                            title: 'Bantuan & Komplain',
-                            subtitle: 'Sampaikan Keluhan anda',
-                            onTap: () => context.push('/complaints'),
-                          ),
-                          const _SettingsDivider(),
-                          _ProfileMenuRow(
                             icon: Icons.favorite,
                             iconBackground: DamosDominanceColors.primary.withValues(alpha: 0.12),
                             iconColor: DamosDominanceColors.primary,

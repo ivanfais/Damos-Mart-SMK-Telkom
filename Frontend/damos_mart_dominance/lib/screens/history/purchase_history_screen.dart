@@ -13,6 +13,7 @@ import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/error_state.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/complaints/complaint_help_card.dart';
 
 enum _OrderCategory {
   all,
@@ -29,6 +30,8 @@ class _HistoryStyle {
   static const Color orangeLight = Color(0xFFFFF3E0);
   static const Color orangeText = Color(0xFFE65100);
   static const Color redLight = Color(0xFFFFEBEE);
+  static const Color unpaidRed = Color(0xFFD40000);
+  static Color get unpaidRedBg => unpaidRed.withValues(alpha: 0.3);
   static const double tabIndicatorWidth = 64;
   static const double tabIndicatorHeight = 3;
 }
@@ -182,6 +185,10 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
     context.push('/orders/${order.id}');
   }
 
+  void _openComplaintFlow(OrderModel order) {
+    context.push('/orders/${order.id}/complaints/select');
+  }
+
   void _ensureHistoryLoaded() {
     if (_historyLoadScheduled) return;
     _historyLoadScheduled = true;
@@ -263,9 +270,22 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
     }
     return (
       label: 'Belum Bayar',
-      bg: _HistoryStyle.orangeLight,
-      text: _HistoryStyle.orangeText,
+      bg: _HistoryStyle.unpaidRedBg,
+      text: _HistoryStyle.unpaidRed,
     );
+  }
+
+  bool _isUnpaid(OrderModel order) {
+    return order.status == OrderStatus.pending &&
+        order.paymentStatus == PaymentStatus.unpaid;
+  }
+
+  void _payNow(OrderModel order) {
+    if (order.paymentMethod == PaymentMethod.qris) {
+      context.push('/checkout/qris/${order.id}', extra: order);
+      return;
+    }
+    context.push('/checkout/cash/${order.id}', extra: order);
   }
 
   Widget _buildStatusBadge(String label, Color bg, Color textColor) {
@@ -273,7 +293,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_HistoryStyle.cardRadius),
       ),
       child: Text(
         label,
@@ -281,6 +301,34 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
           fontSize: 11,
           fontWeight: FontWeight.w700,
           color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPayNowButton(OrderModel order) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Material(
+          color: _HistoryStyle.unpaidRedBg,
+          borderRadius: BorderRadius.circular(_HistoryStyle.cardRadius),
+          child: InkWell(
+            onTap: () => _payNow(order),
+            borderRadius: BorderRadius.circular(_HistoryStyle.cardRadius),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Bayar Sekarang',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _HistoryStyle.unpaidRed,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -377,6 +425,8 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
   Widget _buildHistoryCard(OrderModel order) {
     final badge = _statusBadge(order);
     final items = order.orderItems;
+    final isCompleted = order.status == OrderStatus.completed;
+    final isUnpaid = _isUnpaid(order);
 
     return Material(
       color: Colors.transparent,
@@ -444,7 +494,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
                 );
               }),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 10, 14),
+                padding: EdgeInsets.fromLTRB(16, 4, 10, isUnpaid ? 8 : (isCompleted ? 8 : 14)),
                 child: Row(
                   children: [
                     const Expanded(
@@ -473,6 +523,15 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
                   ],
                 ),
               ),
+              if (isUnpaid)
+                _buildPayNowButton(order)
+              else if (isCompleted)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: ComplaintHistoryBanner(
+                    onComplaintPressed: () => _openComplaintFlow(order),
+                  ),
+                ),
             ],
           ),
         ),

@@ -22,6 +22,7 @@ import 'blocs/cooperative/cooperative_cubit.dart';
 import 'core/auth/session_expired_notifier.dart';
 import 'core/auth/auth_refresh_notifier.dart';
 import 'core/disc/disc_build_guard.dart';
+import 'core/notifications/complaint_realtime_service.dart';
 import 'core/notifications/notification_payload.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/socket/socket_service.dart';
@@ -51,12 +52,30 @@ class _DamosMartAppState extends State<DamosMartApp> {
   }
 
   void _handleNotificationTap(String? payload) {
+    final complaintId = NotificationPayload.parseComplaintId(payload);
+    if (complaintId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openComplaintDetail(complaintId);
+      });
+      return;
+    }
+
     final orderId = NotificationPayload.parseOrderId(payload);
     if (orderId == null) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _openOrderDetail(orderId);
     });
+  }
+
+  void _openComplaintDetail(String complaintId) {
+    final context = AppRouter.rootNavigatorKey.currentContext;
+    if (context == null) return;
+
+    final location = GoRouterState.of(context).uri.toString();
+    if (location.contains('/complaints/$complaintId')) return;
+
+    context.push('/complaints/$complaintId');
   }
 
   void _openOrderDetail(String orderId) {
@@ -150,6 +169,32 @@ class _DamosMartAppState extends State<DamosMartApp> {
       );
       _refreshAfterQueueEvent(reloadOrders: true);
     });
+
+    SocketService.instance.onComplaintUpdated((data) {
+      if (data is! Map) return;
+      final payload = Map<String, dynamic>.from(data);
+      ComplaintRealtimeService.instance.publish(payload);
+      _showComplaintNotification(payload);
+    });
+
+    SocketService.instance.onOrderStatusUpdated((data) {
+      if (data is! Map) return;
+      final payload = Map<String, dynamic>.from(data);
+      _showOrderStatusNotification(payload);
+      _refreshAfterOrderStatusEvent(payload);
+    });
+  }
+
+  void _refreshAfterOrderStatusEvent(Map<String, dynamic> data) {
+    final orderId = data['orderId']?.toString();
+    if (orderId == null || orderId.isEmpty) return;
+
+    final context = AppRouter.rootNavigatorKey.currentContext;
+    if (context == null) return;
+
+    final orderCubit = context.read<OrderCubit>();
+    orderCubit.refreshMyOrdersSilently();
+    orderCubit.refreshOrderDetailSilently(orderId);
   }
 
   void _refreshAfterQueueEvent({bool reloadOrders = false}) {
@@ -222,6 +267,66 @@ class _DamosMartAppState extends State<DamosMartApp> {
           orderNumber: orderNumber,
         );
       }
+    });
+  }
+
+  void _showComplaintNotification(Map<String, dynamic> data) {
+    final complaintId = data['complaintId']?.toString();
+    if (complaintId == null || complaintId.isEmpty) return;
+
+    final title = data['title']?.toString() ?? 'Status Komplain Diperbarui';
+    final body = data['body']?.toString() ??
+        'Ada pembaruan pada komplain Anda. Ketuk untuk melihat detail.';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      NotificationBanner.show(
+        title: title,
+        message: body,
+        onTap: () {
+          NotificationBanner.hide();
+          _openComplaintDetail(complaintId);
+        },
+      );
+
+      final push = PushNotificationService.instance;
+      if (!push.isSupported) return;
+
+      await push.ensurePermission();
+      await push.showComplaintUpdate(
+        complaintId: complaintId,
+        title: title,
+        body: body,
+      );
+    });
+  }
+
+  void _showOrderStatusNotification(Map<String, dynamic> data) {
+    final orderId = data['orderId']?.toString();
+    if (orderId == null || orderId.isEmpty) return;
+
+    final title = data['title']?.toString() ?? 'Status Pesanan Diperbarui';
+    final body = data['body']?.toString() ??
+        'Status pesanan Anda telah diperbarui. Ketuk untuk melihat detail.';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      NotificationBanner.show(
+        title: title,
+        message: body,
+        onTap: () {
+          NotificationBanner.hide();
+          _openOrderDetail(orderId);
+        },
+      );
+
+      final push = PushNotificationService.instance;
+      if (!push.isSupported) return;
+
+      await push.ensurePermission();
+      await push.showOrderStatusUpdate(
+        orderId: orderId,
+        title: title,
+        body: body,
+      );
     });
   }
 

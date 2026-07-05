@@ -1,6 +1,6 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middlewares/error.middleware';
-import { emitQueueUpdate, emitQueueCalled, emitQueueReady, emitUserNotification } from '../../socket';
+import { emitQueueUpdate, emitQueueCalled, emitQueueReady, emitUserNotification, emitOrderStatusUpdate } from '../../socket';
 
 /**
  * Returns [startOfDay, endOfDay] for the current local day. Used to filter
@@ -288,12 +288,47 @@ export class QueuesService {
       return uQueue;
     });
 
+    const order = await prisma.order.findUnique({
+      where: { id: queue.orderId },
+      select: { orderNumber: true },
+    });
+
+    const notification = await prisma.notification.create({
+      data: {
+        userId: queue.userId,
+        title: 'Pesanan Selesai',
+        body: `Pesanan ${order?.orderNumber ?? 'Anda'} telah selesai diambil. Terima kasih telah berbelanja!`,
+        type: 'ORDER_STATUS',
+        referenceId: queue.orderId,
+      },
+    });
+
     // Notify student via Websockets
     emitQueueUpdate(queue.userId, {
       queueId: updated.id,
       orderId: queue.orderId,
+      orderNumber: order?.orderNumber,
       status: updated.status,
       queueNumber: updated.queueNumber,
+    });
+
+    emitOrderStatusUpdate(queue.userId, {
+      orderId: queue.orderId,
+      orderNumber: order?.orderNumber,
+      status: 'COMPLETED',
+      statusLabel: 'Selesai',
+      title: notification.title,
+      body: notification.body,
+      queueId: updated.id,
+      queueNumber: updated.queueNumber,
+    });
+
+    emitUserNotification(queue.userId, {
+      id: notification.id,
+      title: notification.title,
+      body: notification.body,
+      type: notification.type,
+      referenceId: notification.referenceId,
     });
 
     return updated;

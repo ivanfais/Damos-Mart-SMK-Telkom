@@ -27,7 +27,6 @@ class PushNotificationService {
       'Notifikasi pembaruan status dan balasan komplain';
 
   bool _initialized = false;
-  bool _permissionRequested = false;
   NotificationTapCallback? _tapHandler;
   String? _pendingColdStartPayload;
 
@@ -96,23 +95,54 @@ class PushNotificationService {
     _tapHandler?.call(response.payload);
   }
 
-  Future<void> ensurePermission() async {
-    if (!isSupported || _permissionRequested) return;
-    _permissionRequested = true;
+  Future<bool> hasPermission() async {
+    if (!isSupported) return false;
+    if (!_initialized) await init();
 
     if (Platform.isAndroid) {
-      await _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
-      return;
+      return await _plugin
+              .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin>()
+              ?.areNotificationsEnabled() ??
+          true;
     }
 
     if (Platform.isIOS) {
-      await _plugin
-          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
+      final ios = _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      final settings = await ios?.checkPermissions();
+      return settings?.isEnabled ?? false;
     }
+
+    return false;
+  }
+
+  /// Meminta izin jika belum aktif. Bisa dipanggil berulang (mis. setelah login / resume).
+  Future<bool> ensurePermission() async {
+    if (!isSupported) return false;
+    if (!_initialized) await init();
+
+    if (await hasPermission()) return true;
+
+    if (Platform.isAndroid) {
+      final granted = await _plugin
+              .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin>()
+              ?.requestNotificationsPermission() ??
+          false;
+      return granted;
+    }
+
+    if (Platform.isIOS) {
+      final granted = await _plugin
+              .resolvePlatformSpecificImplementation<
+                  IOSFlutterLocalNotificationsPlugin>()
+              ?.requestPermissions(alert: true, badge: true, sound: true) ??
+          false;
+      return granted;
+    }
+
+    return false;
   }
 
   String? _queuePayload({String? orderId, String? queueId}) {
@@ -244,8 +274,17 @@ class PushNotificationService {
     required String channelName,
     required String channelDescription,
   }) async {
-    if (!isSupported || !_initialized) return;
+    if (!isSupported) return;
+    if (!_initialized) await init();
     if (!PrefsStorage.instance.getNotificationsEnabled()) return;
+
+    final permitted = await ensurePermission();
+    if (!permitted) {
+      if (kDebugMode) {
+        debugPrint('[PushNotificationService] Izin notifikasi belum diberikan.');
+      }
+      return;
+    }
 
     final androidDetails = AndroidNotificationDetails(
       channelId,

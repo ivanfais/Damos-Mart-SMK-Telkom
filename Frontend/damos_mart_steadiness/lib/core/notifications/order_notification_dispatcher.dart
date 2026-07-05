@@ -287,7 +287,7 @@ class OrderNotificationDispatcher {
       return;
     }
 
-    if (queueId != null && !isQueueReady && orderId == null) {
+    if (queueId != null && !isQueueReady) {
       await push.showQueueCalled(
         queueNumber: queueNumber ?? '-',
         orderId: orderId,

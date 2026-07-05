@@ -70,20 +70,21 @@ class _DamosMartAppState extends State<DamosMartApp> with WidgetsBindingObserver
     });
 
     NotificationPushBridge.instance.onNewNotification = (notification) {
-      if (_isOrderRelatedNotification(notification)) {
+      if (_shouldPushFromApi(notification)) {
         OrderNotificationDispatcher.instance.showFromModel(notification);
       }
     };
   }
 
-  bool _isOrderRelatedNotification(NotificationModel notification) {
+  bool _shouldPushFromApi(NotificationModel notification) {
     return notification.type == NotificationType.orderStatus ||
-        notification.type == NotificationType.queueReady;
+        notification.type == NotificationType.queueReady ||
+        notification.type == NotificationType.complaint;
   }
 
   void _startNotificationPolling() {
     _notificationPollTimer?.cancel();
-    _notificationPollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+    _notificationPollTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       final context = AppRouter.rootNavigatorKey.currentContext;
       if (context == null) return;
       context.read<NotificationCubit>().refreshSilently();
@@ -100,6 +101,12 @@ class _DamosMartAppState extends State<DamosMartApp> with WidgetsBindingObserver
     if (state == AppLifecycleState.resumed) {
       final context = AppRouter.rootNavigatorKey.currentContext;
       if (context == null) return;
+
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated) {
+        SocketService.instance.init(authState.user.id);
+      }
+
       context.read<NotificationCubit>().refreshSilently();
       PushNotificationService.instance.ensurePermission();
     }
@@ -406,7 +413,7 @@ class _DamosMartAppState extends State<DamosMartApp> with WidgetsBindingObserver
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
-            PushNotificationService.instance.ensurePermission();
+            unawaited(PushNotificationService.instance.ensurePermission());
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
             NotificationPushBridge.instance.reset();

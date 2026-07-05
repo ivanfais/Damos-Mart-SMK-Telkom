@@ -23,9 +23,8 @@ void main() async {
     await PrefsStorage.instance.setSelectedDiscVariant(fromPath);
   }
 
-  // Native push notifications (Android/iOS status bar)
+  // Native push notifications (Android/iOS status bar). Izin diminta setelah login.
   await PushNotificationService.instance.init();
-  await PushNotificationService.instance.ensurePermission();
 
   // Initialize Indonesian locale formatting
   await initializeDateFormatting('id_ID', null);

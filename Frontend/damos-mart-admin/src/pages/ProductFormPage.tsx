@@ -40,6 +40,7 @@ export const ProductFormPage: React.FC = () => {
   const [newVarStock, setNewVarStock] = useState(0);
   const [newVarImageFile, setNewVarImageFile] = useState<File | null>(null);
   const [newVarImagePreview, setNewVarImagePreview] = useState<string | null>(null);
+  const [uploadingVariantId, setUploadingVariantId] = useState<string | null>(null);
 
   const buildVariantFormData = (variant: VariantRow) => {
     const formData = new FormData();
@@ -67,20 +68,55 @@ export const ProductFormPage: React.FC = () => {
     setNewVarImagePreview(URL.createObjectURL(file));
   };
 
-  const handleVariantImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVariantImageChange = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setVariants((prev) =>
-      prev.map((v, idx) =>
-        idx === index
-          ? {
-              ...v,
-              pendingImageFile: file,
-              imagePreview: URL.createObjectURL(file),
-            }
-          : v
-      )
-    );
+    e.target.value = '';
+
+    const preview = URL.createObjectURL(file);
+    const current = variants[index];
+    const updatedVariant: VariantRow = {
+      ...current,
+      pendingImageFile: file,
+      imagePreview: preview,
+    };
+
+    setVariants((prev) => prev.map((v, idx) => (idx === index ? updatedVariant : v)));
+
+    if (isEditMode && current.id) {
+      try {
+        setUploadingVariantId(current.id);
+        await apiClient.put(
+          `/admin/products/${id}/variants/${current.id}`,
+          buildVariantFormData(updatedVariant)
+        );
+        await queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
+      } catch (err: any) {
+        alert(err.response?.data?.error?.message || 'Gagal mengunggah foto varian.');
+      } finally {
+        setUploadingVariantId(null);
+      }
+    }
+  };
+
+  const persistVariant = async (variant: VariantRow) => {
+    if (!variant.id || !id) return;
+
+    if (variant.pendingImageFile) {
+      await apiClient.put(
+        `/admin/products/${id}/variants/${variant.id}`,
+        buildVariantFormData(variant)
+      );
+    } else {
+      await apiClient.put(`/admin/products/${id}/variants/${variant.id}`, {
+        variantName: variant.variantName,
+        additionalPrice: Number(variant.additionalPrice) || 0,
+        stock: isPreorder ? 0 : Number(variant.stock) || 0,
+      });
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
+    await queryClient.invalidateQueries({ queryKey: ['adminProductsList'] });
   };
 
   // Fetch categories list
@@ -160,23 +196,17 @@ export const ProductFormPage: React.FC = () => {
       // it to "multipart/form-data; boundary=..." automatically, otherwise the
       // server cannot parse the upload ("Multipart: Boundary not found").
       if (isEditMode) {
-        const res = await apiClient.put(`/admin/products/${id}`, formData, {
-          headers: { 'Content-Type': undefined },
-        });
+        const res = await apiClient.put(`/admin/products/${id}`, formData);
         product = res.data.data;
       } else {
-        const res = await apiClient.post('/admin/products', formData, {
-          headers: { 'Content-Type': undefined },
-        });
+        const res = await apiClient.post('/admin/products', formData);
         product = res.data.data;
       }
 
       // Save variants if not in edit mode (we do separate variant API calls for edit mode variants update, or if edit mode we already handled them)
       if (!isEditMode && variants.length > 0) {
         for (const variant of variants) {
-          await apiClient.post(`/admin/products/${product.id}/variants`, buildVariantFormData(variant), {
-            headers: { 'Content-Type': undefined },
-          });
+          await apiClient.post(`/admin/products/${product.id}/variants`, buildVariantFormData(variant));
         }
       }
     },
@@ -199,13 +229,12 @@ export const ProductFormPage: React.FC = () => {
       });
 
       apiClient
-        .post(`/admin/products/${id}/variants`, formData, {
-          headers: { 'Content-Type': undefined },
-        })
+        .post(`/admin/products/${id}/variants`, formData)
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
           resetNewVariantForm();
-        });
+        })
+        .catch((err) => alert(err.response?.data?.error?.message || 'Gagal menambah varian.'));
     } else {
       setVariants((prev) => [
         ...prev,
@@ -248,22 +277,9 @@ export const ProductFormPage: React.FC = () => {
     const v = variants[index];
     if (!v.id) return;
 
-    const request = v.pendingImageFile
-      ? apiClient.put(`/admin/products/${id}/variants/${v.id}`, buildVariantFormData(v), {
-          headers: { 'Content-Type': undefined },
-        })
-      : apiClient.put(`/admin/products/${id}/variants/${v.id}`, {
-          variantName: v.variantName,
-          additionalPrice: Number(v.additionalPrice) || 0,
-          stock: isPreorder ? 0 : Number(v.stock) || 0,
-        });
-
-    request
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
-        queryClient.invalidateQueries({ queryKey: ['adminProductsList'] });
-      })
-      .catch((err) => alert(err.response?.data?.error?.message || 'Gagal menyimpan varian.'));
+    persistVariant(v).catch((err) =>
+      alert(err.response?.data?.error?.message || 'Gagal menyimpan varian.')
+    );
   };
 
   // When a product has variants, the main stock is derived from their sum.
@@ -443,7 +459,7 @@ export const ProductFormPage: React.FC = () => {
                 {isPreorder
                   ? 'Pre-order tidak memakai stok. Siswa memesan dulu, produk diproduksi setelahnya.'
                   : 'Tambahkan opsi varian barang (seperti ukuran seragam) dengan stok tersendiri.'}
-                {' '}Foto varian opsional — jika kosong, app siswa memakai foto produk utama.
+                {' '}Foto varian opsional — otomatis tersimpan setelah dipilih. Kosongkan = pakai foto produk utama.
               </p>
             </div>
 
@@ -481,7 +497,11 @@ export const ProductFormPage: React.FC = () => {
                               )}
                             </div>
                             <label className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-brand-500 cursor-pointer hover:bg-brand-50 transition-colors">
-                              {v.imagePreview ? 'Ganti' : 'Upload'}
+                              {uploadingVariantId === v.id
+                                ? '...'
+                                : v.imagePreview
+                                  ? 'Ganti'
+                                  : 'Upload'}
                               <input
                                 type="file"
                                 accept="image/*"

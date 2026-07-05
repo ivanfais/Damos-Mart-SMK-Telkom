@@ -25,6 +25,7 @@ void main() async {
 
   // Native push notifications (Android/iOS status bar)
   await PushNotificationService.instance.init();
+  await PushNotificationService.instance.ensurePermission();
 
   // Initialize Indonesian locale formatting
   await initializeDateFormatting('id_ID', null);

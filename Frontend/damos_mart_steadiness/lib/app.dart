@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'routes/app_router.dart';
 import 'theme/app_theme.dart';
 
+import 'data/models/notification_model.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
@@ -17,6 +20,8 @@ import 'blocs/complaint/complaint_cubit.dart';
 import 'blocs/notification/notification_cubit.dart';
 import 'blocs/cooperative/cooperative_cubit.dart';
 import 'core/notifications/notification_payload.dart';
+import 'core/notifications/notification_push_bridge.dart';
+import 'core/notifications/order_notification_dispatcher.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/disc/disc_build_guard.dart';
 import 'core/socket/socket_service.dart';
@@ -30,15 +35,74 @@ class DamosMartApp extends StatefulWidget {
   State<DamosMartApp> createState() => _DamosMartAppState();
 }
 
-class _DamosMartAppState extends State<DamosMartApp> {
+class _DamosMartAppState extends State<DamosMartApp> with WidgetsBindingObserver {
   bool _socketListenersRegistered = false;
+  Timer? _notificationPollTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     AppRouter.router.routerDelegate.addListener(_syncSystemUi);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncSystemUi());
     PushNotificationService.instance.registerTapHandler(_handleNotificationTap);
+    _setupNotificationDispatcher();
+  }
+
+  void _setupNotificationDispatcher() {
+    final dispatcher = OrderNotificationDispatcher.instance;
+    dispatcher.registerTapHandler(({orderId, queueId, complaintId}) {
+      if (complaintId != null) {
+        _openComplaintDetail(complaintId);
+        return;
+      }
+      if (orderId != null) {
+        _openOrderHistoryDetail(orderId);
+        return;
+      }
+      if (queueId != null) {
+        _openQueueDetail(queueId);
+      }
+    });
+
+    dispatcher.registerBannerHandler(({required title, required body, onTap}) {
+      NotificationBanner.show(title: title, message: body, onTap: onTap);
+    });
+
+    NotificationPushBridge.instance.onNewNotification = (notification) {
+      if (_isOrderRelatedNotification(notification)) {
+        OrderNotificationDispatcher.instance.showFromModel(notification);
+      }
+    };
+  }
+
+  bool _isOrderRelatedNotification(NotificationModel notification) {
+    return notification.type == NotificationType.orderStatus ||
+        notification.type == NotificationType.queueReady;
+  }
+
+  void _startNotificationPolling() {
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      final context = AppRouter.rootNavigatorKey.currentContext;
+      if (context == null) return;
+      context.read<NotificationCubit>().refreshSilently();
+    });
+  }
+
+  void _stopNotificationPolling() {
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = null;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final context = AppRouter.rootNavigatorKey.currentContext;
+      if (context == null) return;
+      context.read<NotificationCubit>().refreshSilently();
+      PushNotificationService.instance.ensurePermission();
+    }
   }
 
   void _handleNotificationTap(String? payload) {
@@ -98,6 +162,8 @@ class _DamosMartAppState extends State<DamosMartApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopNotificationPolling();
     AppRouter.router.routerDelegate.removeListener(_syncSystemUi);
     super.dispose();
   }
@@ -116,22 +182,22 @@ class _DamosMartAppState extends State<DamosMartApp> {
       final orderId = data['orderId']?.toString();
       final queueId = data['queueId']?.toString();
       final orderNumber = data['orderNumber']?.toString();
-      _showQueueNotification(
+      OrderNotificationDispatcher.instance.showQueueEvent(
         title: 'Antrean Dipanggil',
-        message:
+        body:
             'Pesanan ${orderNumber ?? queueNumber} sedang disiapkan oleh petugas koperasi.',
         queueNumber: queueNumber,
-        orderNumber: orderNumber,
         isReady: false,
         orderId: orderId,
         queueId: queueId,
+        orderNumber: orderNumber,
       );
       _refreshQueuesAfterSocketEvent();
       _refreshNotificationsAfterSocketEvent();
     });
 
     SocketService.instance.onQueueUpdated((data) {
-      _handleQueueCompleted(data);
+      _handleQueueUpdated(data);
       _refreshQueuesAfterSocketEvent();
       _refreshNotificationsAfterSocketEvent();
     });
@@ -141,15 +207,15 @@ class _DamosMartAppState extends State<DamosMartApp> {
       final orderId = data['orderId']?.toString();
       final queueId = data['queueId']?.toString();
       final orderNumber = data['orderNumber']?.toString();
-      _showQueueNotification(
+      OrderNotificationDispatcher.instance.showQueueEvent(
         title: 'Pesanan Siap Diambil!',
-        message:
+        body:
             'Pesanan ${orderNumber ?? queueNumber} siap diambil. Tunjukkan QR Pengambilan di kasir.',
         queueNumber: queueNumber,
-        orderNumber: orderNumber,
         isReady: true,
         orderId: orderId,
         queueId: queueId,
+        orderNumber: orderNumber,
       );
       _refreshQueuesAfterSocketEvent();
       _refreshNotificationsAfterSocketEvent(reloadOrders: true);
@@ -158,17 +224,67 @@ class _DamosMartAppState extends State<DamosMartApp> {
     SocketService.instance.onComplaintUpdated((data) {
       if (data is! Map) return;
       final payload = Map<String, dynamic>.from(data);
-      _showComplaintNotification(payload);
+      final complaintId = payload['complaintId']?.toString();
+      if (complaintId == null || complaintId.isEmpty) return;
+      OrderNotificationDispatcher.instance.showComplaint(
+        complaintId: complaintId,
+        title: payload['title']?.toString() ?? 'Status Komplain Diperbarui',
+        body: payload['body']?.toString() ??
+            'Ada pembaruan pada komplain Anda. Ketuk untuk melihat detail.',
+      );
       _refreshNotificationsAfterSocketEvent();
     });
 
     SocketService.instance.onOrderStatusUpdated((data) {
       if (data is! Map) return;
       final payload = Map<String, dynamic>.from(data);
-      _showOrderStatusNotification(payload);
+      final orderId = payload['orderId']?.toString();
+      if (orderId == null || orderId.isEmpty) return;
+      OrderNotificationDispatcher.instance.showOrderStatus(
+        orderId: orderId,
+        title: payload['title']?.toString() ?? 'Status Pesanan Diperbarui',
+        body: payload['body']?.toString() ??
+            'Status pesanan Anda telah diperbarui. Ketuk untuk melihat detail.',
+      );
       _refreshAfterOrderStatusEvent(payload);
       _refreshNotificationsAfterSocketEvent();
     });
+
+    SocketService.instance.onNotificationNew((data) {
+      if (data is! Map) return;
+      OrderNotificationDispatcher.instance.showFromSocket(Map<String, dynamic>.from(data));
+      _refreshNotificationsAfterSocketEvent();
+    });
+  }
+
+  void _handleQueueUpdated(dynamic data) {
+    if (data is! Map) return;
+    final payload = Map<String, dynamic>.from(data);
+    final status = payload['status']?.toString();
+    final event = payload['event']?.toString();
+
+    if (status == 'COMPLETED') {
+      _handleQueueCompleted(data);
+      return;
+    }
+
+    if (event == 'PAYMENT_SUCCESS') {
+      final orderId = payload['orderId']?.toString();
+      final queueId = payload['queueId']?.toString();
+      final queueNumber = payload['queueNumber']?.toString() ?? '-';
+      final orderNumber = payload['orderNumber']?.toString();
+      if (orderId == null) return;
+      OrderNotificationDispatcher.instance.showPaymentSuccess(
+        orderId: orderId,
+        title: 'Pembayaran Berhasil',
+        body:
+            'Pesanan ${orderNumber ?? orderId} telah dibayar. Nomor antrean Anda adalah $queueNumber.',
+        queueId: queueId,
+        queueNumber: queueNumber,
+        orderNumber: orderNumber,
+      );
+      _refreshNotificationsAfterSocketEvent(reloadOrders: true);
+    }
   }
 
   void _refreshAfterOrderStatusEvent(Map<String, dynamic> data) {
@@ -234,9 +350,12 @@ class _DamosMartAppState extends State<DamosMartApp> {
 
       if (orderId != null) {
         final orderNumber = data?['orderNumber']?.toString();
-        _showOrderCompletedNotification(
+        OrderNotificationDispatcher.instance.showOrderCompleted(
           orderId: orderId,
           orderNumber: orderNumber,
+          title: 'Pesanan Selesai',
+          body:
+              'Pesanan ${orderNumber ?? 'Anda'} telah selesai diambil. Terima kasih telah berbelanja!',
         );
       }
 
@@ -252,143 +371,6 @@ class _DamosMartAppState extends State<DamosMartApp> {
       final location = GoRouterState.of(context).uri.toString();
       if (location.contains('/queue/$queueId/complete')) return;
       context.push('/queue/$queueId/complete');
-    });
-  }
-
-  void _showOrderCompletedNotification({
-    required String orderId,
-    String? orderNumber,
-  }) {
-    final title = 'Pesanan Selesai';
-    final message =
-        'Pesanan ${orderNumber ?? 'Anda'} telah selesai diambil. Terima kasih telah berbelanja!';
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      NotificationBanner.show(
-        title: title,
-        message: message,
-        onTap: () {
-          NotificationBanner.hide();
-          _openOrderHistoryDetail(orderId);
-        },
-      );
-
-      final push = PushNotificationService.instance;
-      if (!push.isSupported) return;
-
-      await push.ensurePermission();
-      await push.showOrderCompleted(orderId: orderId, orderNumber: orderNumber);
-    });
-  }
-
-  void _showComplaintNotification(Map<String, dynamic> data) {
-    final complaintId = data['complaintId']?.toString();
-    if (complaintId == null || complaintId.isEmpty) return;
-
-    final title = data['title']?.toString() ?? 'Status Komplain Diperbarui';
-    final body = data['body']?.toString() ??
-        'Ada pembaruan pada komplain Anda. Ketuk untuk melihat detail.';
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      NotificationBanner.show(
-        title: title,
-        message: body,
-        onTap: () {
-          NotificationBanner.hide();
-          _openComplaintDetail(complaintId);
-        },
-      );
-
-      final push = PushNotificationService.instance;
-      if (!push.isSupported) return;
-
-      await push.ensurePermission();
-      await push.showComplaintUpdate(
-        complaintId: complaintId,
-        title: title,
-        body: body,
-      );
-    });
-  }
-
-  void _showOrderStatusNotification(Map<String, dynamic> data) {
-    final orderId = data['orderId']?.toString();
-    if (orderId == null || orderId.isEmpty) return;
-
-    final title = data['title']?.toString() ?? 'Status Pesanan Diperbarui';
-    final body = data['body']?.toString() ??
-        'Status pesanan Anda telah diperbarui. Ketuk untuk melihat detail.';
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      NotificationBanner.show(
-        title: title,
-        message: body,
-        onTap: () {
-          NotificationBanner.hide();
-          _openOrderHistoryDetail(orderId);
-        },
-      );
-
-      final push = PushNotificationService.instance;
-      if (!push.isSupported) return;
-
-      await push.ensurePermission();
-      await push.showOrderStatusUpdate(
-        orderId: orderId,
-        title: title,
-        body: body,
-      );
-    });
-  }
-
-  void _showQueueNotification({
-    required String title,
-    required String message,
-    required String queueNumber,
-    required bool isReady,
-    String? orderId,
-    String? queueId,
-    String? orderNumber,
-  }) {
-    VoidCallback? onTap;
-    if (orderId != null) {
-      onTap = () {
-        NotificationBanner.hide();
-        _openOrderHistoryDetail(orderId);
-      };
-    } else if (queueId != null) {
-      onTap = () {
-        NotificationBanner.hide();
-        _openQueueDetail(queueId);
-      };
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      NotificationBanner.show(
-        title: title,
-        message: message,
-        onTap: onTap,
-      );
-
-      final push = PushNotificationService.instance;
-      if (!push.isSupported) return;
-
-      await push.ensurePermission();
-      if (isReady) {
-        await push.showQueueReady(
-          queueNumber: queueNumber,
-          orderId: orderId,
-          queueId: queueId,
-          orderNumber: orderNumber,
-        );
-      } else {
-        await push.showQueueCalled(
-          queueNumber: queueNumber,
-          orderId: orderId,
-          queueId: queueId,
-          orderNumber: orderNumber,
-        );
-      }
     });
   }
 
@@ -427,19 +409,30 @@ class _DamosMartAppState extends State<DamosMartApp> {
             PushNotificationService.instance.ensurePermission();
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
+            NotificationPushBridge.instance.reset();
+            _startNotificationPolling();
             context.read<QueueCubit>().loadActiveQueues(userId: state.user.id);
             context.read<NotificationCubit>().loadNotifications();
             context.read<CartCubit>().loadCart();
           } else if (state is Unauthenticated) {
             SocketService.instance.disconnect();
             _socketListenersRegistered = false;
+            _stopNotificationPolling();
+            NotificationPushBridge.instance.reset();
             NotificationBanner.hide();
             context.read<QueueCubit>().reset();
             context.read<NotificationCubit>().reset();
             context.read<ComplaintCubit>().reset();
           }
         },
-        child: MaterialApp.router(
+        child: BlocListener<NotificationCubit, NotificationState>(
+          listenWhen: (previous, current) => current is NotificationLoaded,
+          listener: (context, state) {
+            if (state is NotificationLoaded) {
+              NotificationPushBridge.instance.onNotificationsLoaded(state.notifications);
+            }
+          },
+          child: MaterialApp.router(
           title: 'Damos Mart',
           theme: AppTheme.lightTheme,
           debugShowCheckedModeBanner: false,
@@ -465,6 +458,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
             }
             return content;
           },
+        ),
         ),
       ),
     );

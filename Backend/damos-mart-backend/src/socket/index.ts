@@ -185,3 +185,21 @@ export const emitOrderStatusUpdate = (userId: string, data: any) => {
     io.of('/queues').to(`user:${userId}`).emit('order:status_updated', data);
   }
 };
+
+/**
+ * Pushes a persisted in-app notification to the student's device (for local push).
+ */
+export const emitUserNotification = (
+  userId: string,
+  data: {
+    id?: string;
+    title: string;
+    body: string;
+    type: string;
+    referenceId?: string | null;
+  },
+) => {
+  if (io) {
+    io.of('/queues').to(`user:${userId}`).emit('notification:new', data);
+  }
+};

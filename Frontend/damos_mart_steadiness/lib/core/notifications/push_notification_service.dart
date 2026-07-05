@@ -125,17 +125,38 @@ class PushNotificationService {
     return null;
   }
 
+  Future<void> showPaymentSuccess({
+    required String orderId,
+    required String title,
+    required String body,
+    String? queueId,
+    String? queueNumber,
+    String? orderNumber,
+  }) {
+    return show(
+      id: _idFor('payment_success', orderId),
+      title: title,
+      body: body,
+      payload: _queuePayload(orderId: orderId, queueId: queueId),
+      channelId: _queueChannelId,
+      channelName: _queueChannelName,
+      channelDescription: _queueChannelDescription,
+    );
+  }
+
   Future<void> showQueueReady({
     required String queueNumber,
     String? orderId,
     String? queueId,
     String? orderNumber,
+    String? title,
+    String? body,
   }) {
     final label = orderNumber ?? queueNumber;
     return show(
       id: _idFor('queue_ready', orderId ?? queueId ?? queueNumber),
-      title: 'Pesanan Siap Diambil!',
-      body:
+      title: title ?? 'Pesanan Siap Diambil!',
+      body: body ??
           'Pesanan $label siap diambil. Buka detail pesanan dan tunjukkan QR Pengambilan di kasir.',
       payload: _queuePayload(orderId: orderId, queueId: queueId),
       channelId: _queueChannelId,
@@ -149,13 +170,33 @@ class PushNotificationService {
     String? orderId,
     String? queueId,
     String? orderNumber,
+    String? title,
+    String? body,
   }) {
     final label = orderNumber ?? queueNumber;
     return show(
       id: _idFor('queue_called', orderId ?? queueId ?? queueNumber),
-      title: 'Antrean Dipanggil',
-      body: 'Pesanan $label sedang disiapkan oleh petugas koperasi.',
+      title: title ?? 'Antrean Dipanggil',
+      body: body ?? 'Pesanan $label sedang disiapkan oleh petugas koperasi.',
       payload: _queuePayload(orderId: orderId, queueId: queueId),
+      channelId: _queueChannelId,
+      channelName: _queueChannelName,
+      channelDescription: _queueChannelDescription,
+    );
+  }
+
+  Future<void> showOrderCompleted({
+    required String orderId,
+    String? orderNumber,
+    String? title,
+    String? body,
+  }) {
+    final label = orderNumber ?? 'pesanan Anda';
+    return show(
+      id: _idFor('order_completed', orderId),
+      title: title ?? 'Pesanan Selesai',
+      body: body ?? 'Pesanan $label telah selesai diambil. Terima kasih telah berbelanja!',
+      payload: NotificationPayload.orderDetail(orderId),
       channelId: _queueChannelId,
       channelName: _queueChannelName,
       channelDescription: _queueChannelDescription,
@@ -171,22 +212,6 @@ class PushNotificationService {
       id: _idFor('order_status', orderId),
       title: title,
       body: body,
-      payload: NotificationPayload.orderDetail(orderId),
-      channelId: _queueChannelId,
-      channelName: _queueChannelName,
-      channelDescription: _queueChannelDescription,
-    );
-  }
-
-  Future<void> showOrderCompleted({
-    required String orderId,
-    String? orderNumber,
-  }) {
-    final label = orderNumber ?? 'pesanan Anda';
-    return show(
-      id: _idFor('order_completed', orderId),
-      title: 'Pesanan Selesai',
-      body: 'Pesanan $label telah selesai diambil. Terima kasih telah berbelanja!',
       payload: NotificationPayload.orderDetail(orderId),
       channelId: _queueChannelId,
       channelName: _queueChannelName,

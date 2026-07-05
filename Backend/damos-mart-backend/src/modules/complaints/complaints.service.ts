@@ -1,6 +1,6 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middlewares/error.middleware';
-import { emitComplaintUpdate } from '../../socket';
+import { emitComplaintUpdate, emitUserNotification } from '../../socket';
 
 type ComplaintCategory = 'PRODUCT' | 'SERVICE' | 'ORDER' | 'QUEUE' | 'OTHER';
 type ComplaintStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
@@ -222,7 +222,7 @@ export class ComplaintsService {
       body = `Admin membalas komplain Anda: ${complaint.adminResponse.trim()}`;
     }
 
-    await prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId: complaint.userId,
         title,
@@ -232,7 +232,7 @@ export class ComplaintsService {
       },
     });
 
-    emitComplaintUpdate(complaint.userId, {
+    const notificationPayload = {
       complaintId: complaint.id,
       orderId: complaint.orderId,
       status: complaint.status,
@@ -242,6 +242,16 @@ export class ComplaintsService {
       resolvedAt: complaint.resolvedAt,
       title,
       body,
+    };
+
+    emitComplaintUpdate(complaint.userId, notificationPayload);
+
+    emitUserNotification(complaint.userId, {
+      id: notification.id,
+      title: notification.title,
+      body: notification.body,
+      type: notification.type,
+      referenceId: notification.referenceId,
     });
   }
 

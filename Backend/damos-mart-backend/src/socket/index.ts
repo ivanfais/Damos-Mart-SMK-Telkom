@@ -40,6 +40,12 @@ export const initSocket = (server: HttpServer) => {
       }
     });
 
+    // Admin panel monitor — receives all queue events without exposing them to students
+    socket.on('queue:admin-subscribe', () => {
+      socket.join('admin:queues');
+      console.log(`👨‍💼 Admin subscribed to queue monitor in socket ${socket.id}`);
+    });
+
     socket.on('disconnect', () => {
       console.log(`🔌 Client disconnected from /queues: ${socket.id}`);
     });
@@ -113,8 +119,9 @@ export const getIo = () => io;
  */
 export const emitQueueUpdate = (userId: string, data: any) => {
   if (io) {
-    io.of('/queues').to(`user:${userId}`).emit('queue:updated', data);
-    io.of('/queues').emit('queue:updated', data);
+    const ns = io.of('/queues');
+    ns.to(`user:${userId}`).emit('queue:updated', { ...data, userId });
+    ns.to('admin:queues').emit('queue:updated', { ...data, userId });
   }
 };
 
@@ -123,8 +130,9 @@ export const emitQueueUpdate = (userId: string, data: any) => {
  */
 export const emitQueueCalled = (userId: string, data: any) => {
   if (io) {
-    io.of('/queues').to(`user:${userId}`).emit('queue:called', data);
-    io.of('/queues').emit('queue:called', data);
+    const ns = io.of('/queues');
+    ns.to(`user:${userId}`).emit('queue:called', { ...data, userId });
+    ns.to('admin:queues').emit('queue:called', { ...data, userId });
   }
 };
 
@@ -133,8 +141,9 @@ export const emitQueueCalled = (userId: string, data: any) => {
  */
 export const emitQueueReady = (userId: string, data: any) => {
   if (io) {
-    io.of('/queues').to(`user:${userId}`).emit('queue:ready', data);
-    io.of('/queues').emit('queue:ready', data);
+    const ns = io.of('/queues');
+    ns.to(`user:${userId}`).emit('queue:ready', { ...data, userId });
+    ns.to('admin:queues').emit('queue:ready', { ...data, userId });
   }
 };
 
@@ -182,7 +191,7 @@ export const emitComplaintUpdate = (userId: string, data: any) => {
  */
 export const emitOrderStatusUpdate = (userId: string, data: any) => {
   if (io) {
-    io.of('/queues').to(`user:${userId}`).emit('order:status_updated', data);
+    io.of('/queues').to(`user:${userId}`).emit('order:status_updated', { ...data, userId });
   }
 };
 

@@ -16,6 +16,9 @@ class SocketService {
       .enableAutoConnect();
 
   void init(String userId) {
+    if (_userId != null && _userId != userId) {
+      disconnect();
+    }
     _userId = userId;
     _ensureQueueSocket();
     _ensureChatSocket();

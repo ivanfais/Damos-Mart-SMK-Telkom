@@ -27,7 +27,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     // Log connection successes
     generalSocket.on('connect', () => console.log('🔌 Connected to general namespace'));
-    queueSocket.on('connect', () => console.log('🔌 Connected to /queues namespace'));
+    queueSocket.on('connect', () => {
+      console.log('🔌 Connected to /queues namespace');
+      queueSocket.emit('queue:admin-subscribe');
+    });
     chatSocket.on('connect', () => console.log('🔌 Connected to /chat namespace'));
 
     set({

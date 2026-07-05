@@ -199,7 +199,7 @@ class QueuesService {
                 data: { status: 'READY' },
             });
             // Add Notification row
-            await tx.notification.create({
+            const notification = await tx.notification.create({
                 data: {
                     userId: queue.userId,
                     title: 'Pesanan Siap Diambil',
@@ -208,16 +208,23 @@ class QueuesService {
                     referenceId: queue.id,
                 },
             });
-            return uQueue;
+            return { queue: uQueue, notification };
         });
         // Notify student via Websockets
         (0, socket_1.emitQueueReady)(queue.userId, {
-            queueId: updated.id,
+            queueId: updated.queue.id,
             orderId: queue.orderId,
-            queueNumber: updated.queueNumber,
+            queueNumber: updated.queue.queueNumber,
             orderNumber: queue.order.orderNumber,
         });
-        return updated;
+        (0, socket_1.emitUserNotification)(queue.userId, {
+            id: updated.notification.id,
+            title: updated.notification.title,
+            body: updated.notification.body,
+            type: updated.notification.type,
+            referenceId: updated.notification.referenceId,
+        });
+        return updated.queue;
     }
     /**
      * Admin: Complete queue (student picked up the order) -> status = COMPLETED.

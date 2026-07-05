@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emitOrderStatusUpdate = exports.emitComplaintUpdate = exports.emitNewOrderAdmin = exports.emitChatRead = exports.emitChatMessage = exports.emitQueueReady = exports.emitQueueCalled = exports.emitQueueUpdate = exports.getIo = exports.initSocket = void 0;
+exports.emitUserNotification = exports.emitOrderStatusUpdate = exports.emitComplaintUpdate = exports.emitNewOrderAdmin = exports.emitChatRead = exports.emitChatMessage = exports.emitQueueReady = exports.emitQueueCalled = exports.emitQueueUpdate = exports.getIo = exports.initSocket = void 0;
 const socket_io_1 = require("socket.io");
 const env_1 = require("../config/env");
 let io;
@@ -33,6 +33,11 @@ const initSocket = (server) => {
                 socket.join(`user:${data.userId}`);
                 console.log(`👤 User ${data.userId} subscribed to queue updates in socket ${socket.id}`);
             }
+        });
+        // Admin panel monitor — receives all queue events without exposing them to students
+        socket.on('queue:admin-subscribe', () => {
+            socket.join('admin:queues');
+            console.log(`👨‍💼 Admin subscribed to queue monitor in socket ${socket.id}`);
         });
         socket.on('disconnect', () => {
             console.log(`🔌 Client disconnected from /queues: ${socket.id}`);
@@ -96,8 +101,9 @@ exports.getIo = getIo;
  */
 const emitQueueUpdate = (userId, data) => {
     if (io) {
-        io.of('/queues').to(`user:${userId}`).emit('queue:updated', data);
-        io.of('/queues').emit('queue:updated', data);
+        const ns = io.of('/queues');
+        ns.to(`user:${userId}`).emit('queue:updated', { ...data, userId });
+        ns.to('admin:queues').emit('queue:updated', { ...data, userId });
     }
 };
 exports.emitQueueUpdate = emitQueueUpdate;
@@ -106,8 +112,9 @@ exports.emitQueueUpdate = emitQueueUpdate;
  */
 const emitQueueCalled = (userId, data) => {
     if (io) {
-        io.of('/queues').to(`user:${userId}`).emit('queue:called', data);
-        io.of('/queues').emit('queue:called', data);
+        const ns = io.of('/queues');
+        ns.to(`user:${userId}`).emit('queue:called', { ...data, userId });
+        ns.to('admin:queues').emit('queue:called', { ...data, userId });
     }
 };
 exports.emitQueueCalled = emitQueueCalled;
@@ -116,8 +123,9 @@ exports.emitQueueCalled = emitQueueCalled;
  */
 const emitQueueReady = (userId, data) => {
     if (io) {
-        io.of('/queues').to(`user:${userId}`).emit('queue:ready', data);
-        io.of('/queues').emit('queue:ready', data);
+        const ns = io.of('/queues');
+        ns.to(`user:${userId}`).emit('queue:ready', { ...data, userId });
+        ns.to('admin:queues').emit('queue:ready', { ...data, userId });
     }
 };
 exports.emitQueueReady = emitQueueReady;
@@ -165,7 +173,16 @@ exports.emitComplaintUpdate = emitComplaintUpdate;
  */
 const emitOrderStatusUpdate = (userId, data) => {
     if (io) {
-        io.of('/queues').to(`user:${userId}`).emit('order:status_updated', data);
+        io.of('/queues').to(`user:${userId}`).emit('order:status_updated', { ...data, userId });
     }
 };
 exports.emitOrderStatusUpdate = emitOrderStatusUpdate;
+/**
+ * Pushes a persisted in-app notification to the student's device (for local push).
+ */
+const emitUserNotification = (userId, data) => {
+    if (io) {
+        io.of('/queues').to(`user:${userId}`).emit('notification:new', data);
+    }
+};
+exports.emitUserNotification = emitUserNotification;

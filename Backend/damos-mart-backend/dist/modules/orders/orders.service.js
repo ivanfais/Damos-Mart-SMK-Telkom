@@ -487,27 +487,63 @@ class OrdersService {
             return tx.order.update({
                 where: { id: orderId },
                 data: { status },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                        },
-                    },
+                select: {
+                    id: true,
+                    userId: true,
+                    orderNumber: true,
+                    status: true,
                 },
             });
         });
+        const statusLabel = orderStatusLabel(status);
+        const title = 'Status Pesanan Diperbarui';
+        const body = `Status pesanan ${updated.orderNumber} diubah menjadi ${statusLabel}.`;
         // Create notification entry for order status change
         await database_1.default.notification.create({
             data: {
                 userId: updated.userId,
-                title: 'Status Pesanan Diperbarui',
-                body: `Status pesanan Anda ${updated.orderNumber} diubah menjadi ${status}.`,
+                title,
+                body,
                 type: 'ORDER_STATUS',
                 referenceId: updated.id,
             },
+        });
+        const queue = await database_1.default.queue.findUnique({
+            where: { orderId: updated.id },
+            select: { id: true },
+        });
+        (0, socket_1.emitOrderStatusUpdate)(updated.userId, {
+            orderId: updated.id,
+            orderNumber: updated.orderNumber,
+            status: updated.status,
+            statusLabel,
+            title,
+            body,
+            queueId: queue?.id ?? null,
+            isPreorder: order.isPreorder,
         });
         return updated;
     }
 }
 exports.OrdersService = OrdersService;
+function orderStatusLabel(status) {
+    switch (status) {
+        case 'PENDING':
+            return 'Menunggu Pembayaran';
+        case 'PAID':
+            return 'Dibayar';
+        case 'PREPARING':
+            return 'Sedang Disiapkan';
+        case 'IN_PRODUCTION':
+            return 'Dalam Produksi';
+        case 'READY':
+            return 'Siap Diambil';
+        case 'COMPLETED':
+            return 'Selesai';
+        case 'CANCELLED':
+            return 'Dibatalkan';
+        default:
+            return status;
+    }
+}
 exports.default = OrdersService;

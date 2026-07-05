@@ -34,7 +34,7 @@ export class QueuesService {
         userId: string;
         status: string;
         paymentStatus: string;
-        paymentMethod: string;
+        paymentMethod: string | null;
       } | null;
     },
     userId: string,

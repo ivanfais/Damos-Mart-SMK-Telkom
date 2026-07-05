@@ -269,7 +269,7 @@ export class ProductsService {
   /**
    * Adds a variant to a product (Admin).
    */
-  async createVariant(productId: string, data: CreateVariantInput) {
+  async createVariant(productId: string, data: CreateVariantInput, imageUrl?: string) {
     await this.getById(productId); // Check existence
 
     const variant = await prisma.productVariant.create({
@@ -278,6 +278,7 @@ export class ProductsService {
         variantName: data.variantName,
         additionalPrice: data.additionalPrice,
         stock: data.stock,
+        imageUrl,
       },
     });
 
@@ -289,7 +290,12 @@ export class ProductsService {
   /**
    * Updates a product variant (Admin).
    */
-  async updateVariant(productId: string, variantId: string, data: UpdateVariantInput) {
+  async updateVariant(
+    productId: string,
+    variantId: string,
+    data: UpdateVariantInput,
+    imageUrl?: string
+  ) {
     const variant = await prisma.productVariant.findFirst({
       where: { id: variantId, productId },
     });
@@ -300,7 +306,10 @@ export class ProductsService {
 
     const updated = await prisma.productVariant.update({
       where: { id: variantId },
-      data,
+      data: {
+        ...data,
+        ...(imageUrl ? { imageUrl } : {}),
+      },
     });
 
     await this.syncProductStockFromVariants(productId);

@@ -35,8 +35,8 @@ adminProductRouter.put('/:id', uploadProduct.single('image'), validateRequest(up
 adminProductRouter.delete('/:id', bind('delete'));
 
 // Product Variants routes
-adminProductRouter.post('/:id/variants', validateRequest(createVariantSchema), bind('createVariant'));
-adminProductRouter.put('/:id/variants/:vid', validateRequest(updateVariantSchema), bind('updateVariant'));
+adminProductRouter.post('/:id/variants', uploadProduct.single('image'), validateRequest(createVariantSchema), bind('createVariant'));
+adminProductRouter.put('/:id/variants/:vid', uploadProduct.single('image'), validateRequest(updateVariantSchema), bind('updateVariant'));
 adminProductRouter.delete('/:id/variants/:vid', bind('deleteVariant'));
 
 export default router;

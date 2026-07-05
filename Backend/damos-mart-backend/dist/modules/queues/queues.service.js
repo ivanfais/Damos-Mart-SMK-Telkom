@@ -21,38 +21,27 @@ function todayRange() {
 }
 class QueuesService {
     /**
-     * Fetches active queues belonging to the student (WAITING, PREPARING, READY).
+     * Antrean aktif siswa = subset board admin hari ini (sumber data sama persis).
      */
     async getActiveQueues(userId) {
-        return database_1.default.queue.findMany({
-            where: {
-                userId,
-                status: { in: ['WAITING', 'PREPARING', 'READY'] },
-                order: {
-                    OR: [
-                        { paymentStatus: 'PAID' },
-                        {
-                            paymentStatus: 'UNPAID',
-                            paymentMethod: 'CASH_AT_COUNTER',
-                        },
-                    ],
-                },
-            },
-            include: {
-                order: {
-                    include: {
-                        orderItems: {
-                            include: {
-                                product: {
-                                    select: { imageUrl: true },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-            orderBy: { queueNumber: 'asc' },
-        });
+        const allToday = await this.getAllTodayQueues();
+        return allToday
+            .filter((queue) => this.isVisibleOnStudentBoard(queue, userId))
+            .sort((a, b) => a.queueNumber.localeCompare(b.queueNumber));
+    }
+    isVisibleOnStudentBoard(queue, userId) {
+        if (queue.userId !== userId)
+            return false;
+        if (!['WAITING', 'PREPARING', 'READY'].includes(queue.status))
+            return false;
+        const order = queue.order;
+        if (!order || order.userId !== userId)
+            return false;
+        if (['COMPLETED', 'CANCELLED'].includes(order.status))
+            return false;
+        if (order.paymentStatus === 'UNPAID' && order.paymentMethod === 'QRIS')
+            return false;
+        return true;
     }
     /**
      * Gets details of a queue by ID.

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emitNewOrderAdmin = exports.emitChatRead = exports.emitChatMessage = exports.emitQueueReady = exports.emitQueueCalled = exports.emitQueueUpdate = exports.getIo = exports.initSocket = void 0;
+exports.emitOrderStatusUpdate = exports.emitComplaintUpdate = exports.emitNewOrderAdmin = exports.emitChatRead = exports.emitChatMessage = exports.emitQueueReady = exports.emitQueueCalled = exports.emitQueueUpdate = exports.getIo = exports.initSocket = void 0;
 const socket_io_1 = require("socket.io");
 const env_1 = require("../config/env");
 let io;
@@ -36,6 +36,22 @@ const initSocket = (server) => {
         });
         socket.on('disconnect', () => {
             console.log(`🔌 Client disconnected from /queues: ${socket.id}`);
+        });
+    });
+    // ==========================================
+    // COMPLAINTS NAMESPACE
+    // ==========================================
+    const complaintsNamespace = io.of('/complaints');
+    complaintsNamespace.on('connection', (socket) => {
+        console.log(`🔌 Client connected to /complaints: ${socket.id}`);
+        socket.on('complaint:subscribe', (data) => {
+            if (data && data.userId) {
+                socket.join(`user:${data.userId}`);
+                console.log(`📋 User ${data.userId} subscribed to complaint updates in socket ${socket.id}`);
+            }
+        });
+        socket.on('disconnect', () => {
+            console.log(`🔌 Client disconnected from /complaints: ${socket.id}`);
         });
     });
     // ==========================================
@@ -135,3 +151,21 @@ const emitNewOrderAdmin = (order) => {
     }
 };
 exports.emitNewOrderAdmin = emitNewOrderAdmin;
+/**
+ * Notifies a student that their complaint status or admin response changed.
+ */
+const emitComplaintUpdate = (userId, data) => {
+    if (io) {
+        io.of('/complaints').to(`user:${userId}`).emit('complaint:updated', data);
+    }
+};
+exports.emitComplaintUpdate = emitComplaintUpdate;
+/**
+ * Notifies a student when admin manually updates their order status.
+ */
+const emitOrderStatusUpdate = (userId, data) => {
+    if (io) {
+        io.of('/queues').to(`user:${userId}`).emit('order:status_updated', data);
+    }
+};
+exports.emitOrderStatusUpdate = emitOrderStatusUpdate;

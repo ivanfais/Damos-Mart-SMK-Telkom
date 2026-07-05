@@ -233,7 +233,7 @@ class ProductsService {
     /**
      * Adds a variant to a product (Admin).
      */
-    async createVariant(productId, data) {
+    async createVariant(productId, data, imageUrl) {
         await this.getById(productId); // Check existence
         const variant = await database_1.default.productVariant.create({
             data: {
@@ -241,6 +241,7 @@ class ProductsService {
                 variantName: data.variantName,
                 additionalPrice: data.additionalPrice,
                 stock: data.stock,
+                imageUrl,
             },
         });
         await this.syncProductStockFromVariants(productId);
@@ -249,7 +250,7 @@ class ProductsService {
     /**
      * Updates a product variant (Admin).
      */
-    async updateVariant(productId, variantId, data) {
+    async updateVariant(productId, variantId, data, imageUrl) {
         const variant = await database_1.default.productVariant.findFirst({
             where: { id: variantId, productId },
         });
@@ -258,7 +259,10 @@ class ProductsService {
         }
         const updated = await database_1.default.productVariant.update({
             where: { id: variantId },
-            data,
+            data: {
+                ...data,
+                ...(imageUrl ? { imageUrl } : {}),
+            },
         });
         await this.syncProductStockFromVariants(productId);
         return updated;

@@ -199,6 +199,40 @@ class _PreorderScreenState extends State<PreorderScreen> {
     );
   }
 
+  Widget _buildProductHeroImage({required String? imageUrl}) {
+    const height = 320.0;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: ApiConfig.imageUrl(imageUrl),
+        width: double.infinity,
+        height: height,
+        fit: BoxFit.cover,
+        alignment: Alignment.center,
+        placeholder: (_, __) => Container(
+          color: _Ds.bgGrey,
+          alignment: Alignment.center,
+          child: const SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: _Ds.primary),
+          ),
+        ),
+        errorWidget: (_, __, ___) => Container(
+          color: _Ds.bgGrey,
+          alignment: Alignment.center,
+          child: const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
+        ),
+      );
+    }
+
+    return Container(
+      color: _Ds.bgGrey,
+      alignment: Alignment.center,
+      child: const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
+    );
+  }
+
   Widget _buildScrollPage(Widget child) {
     return SingleChildScrollView(
       child: Column(
@@ -415,44 +449,12 @@ class _PreorderScreenState extends State<PreorderScreen> {
                         SizedBox(
                           height: 320,
                           width: double.infinity,
-                          child: product.imageUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                                  width: double.infinity,
-                                  height: 320,
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.center,
-                                  placeholder: (_, __) => Container(
-                                    color: _Ds.bgGrey,
-                                    alignment: Alignment.center,
-                                    child: const SizedBox(
-                                      width: 28,
-                                      height: 28,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: _Ds.primary,
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (_, __, ___) => Container(
-                                    color: _Ds.bgGrey,
-                                    alignment: Alignment.center,
-                                    child: const Icon(
-                                      Icons.shopping_bag_outlined,
-                                      color: _Ds.textSecondary,
-                                      size: 64,
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  color: _Ds.bgGrey,
-                                  alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.shopping_bag_outlined,
-                                    color: _Ds.textSecondary,
-                                    size: 64,
-                                  ),
-                                ),
+                          child: _buildProductHeroImage(
+                            imageUrl: ProductVariantModel.displayImageUrl(
+                              productImageUrl: product.imageUrl,
+                              variant: _selectedVariant,
+                            ),
+                          ),
                         ),
 
                         Padding(

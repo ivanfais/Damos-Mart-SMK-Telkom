@@ -24,10 +24,64 @@ export const ProductFormPage: React.FC = () => {
   const [isActive, setIsActive] = useState(true);
 
   // Variants management (Admin list)
-  const [variants, setVariants] = useState<Array<{ id?: string; variantName: string; additionalPrice: number; stock: number }>>([]);
+  type VariantRow = {
+    id?: string;
+    variantName: string;
+    additionalPrice: number;
+    stock: number;
+    imageUrl?: string | null;
+    imagePreview?: string | null;
+    pendingImageFile?: File | null;
+  };
+
+  const [variants, setVariants] = useState<VariantRow[]>([]);
   const [newVarName, setNewVarName] = useState('');
   const [newVarPrice, setNewVarPrice] = useState(0);
   const [newVarStock, setNewVarStock] = useState(0);
+  const [newVarImageFile, setNewVarImageFile] = useState<File | null>(null);
+  const [newVarImagePreview, setNewVarImagePreview] = useState<string | null>(null);
+
+  const buildVariantFormData = (variant: VariantRow) => {
+    const formData = new FormData();
+    formData.append('variantName', variant.variantName);
+    formData.append('additionalPrice', String(Number(variant.additionalPrice) || 0));
+    formData.append('stock', String(isPreorder ? 0 : Number(variant.stock) || 0));
+    if (variant.pendingImageFile) {
+      formData.append('image', variant.pendingImageFile);
+    }
+    return formData;
+  };
+
+  const resetNewVariantForm = () => {
+    setNewVarName('');
+    setNewVarPrice(0);
+    setNewVarStock(0);
+    setNewVarImageFile(null);
+    setNewVarImagePreview(null);
+  };
+
+  const handleNewVariantImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setNewVarImageFile(file);
+    setNewVarImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleVariantImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVariants((prev) =>
+      prev.map((v, idx) =>
+        idx === index
+          ? {
+              ...v,
+              pendingImageFile: file,
+              imagePreview: URL.createObjectURL(file),
+            }
+          : v
+      )
+    );
+  };
 
   // Fetch categories list
   const { data: categories } = useQuery({
@@ -59,7 +113,16 @@ export const ProductFormPage: React.FC = () => {
       setIsPreorder(productData.isPreorder);
       setPreorderEstimation(productData.preorderEstimation || '');
       setIsActive(productData.isActive);
-      setVariants(productData.variants || []);
+      setVariants(
+        (productData.variants || []).map((v: any) => ({
+          id: v.id,
+          variantName: v.variantName,
+          additionalPrice: Number(v.additionalPrice),
+          stock: Number(v.stock),
+          imageUrl: v.imageUrl,
+          imagePreview: v.imageUrl ? assetUrl(v.imageUrl) : null,
+        }))
+      );
       if (productData.imageUrl) {
         setImagePreview(assetUrl(productData.imageUrl));
       }
@@ -111,7 +174,9 @@ export const ProductFormPage: React.FC = () => {
       // Save variants if not in edit mode (we do separate variant API calls for edit mode variants update, or if edit mode we already handled them)
       if (!isEditMode && variants.length > 0) {
         for (const variant of variants) {
-          await apiClient.post(`/admin/products/${product.id}/variants`, variant);
+          await apiClient.post(`/admin/products/${product.id}/variants`, buildVariantFormData(variant), {
+            headers: { 'Content-Type': undefined },
+          });
         }
       }
     },
@@ -126,31 +191,33 @@ export const ProductFormPage: React.FC = () => {
     
     // In edit mode: call direct add variant API
     if (isEditMode) {
+      const formData = buildVariantFormData({
+        variantName: newVarName,
+        additionalPrice: newVarPrice,
+        stock: isPreorder ? 0 : newVarStock,
+        pendingImageFile: newVarImageFile,
+      });
+
       apiClient
-        .post(`/admin/products/${id}/variants`, {
-          variantName: newVarName,
-          additionalPrice: newVarPrice,
-          stock: isPreorder ? 0 : newVarStock,
+        .post(`/admin/products/${id}/variants`, formData, {
+          headers: { 'Content-Type': undefined },
         })
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
-          setNewVarName('');
-          setNewVarPrice(0);
-          setNewVarStock(0);
+          resetNewVariantForm();
         });
     } else {
-      // In create mode: add to local state array
       setVariants((prev) => [
         ...prev,
         {
           variantName: newVarName,
           additionalPrice: newVarPrice,
           stock: isPreorder ? 0 : newVarStock,
+          pendingImageFile: newVarImageFile,
+          imagePreview: newVarImagePreview,
         },
       ]);
-      setNewVarName('');
-      setNewVarPrice(0);
-      setNewVarStock(0);
+      resetNewVariantForm();
     }
   };
 
@@ -180,12 +247,18 @@ export const ProductFormPage: React.FC = () => {
   const handleSaveVariant = (index: number) => {
     const v = variants[index];
     if (!v.id) return;
-    apiClient
-      .put(`/admin/products/${id}/variants/${v.id}`, {
-        variantName: v.variantName,
-        additionalPrice: Number(v.additionalPrice) || 0,
-        stock: isPreorder ? 0 : Number(v.stock) || 0,
-      })
+
+    const request = v.pendingImageFile
+      ? apiClient.put(`/admin/products/${id}/variants/${v.id}`, buildVariantFormData(v), {
+          headers: { 'Content-Type': undefined },
+        })
+      : apiClient.put(`/admin/products/${id}/variants/${v.id}`, {
+          variantName: v.variantName,
+          additionalPrice: Number(v.additionalPrice) || 0,
+          stock: isPreorder ? 0 : Number(v.stock) || 0,
+        });
+
+    request
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['adminProductDetails', id] });
         queryClient.invalidateQueries({ queryKey: ['adminProductsList'] });
@@ -370,6 +443,7 @@ export const ProductFormPage: React.FC = () => {
                 {isPreorder
                   ? 'Pre-order tidak memakai stok. Siswa memesan dulu, produk diproduksi setelahnya.'
                   : 'Tambahkan opsi varian barang (seperti ukuran seragam) dengan stok tersendiri.'}
+                {' '}Foto varian opsional — jika kosong, app siswa memakai foto produk utama.
               </p>
             </div>
 
@@ -380,6 +454,7 @@ export const ProductFormPage: React.FC = () => {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/40 text-slate-500 font-bold uppercase">
                       <th className="p-3">Nama Varian</th>
+                      <th className="p-3">Foto Varian</th>
                       <th className="p-3">Harga Tambahan</th>
                       {!isPreorder && <th className="p-3">Stok Varian</th>}
                       <th className="p-3 text-right w-20">Aksi</th>
@@ -395,6 +470,26 @@ export const ProductFormPage: React.FC = () => {
                             onChange={(e) => handleVariantFieldChange(index, 'variantName', e.target.value)}
                             className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-500"
                           />
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-lg border border-slate-200 bg-white overflow-hidden flex items-center justify-center flex-shrink-0">
+                              {v.imagePreview ? (
+                                <img src={v.imagePreview} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <ImageIcon className="w-4 h-4 text-slate-400" />
+                              )}
+                            </div>
+                            <label className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-brand-500 cursor-pointer hover:bg-brand-50 transition-colors">
+                              {v.imagePreview ? 'Ganti' : 'Upload'}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleVariantImageChange(index, e)}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </td>
                         <td className="p-2">
                           <input
@@ -461,6 +556,22 @@ export const ProductFormPage: React.FC = () => {
                   onChange={(e) => setNewVarName(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-500"
                 />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Foto Varian (Opsional)</label>
+                <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-brand-500 transition-colors">
+                  <div className="w-8 h-8 rounded-md border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {newVarImagePreview ? (
+                      <img src={newVarImagePreview} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 text-slate-400" />
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold text-brand-500">
+                    {newVarImagePreview ? 'Ganti foto' : 'Pilih foto'}
+                  </span>
+                  <input type="file" accept="image/*" onChange={handleNewVariantImageChange} className="hidden" />
+                </label>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Harga Tambahan (+)</label>

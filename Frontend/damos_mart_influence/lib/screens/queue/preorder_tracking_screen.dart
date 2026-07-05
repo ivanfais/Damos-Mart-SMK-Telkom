@@ -170,12 +170,12 @@ class _PreorderTrackingScreenState extends State<PreorderTrackingScreen> {
 
   Widget _buildTimeline(OrderModel order) {
     final activeIndex = _activeStepIndex(order.status, order.paymentStatus);
-    final paidDate = order.paidAt ?? order.createdAt;
+    final createdDate = order.createdAt;
 
     final steps = [
       _TimelineStep(
-        title: 'Pesanan Dibayar',
-        subtitle: '${DateFormatter.formatShort(paidDate)}, ${DateFormatter.formatTimeOnly(paidDate)}',
+        title: 'Pesanan Dibuat',
+        subtitle: '${DateFormatter.formatShort(createdDate)}, ${DateFormatter.formatTimeOnly(createdDate)}',
       ),
       const _TimelineStep(
         title: 'Dalam Produksi',

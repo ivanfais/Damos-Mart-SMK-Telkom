@@ -412,18 +412,47 @@ class _PreorderScreenState extends State<PreorderScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildScrollHeader(),
-                        Container(
-                          height: 300,
+                        SizedBox(
+                          height: 320,
                           width: double.infinity,
-                          color: _Ds.bgGrey,
                           child: product.imageUrl != null
                               ? CachedNetworkImage(
                                   imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                                  fit: BoxFit.contain,
-                                  errorWidget: (_, __, ___) =>
-                                      const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
+                                  width: double.infinity,
+                                  height: 320,
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.center,
+                                  placeholder: (_, __) => Container(
+                                    color: _Ds.bgGrey,
+                                    alignment: Alignment.center,
+                                    child: const SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: _Ds.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget: (_, __, ___) => Container(
+                                    color: _Ds.bgGrey,
+                                    alignment: Alignment.center,
+                                    child: const Icon(
+                                      Icons.shopping_bag_outlined,
+                                      color: _Ds.textSecondary,
+                                      size: 64,
+                                    ),
+                                  ),
                                 )
-                              : const Icon(Icons.shopping_bag_outlined, color: _Ds.textSecondary, size: 64),
+                              : Container(
+                                  color: _Ds.bgGrey,
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.shopping_bag_outlined,
+                                    color: _Ds.textSecondary,
+                                    size: 64,
+                                  ),
+                                ),
                         ),
 
                         Padding(

@@ -172,7 +172,11 @@ class ProductsController {
     async createVariant(req, res, next) {
         try {
             const { id } = req.params;
-            const variant = await productsService.createVariant(id, req.body);
+            let imageUrl;
+            if (req.file) {
+                imageUrl = `/uploads/products/${req.file.filename}`;
+            }
+            const variant = await productsService.createVariant(id, req.body, imageUrl);
             return res.status(201).json({
                 success: true,
                 data: variant,
@@ -189,7 +193,11 @@ class ProductsController {
     async updateVariant(req, res, next) {
         try {
             const { id, vid } = req.params;
-            const variant = await productsService.updateVariant(id, vid, req.body);
+            let imageUrl;
+            if (req.file) {
+                imageUrl = `/uploads/products/${req.file.filename}`;
+            }
+            const variant = await productsService.updateVariant(id, vid, req.body, imageUrl);
             return res.status(200).json({
                 success: true,
                 data: variant,

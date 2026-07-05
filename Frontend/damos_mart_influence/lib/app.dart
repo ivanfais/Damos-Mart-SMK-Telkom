@@ -183,7 +183,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
           }
         },
         child: MaterialApp.router(
-          title: 'Damos Mart',
+          title: 'Damos Mart Influence',
           theme: AppTheme.lightTheme,
           debugShowCheckedModeBanner: false,
           routerConfig: AppRouter.router,

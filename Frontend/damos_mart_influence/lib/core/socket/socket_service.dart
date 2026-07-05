@@ -66,6 +66,27 @@ class SocketService {
     _queueSocket!.on('queue:ready', callback);
   }
 
+  void offQueueUpdated(void Function(dynamic) callback) {
+    _queueSocket?.off('queue:updated', callback);
+  }
+
+  void offQueueCalled(void Function(dynamic) callback) {
+    _queueSocket?.off('queue:called', callback);
+  }
+
+  void offQueueReady(void Function(dynamic) callback) {
+    _queueSocket?.off('queue:ready', callback);
+  }
+
+  void onOrderStatusUpdated(void Function(dynamic) callback) {
+    _ensureQueueSocket();
+    _queueSocket!.on('order:status_updated', callback);
+  }
+
+  void offOrderStatusUpdated(void Function(dynamic) callback) {
+    _queueSocket?.off('order:status_updated', callback);
+  }
+
   void joinChat(String roomId) {
     _activeChatRoomId = roomId;
     _ensureChatSocket();

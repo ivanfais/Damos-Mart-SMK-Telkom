@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/order/order_cubit.dart';
 import '../../config/api_config.dart';
+import '../../core/socket/socket_service.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../data/models/order_model.dart';
@@ -38,10 +39,24 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     context.read<OrderCubit>().loadMyOrders();
+
+    SocketService.instance.onQueueUpdated(_handleRealtimeUpdate);
+    SocketService.instance.onQueueCalled(_handleRealtimeUpdate);
+    SocketService.instance.onQueueReady(_handleRealtimeUpdate);
+    SocketService.instance.onOrderStatusUpdated(_handleRealtimeUpdate);
+  }
+
+  void _handleRealtimeUpdate(dynamic _) {
+    if (!mounted) return;
+    context.read<OrderCubit>().refreshMyOrdersSilently();
   }
 
   @override
   void dispose() {
+    SocketService.instance.offQueueUpdated(_handleRealtimeUpdate);
+    SocketService.instance.offQueueCalled(_handleRealtimeUpdate);
+    SocketService.instance.offQueueReady(_handleRealtimeUpdate);
+    SocketService.instance.offOrderStatusUpdated(_handleRealtimeUpdate);
     _tabController.dispose();
     super.dispose();
   }

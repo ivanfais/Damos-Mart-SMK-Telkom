@@ -575,6 +575,11 @@ export class OrdersService {
       },
     });
 
+    const queue = await prisma.queue.findUnique({
+      where: { orderId: updated.id },
+      select: { id: true },
+    });
+
     emitOrderStatusUpdate(updated.userId, {
       orderId: updated.id,
       orderNumber: updated.orderNumber,
@@ -582,6 +587,8 @@ export class OrdersService {
       statusLabel,
       title,
       body,
+      queueId: queue?.id ?? null,
+      isPreorder: order.isPreorder,
     });
 
     return updated;

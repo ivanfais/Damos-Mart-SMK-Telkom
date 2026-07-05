@@ -7,6 +7,7 @@ import '../../core/utils/validators.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../widgets/auth/auth_shell.dart';
 import '../../widgets/common/pop_up_alert.dart';
+import '../../theme/app_text_styles.dart';
 
 enum _ForgotStep { contact, verify, newPassword, success }
 
@@ -249,7 +250,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: _Ds.textPrimary,
-                    fontFamily: 'Arial',
+                    fontFamily: AppTextStyles.fontFamily,
                   ),
                 ),
               ),
@@ -275,7 +276,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 13,
             fontWeight: FontWeight.w700,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 8),
@@ -294,7 +295,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 10),
@@ -304,7 +305,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 14,
             height: 1.5,
             color: _Ds.textSecondary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 24),
@@ -384,7 +385,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 12),
@@ -395,7 +396,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 14,
             height: 1.5,
             color: _Ds.textSecondary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 28),
@@ -417,7 +418,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
                     color: _Ds.textPrimary,
-                    fontFamily: 'Arial',
+                    fontFamily: AppTextStyles.fontFamily,
                   ),
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   onChanged: (value) => _onOtpChanged(index, value),
@@ -446,7 +447,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const Text(
           'Demo: gunakan kode 1234',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: _Ds.textSecondary, fontFamily: 'Arial'),
+          style: TextStyle(fontSize: 12, color: _Ds.textSecondary, fontFamily: AppTextStyles.fontFamily),
         ),
         const SizedBox(height: 28),
         _greenActionButton(
@@ -468,7 +469,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 10),
@@ -478,7 +479,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 14,
             height: 1.5,
             color: _Ds.textSecondary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 24),
@@ -534,7 +535,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.primary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 36),
@@ -608,7 +609,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 12),
@@ -619,7 +620,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontSize: 14,
             height: 1.55,
             color: _Ds.textSecondary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 32),
@@ -670,7 +671,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Arial',
+                      fontFamily: AppTextStyles.fontFamily,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -687,7 +688,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       children: [
         const Text(
           'Ingat kata sandi? ',
-          style: TextStyle(fontSize: 14, color: _Ds.textSecondary, fontFamily: 'Arial'),
+          style: TextStyle(fontSize: 14, color: _Ds.textSecondary, fontFamily: AppTextStyles.fontFamily),
         ),
         GestureDetector(
           onTap: () => context.go('/login'),
@@ -697,7 +698,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: _Ds.primary,
-              fontFamily: 'Arial',
+              fontFamily: AppTextStyles.fontFamily,
             ),
           ),
         ),

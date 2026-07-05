@@ -17,39 +17,37 @@ function todayRange() {
 
 export class QueuesService {
   /**
-   * Fetches active queues belonging to the student (WAITING, PREPARING, READY).
+   * Antrean aktif siswa = subset board admin hari ini (sumber data sama persis).
    */
   async getActiveQueues(userId: string) {
-    return prisma.queue.findMany({
-      where: {
-        userId,
-        status: { in: ['WAITING', 'PREPARING', 'READY'] },
-        order: {
-          status: { notIn: ['COMPLETED', 'CANCELLED'] },
-          OR: [
-            { paymentStatus: 'PAID' },
-            {
-              paymentStatus: 'UNPAID',
-              paymentMethod: 'CASH_AT_COUNTER',
-            },
-          ],
-        },
-      },
-      include: {
-        order: {
-          include: {
-            orderItems: {
-              include: {
-                product: {
-                  select: { imageUrl: true },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { queueNumber: 'asc' },
-    });
+    const allToday = await this.getAllTodayQueues();
+    return allToday
+      .filter((queue) => this.isVisibleOnStudentBoard(queue, userId))
+      .sort((a, b) => a.queueNumber.localeCompare(b.queueNumber));
+  }
+
+  private isVisibleOnStudentBoard(
+    queue: {
+      userId: string;
+      status: string;
+      order: {
+        userId: string;
+        status: string;
+        paymentStatus: string;
+        paymentMethod: string;
+      } | null;
+    },
+    userId: string,
+  ): boolean {
+    if (queue.userId !== userId) return false;
+    if (!['WAITING', 'PREPARING', 'READY'].includes(queue.status)) return false;
+
+    const order = queue.order;
+    if (!order || order.userId !== userId) return false;
+    if (['COMPLETED', 'CANCELLED'].includes(order.status)) return false;
+    if (order.paymentStatus === 'UNPAID' && order.paymentMethod === 'QRIS') return false;
+
+    return true;
   }
 
   /**

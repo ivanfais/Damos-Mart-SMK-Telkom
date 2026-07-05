@@ -321,7 +321,15 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
             final userId = authState is Authenticated ? authState.user.id : null;
             context.read<QueueCubit>().loadActiveQueues(userId: userId);
             context.read<NotificationCubit>().loadNotifications();
-            context.go('/checkout/ticket/${state.order.id}');
+
+            final order = state.order;
+            if (order.isPreorder) {
+              context.go('/checkout/status/${order.id}');
+            } else if (order.queueId != null && order.queueId!.isNotEmpty) {
+              context.go('/queue/${order.queueId}/qr');
+            } else {
+              context.go('/checkout/status/${order.id}');
+            }
           }
 
           if (state is OrderError && _isVerifying) {

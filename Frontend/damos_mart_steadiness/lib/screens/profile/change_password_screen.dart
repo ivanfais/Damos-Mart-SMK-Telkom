@@ -6,6 +6,7 @@ import '../../core/utils/validators.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../widgets/auth/auth_shell.dart';
 import '../../widgets/common/pop_up_alert.dart';
+import '../../theme/app_text_styles.dart';
 
 enum _ChangePasswordStep { form, success }
 
@@ -121,7 +122,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: _Ds.textPrimary,
-                    fontFamily: 'Arial',
+                    fontFamily: AppTextStyles.fontFamily,
                   ),
                 ),
               ),
@@ -144,7 +145,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             fontSize: 13,
             fontWeight: FontWeight.w700,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 8),
@@ -191,7 +192,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Arial',
+                      fontFamily: AppTextStyles.fontFamily,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -212,7 +213,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 10),
@@ -222,7 +223,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             fontSize: 14,
             height: 1.5,
             color: _Ds.textSecondary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 24),
@@ -291,7 +292,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.primary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 36),
@@ -365,7 +366,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: _Ds.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 12),
@@ -376,7 +377,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             fontSize: 14,
             height: 1.55,
             color: _Ds.textSecondary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 32),

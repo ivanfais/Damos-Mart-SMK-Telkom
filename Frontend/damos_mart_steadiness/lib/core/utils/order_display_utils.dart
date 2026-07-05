@@ -67,4 +67,60 @@ class OrderDisplayUtils {
   static bool canBuyAgain(OrderModel order) {
     return order.status != OrderStatus.cancelled;
   }
+
+  static String detailStatusLabel(OrderModel order) {
+    switch (order.status) {
+      case OrderStatus.completed:
+        return 'Berhasil';
+      case OrderStatus.cancelled:
+        return 'Dibatalkan';
+      case OrderStatus.pending:
+        return 'Menunggu Pembayaran';
+      case OrderStatus.paid:
+        return 'Sudah Dibayar';
+      case OrderStatus.preparing:
+        return 'Sedang Disiapkan';
+      case OrderStatus.inProduction:
+        return 'Dalam Produksi';
+      case OrderStatus.ready:
+        return 'Siap Diambil';
+    }
+  }
+
+  static ({String label, Color bg, Color text}) detailStatusBadge(OrderModel order) {
+    switch (order.status) {
+      case OrderStatus.completed:
+        return (
+          label: 'Berhasil',
+          bg: OrderDisplayColors.greenLight,
+          text: OrderDisplayColors.primary,
+        );
+      case OrderStatus.cancelled:
+        return (
+          label: 'Dibatalkan',
+          bg: OrderDisplayColors.redLight,
+          text: OrderDisplayColors.redText,
+        );
+      case OrderStatus.ready:
+      case OrderStatus.paid:
+      case OrderStatus.preparing:
+        return (
+          label: detailStatusLabel(order),
+          bg: OrderDisplayColors.greenLight,
+          text: OrderDisplayColors.primary,
+        );
+      case OrderStatus.inProduction:
+        return (
+          label: 'Dalam Produksi',
+          bg: const Color(0xFFFFF8E1),
+          text: const Color(0xFFF59E0B),
+        );
+      case OrderStatus.pending:
+        return (
+          label: 'Menunggu Pembayaran',
+          bg: const Color(0xFFFFF8E1),
+          text: const Color(0xFFF59E0B),
+        );
+    }
+  }
 }

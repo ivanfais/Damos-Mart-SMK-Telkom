@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/notification_model.dart';
+import 'relative_date_utils.dart';
 
-enum NotificationTimeGroup { today, yesterday, lastWeek, older }
+enum NotificationTimeGroup { today, yesterday, thisWeek, lastWeek, older }
 
 class NotificationDisplayColors {
   static const Color primary = Color(0xFF1B8C2E);
@@ -18,15 +19,17 @@ class NotificationDisplayUtils {
   NotificationDisplayUtils._();
 
   static NotificationTimeGroup timeGroup(DateTime date) {
-    final local = date.toLocal();
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(local.year, local.month, local.day);
-    final diffDays = today.difference(target).inDays;
+    final diffDays = RelativeDateUtils.daysAgo(date);
 
     if (diffDays == 0) return NotificationTimeGroup.today;
     if (diffDays == 1) return NotificationTimeGroup.yesterday;
-    if (diffDays < 7) return NotificationTimeGroup.lastWeek;
+    if (RelativeDateUtils.isSameCalendarWeek(date, now)) {
+      return NotificationTimeGroup.thisWeek;
+    }
+    if (RelativeDateUtils.isPreviousCalendarWeek(date, now)) {
+      return NotificationTimeGroup.lastWeek;
+    }
     return NotificationTimeGroup.older;
   }
 
@@ -36,6 +39,8 @@ class NotificationDisplayUtils {
         return 'Hari Ini';
       case NotificationTimeGroup.yesterday:
         return 'Kemarin';
+      case NotificationTimeGroup.thisWeek:
+        return 'Minggu Ini';
       case NotificationTimeGroup.lastWeek:
         return 'Minggu Lalu';
       case NotificationTimeGroup.older:
@@ -46,6 +51,7 @@ class NotificationDisplayUtils {
   static List<NotificationTimeGroup> visibleGroups = const [
     NotificationTimeGroup.today,
     NotificationTimeGroup.yesterday,
+    NotificationTimeGroup.thisWeek,
     NotificationTimeGroup.lastWeek,
     NotificationTimeGroup.older,
   ];
@@ -70,6 +76,8 @@ class NotificationDisplayUtils {
         return 'Antrean';
       case NotificationType.orderStatus:
         return 'Pesanan';
+      case NotificationType.complaint:
+        return 'Komplain';
       case NotificationType.promo:
       case NotificationType.chat:
         return 'Informasi';
@@ -99,21 +107,22 @@ class NotificationDisplayUtils {
     if (notification.type == NotificationType.chat) {
       return Icons.chat_bubble_outline;
     }
+    if (notification.type == NotificationType.complaint ||
+        title.contains('komplain')) {
+      return Icons.support_agent_outlined;
+    }
     return Icons.info_outline;
   }
 
   static String timeLabel(DateTime createdAt) {
     final local = createdAt.toLocal();
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(local.year, local.month, local.day);
-    final diffDays = today.difference(target).inDays;
+    final diffDays = RelativeDateUtils.daysAgo(local);
 
     if (diffDays == 0) {
       return DateFormat('HH:mm').format(local);
     }
     if (diffDays == 1) return 'Kemarin';
     if (diffDays < 7) return '$diffDays hari lalu';
-    return DateFormat('dd MMM').format(local);
+    return DateFormat('dd MMM', 'id_ID').format(local);
   }
 }

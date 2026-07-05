@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
-import 'core/disc/disc_app_config.dart';
 import 'core/disc/disc_session_handoff.dart';
 import 'core/disc/disc_variant_urls.dart';
 import 'core/notifications/push_notification_service.dart';
@@ -17,9 +16,12 @@ void main() async {
 
   await DiscSessionHandoff.tryImportFromUrl();
 
+  // Hanya set dari URL path deploy (/steadiness/, dll) atau session handoff.
+  // Jangan auto-set hostVariant — agar layar pilih DISC tampil sebelum splash.
   final fromPath = DiscVariantUrls.variantFromCurrentLocation();
-  final initialVariant = fromPath ?? DiscAppConfig.hostVariant;
-  await PrefsStorage.instance.setSelectedDiscVariant(initialVariant);
+  if (fromPath != null) {
+    await PrefsStorage.instance.setSelectedDiscVariant(fromPath);
+  }
 
   // Native push notifications (Android/iOS status bar)
   await PushNotificationService.instance.init();

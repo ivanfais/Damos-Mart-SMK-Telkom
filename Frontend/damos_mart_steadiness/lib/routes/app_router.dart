@@ -23,7 +23,8 @@ import '../data/models/cart_item_model.dart';
 import '../screens/checkout/payment_screen.dart';
 import '../screens/checkout/qris_payment_screen.dart';
 import '../screens/checkout/cash_payment_screen.dart';
-import '../screens/checkout/pickup_ticket_screen.dart';
+import '../screens/checkout/order_status_screen.dart';
+import '../screens/checkout/digital_receipt_screen.dart';
 import '../data/models/order_model.dart';
 import '../screens/queue/queue_list_screen.dart';
 import '../screens/queue/queue_detail_screen.dart';
@@ -40,6 +41,7 @@ import '../screens/profile/complaint_screen.dart';
 import '../screens/profile/complaint_tracking_screen.dart';
 import '../screens/profile/usage_guide_screen.dart';
 import '../data/models/complaint_model.dart';
+import '../screens/history/order_history_detail_screen.dart';
 import '../screens/review/review_screen.dart';
 
 // Shell Navigation
@@ -53,12 +55,12 @@ class AppRouter {
   }
 
   static Page<void> _shellPage(GoRouterState state, Widget child) {
-    return DamosPageTransitions.instantPage(state: state, child: child);
+    return DamosPageTransitions.shellPage(state: state, child: child);
   }
 
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/disc-picker',
     redirect: (BuildContext context, GoRouterState state) async {
       final path = state.uri.path;
       print('DEBUG ROUTER: redirect called for path=$path');
@@ -237,14 +239,30 @@ class AppRouter {
             },
           ),
           GoRoute(
-            path: 'ticket/:orderId',
+            path: 'status/:orderId',
             parentNavigatorKey: rootNavigatorKey,
             pageBuilder: (context, state) {
               final orderId = state.pathParameters['orderId'] ?? '';
-              return _page(state, PickupTicketScreen(orderId: orderId));
+              return _page(state, OrderStatusScreen(orderId: orderId));
+            },
+          ),
+          GoRoute(
+            path: 'ticket/:orderId',
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: (context, state) {
+              final orderId = state.pathParameters['orderId'] ?? '';
+              return '/checkout/status/$orderId';
             },
           ),
         ],
+      ),
+      GoRoute(
+        path: '/checkout/receipt/:orderId',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final orderId = state.pathParameters['orderId'] ?? '';
+          return _page(state, DigitalReceiptScreen(orderId: orderId));
+        },
       ),
       GoRoute(
         path: '/queue/:id',
@@ -293,6 +311,14 @@ class AppRouter {
       GoRoute(
         path: '/profile/history',
         redirect: (context, state) => '/profile?view=history',
+      ),
+      GoRoute(
+        path: '/orders/history/:orderId',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final orderId = state.pathParameters['orderId'] ?? '';
+          return _page(state, OrderHistoryDetailScreen(orderId: orderId));
+        },
       ),
       GoRoute(
         path: '/orders/history',

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../blocs/order/order_cubit.dart';
 import '../../core/socket/socket_service.dart';
 import '../../core/utils/queue_display_utils.dart';
 import '../../data/models/order_model.dart';
@@ -10,7 +8,6 @@ import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/queue_repository.dart';
 import '../../widgets/common/error_state.dart';
 import '../../widgets/common/loading_shimmer.dart';
-import '../../widgets/common/pop_up_alert.dart';
 import '../../widgets/common/steadiness_app_header.dart';
 import '../../widgets/queue/queue_status_widgets.dart';
 
@@ -31,7 +28,6 @@ class _QueueDetailScreenState extends State<QueueDetailScreen> {
   List<OrderModel> _history = [];
   String? _errorMessage;
   bool _isLoading = true;
-  bool _isCancelling = false;
 
   String _currentServing = 'N/A';
   int _totalWaiting = 0;
@@ -79,46 +75,8 @@ class _QueueDetailScreenState extends State<QueueDetailScreen> {
     }
   }
 
-  Future<void> _confirmCancelQueue(QueueModel queue) async {
-    await PopUpAlert.show(
-      context: context,
-      title: 'Batalkan Antrean?',
-      description:
-          'Antrean ${queue.queueNumber} akan dibatalkan. Pesanan terkait juga akan dibatalkan jika masih memungkinkan.',
-      confirmText: 'Ya, Batalkan',
-      cancelText: 'Tidak',
-      isError: true,
-      onConfirm: () => _cancelQueue(queue),
-    );
-  }
-
-  Future<void> _cancelQueue(QueueModel queue) async {
-    if (_isCancelling) return;
-    setState(() => _isCancelling = true);
-
-    await context.read<OrderCubit>().cancelOrder(queue.orderId);
-    if (!mounted) return;
-
-    final orderState = context.read<OrderCubit>().state;
-    if (orderState is OrderError) {
-      PopUpAlert.show(
-        context: context,
-        title: 'Tidak Dapat Dibatalkan',
-        description:
-            'Antrean yang sudah dibayar tidak bisa dibatalkan dari aplikasi. Silakan hubungi petugas koperasi di loket.',
-        isError: true,
-      );
-    } else {
-      await PopUpAlert.showSuccess(
-        context: context,
-        title: 'Antrean Dibatalkan',
-        description: 'Antrean kamu berhasil dibatalkan.',
-      );
-      if (!mounted) return;
-      context.go('/queue');
-    }
-
-    if (mounted) setState(() => _isCancelling = false);
+  void _openOrderHistory() {
+    context.go('/profile?view=history');
   }
 
   @override
@@ -167,8 +125,8 @@ class _QueueDetailScreenState extends State<QueueDetailScreen> {
       status: queue.status,
       history: _history,
       estimateMinutes: queue.estimatedWaitMinutes,
-      isPrimaryActionLoading: _isCancelling,
-      onPrimaryAction: () => _confirmCancelQueue(queue),
+      primaryActionLabel: 'Lihat Riwayat',
+      onPrimaryAction: _openOrderHistory,
       onRefresh: _loadData,
     );
   }

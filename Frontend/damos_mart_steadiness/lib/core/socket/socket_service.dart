@@ -8,6 +8,7 @@ class SocketService {
 
   IO.Socket? _queueSocket;
   IO.Socket? _chatSocket;
+  IO.Socket? _complaintSocket;
   String? _userId;
   String? _activeChatRoomId;
 
@@ -19,6 +20,7 @@ class SocketService {
     _userId = userId;
     _ensureQueueSocket();
     _ensureChatSocket();
+    _ensureComplaintSocket();
   }
 
   void _ensureQueueSocket() {
@@ -51,6 +53,32 @@ class SocketService {
     }
   }
 
+  void _ensureComplaintSocket() {
+    if (_complaintSocket == null) {
+      _complaintSocket =
+          IO.io('${ApiConfig.wsUrl}/complaints', _socketOptions.build());
+
+      _complaintSocket!.onConnect((_) {
+        if (_userId != null) {
+          _complaintSocket!.emit('complaint:subscribe', {'userId': _userId});
+        }
+      });
+    } else if (_complaintSocket!.disconnected) {
+      _complaintSocket!.connect();
+    } else if (_userId != null) {
+      _complaintSocket!.emit('complaint:subscribe', {'userId': _userId});
+    }
+  }
+
+  void onComplaintUpdated(void Function(dynamic) callback) {
+    _ensureComplaintSocket();
+    _complaintSocket!.on('complaint:updated', callback);
+  }
+
+  void offComplaintUpdated(void Function(dynamic) callback) {
+    _complaintSocket?.off('complaint:updated', callback);
+  }
+
   void onQueueUpdated(void Function(dynamic) callback) {
     _ensureQueueSocket();
     _queueSocket!.on('queue:updated', callback);
@@ -64,6 +92,27 @@ class SocketService {
   void onQueueReady(void Function(dynamic) callback) {
     _ensureQueueSocket();
     _queueSocket!.on('queue:ready', callback);
+  }
+
+  void onOrderStatusUpdated(void Function(dynamic) callback) {
+    _ensureQueueSocket();
+    _queueSocket!.on('order:status_updated', callback);
+  }
+
+  void offQueueUpdated(void Function(dynamic) callback) {
+    _queueSocket?.off('queue:updated', callback);
+  }
+
+  void offQueueCalled(void Function(dynamic) callback) {
+    _queueSocket?.off('queue:called', callback);
+  }
+
+  void offQueueReady(void Function(dynamic) callback) {
+    _queueSocket?.off('queue:ready', callback);
+  }
+
+  void offOrderStatusUpdated(void Function(dynamic) callback) {
+    _queueSocket?.off('order:status_updated', callback);
   }
 
   void joinChat(String roomId) {
@@ -120,6 +169,8 @@ class SocketService {
     _queueSocket = null;
     _chatSocket?.disconnect();
     _chatSocket = null;
+    _complaintSocket?.disconnect();
+    _complaintSocket = null;
     _userId = null;
     _activeChatRoomId = null;
   }

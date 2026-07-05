@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../widgets/profile/usage_guide_menu_icon.dart';
 
 /// Ikon menu profil Steadiness — diselaraskan dengan mockup Profil Pengguna (DISC S).
 class ProfileMenuIcons {
   ProfileMenuIcons._();
 
   static const double size = 24;
+
+  /// Sedikit lebih kecil agar sejajar visual dengan ikon Material 24px.
+  static const double usageGuideIconSize = 22;
 
   /// Edit Profil — siluet orang outline.
   static const IconData editProfile = Icons.person_outline_rounded;
@@ -24,8 +28,10 @@ class ProfileMenuIcons {
   /// Komplain — tanda tanya dalam lingkaran.
   static const IconData complaint = Icons.help_outline_rounded;
 
-  /// Tata Cara Penggunaan — buku terbuka.
-  static const IconData usageGuide = Icons.auto_stories_outlined;
+  /// Tata Cara Penggunaan — ikon buku dari asset mockup.
+  static Widget usageGuideIcon() {
+    return const UsageGuideMenuIcon(size: usageGuideIconSize);
+  }
 
   /// Keluar Sesi — panah keluar dari kotak.
   static const IconData logout = Icons.logout_rounded;

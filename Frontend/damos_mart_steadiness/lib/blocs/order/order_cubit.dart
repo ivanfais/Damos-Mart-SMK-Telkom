@@ -140,5 +140,24 @@ class OrderCubit extends Cubit<OrderState> {
       emit(OrderError(e.toString()));
     }
   }
+
+  Future<void> refreshMyOrdersSilently() async {
+    try {
+      final orders = await _repository.getMyOrders();
+      final current = state;
+      if (current is OrderHistoryLoaded || current is OrderDetailLoaded) {
+        emit(OrderHistoryLoaded(orders));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> refreshOrderDetailSilently(String orderId) async {
+    try {
+      final order = await _repository.getOrderDetails(orderId);
+      if (state is OrderDetailLoaded) {
+        emit(OrderDetailLoaded(order));
+      }
+    } catch (_) {}
+  }
 }
 

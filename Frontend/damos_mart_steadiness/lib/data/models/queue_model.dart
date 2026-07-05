@@ -33,6 +33,9 @@ class QueueModel extends Equatable {
   });
 
   factory QueueModel.fromJson(Map<String, dynamic> json) {
+    String fieldStr(String camel, String snake) =>
+        json[camel]?.toString() ?? json[snake]?.toString() ?? '';
+
     // QueueStatus mapping
     QueueStatus parsedStatus = QueueStatus.waiting;
     switch ((json['status'] as String?)?.toUpperCase()) {
@@ -54,17 +57,21 @@ class QueueModel extends Equatable {
     }
 
     return QueueModel(
-      id: json['id'] as String,
-      orderId: json['orderId'] as String,
-      userId: json['userId'] as String,
-      queueNumber: json['queueNumber'] as String,
-      queueDate: DateTime.parse(json['queueDate'] as String),
+      id: fieldStr('id', 'id'),
+      orderId: fieldStr('orderId', 'order_id'),
+      userId: fieldStr('userId', 'user_id'),
+      queueNumber: fieldStr('queueNumber', 'queue_number'),
+      queueDate: DateTime.parse(fieldStr('queueDate', 'queue_date')).toLocal(),
       status: parsedStatus,
       estimatedWaitMinutes: json['estimatedWaitMinutes'] as int?,
-      calledAt: json['calledAt'] != null ? DateTime.parse(json['calledAt'] as String) : null,
-      completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt'] as String) : null,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      calledAt: json['calledAt'] != null
+          ? DateTime.parse(json['calledAt'] as String).toLocal()
+          : null,
+      completedAt: json['completedAt'] != null
+          ? DateTime.parse(json['completedAt'] as String).toLocal()
+          : null,
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
       order: json['order'] != null ? OrderModel.fromJson(json['order'] as Map<String, dynamic>) : null,
     );
   }

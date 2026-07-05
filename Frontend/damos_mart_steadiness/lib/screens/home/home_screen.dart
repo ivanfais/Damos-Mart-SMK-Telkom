@@ -11,6 +11,7 @@ import '../../blocs/queue/queue_cubit.dart';
 import '../../config/api_config.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/product_grid_layout.dart';
+import '../../core/utils/queue_display_utils.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/queue_model.dart';
 import '../../data/repositories/product_repository.dart';
@@ -112,14 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   QueueModel? _findActiveQueue(QueueState state) {
     if (state is! QueueActiveLoaded) return null;
-    for (final queue in state.activeQueues) {
-      if (queue.status == QueueStatus.waiting ||
-          queue.status == QueueStatus.preparing ||
-          queue.status == QueueStatus.ready) {
-        return queue;
-      }
-    }
-    return null;
+    return QueueDisplayUtils.pickPrimaryQueue(state.activeQueues);
   }
 
   Color _coopStatusColor(String condition) {
@@ -336,83 +330,76 @@ class _HomeScreenState extends State<HomeScreen> {
     final remaining = _remainingPeople(queue, state);
     final progress = _queueProgress(remaining, queue.status);
 
-    return GestureDetector(
-      onTap: () async {
-        await context.push('/queue/${queue.id}');
-        if (!mounted) return;
-        context.read<QueueCubit>().restoreActiveQueuesView();
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: _Ds.primary,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'NOMOR ANTREAN ANDA',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _Ds.primary,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'NOMOR ANTREAN ANDA',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
                 ),
-                const Text(
-                  'Estimasi Tunggu',
-                  style: TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  queue.queueNumber,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
-                  ),
-                ),
-                Text(
-                  _waitEstimate(queue),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                backgroundColor: Colors.white.withValues(alpha: 0.35),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
               ),
+              const Text(
+                'Estimasi Tunggu',
+                style: TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                queue.queueNumber,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+              Text(
+                _waitEstimate(queue),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: 0.35),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
-            const SizedBox(height: 12),
-            Text(
-              remaining > 0
-                  ? '$remaining Orang lagi sebelum giliran Anda'
-                  : 'Giliran Anda akan segera dipanggil',
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            remaining > 0
+                ? '$remaining Orang lagi sebelum giliran Anda'
+                : 'Giliran Anda akan segera dipanggil',
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

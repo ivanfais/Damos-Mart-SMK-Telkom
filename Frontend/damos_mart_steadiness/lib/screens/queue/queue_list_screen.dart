@@ -74,7 +74,12 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
     if (!mounted) return;
 
     final authState = context.read<AuthBloc>().state;
-    final userId = authState is Authenticated ? authState.user.id : null;
+    if (authState is! Authenticated) {
+      context.read<QueueCubit>().reset();
+      return;
+    }
+
+    final userId = authState.user.id;
 
     await context.read<QueueCubit>().loadActiveQueues(userId: userId);
     if (!mounted) return;
@@ -88,20 +93,31 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
     _refreshAll();
   }
 
-  QueueModel? _primaryQueue(QueueActiveLoaded state) {
-    for (final queue in state.activeQueues) {
-      if (queue.order?.isPreorder == true) continue;
-      if (queue.status == QueueStatus.waiting ||
-          queue.status == QueueStatus.preparing ||
-          queue.status == QueueStatus.ready) {
-        return queue;
-      }
-    }
-    return null;
-  }
-
   void _openPickupQr(QueueModel queue) {
     context.push('/queue/${queue.id}/qr');
+  }
+
+  void _openOrderStatus(QueueModel queue) {
+    final orderId = queue.orderId;
+    if (orderId.isNotEmpty) {
+      context.push('/checkout/status/$orderId');
+      return;
+    }
+    context.push('/queue/${queue.id}');
+  }
+
+  VoidCallback? _primaryAction(QueueModel queue) {
+    if (QueueDisplayUtils.isPreorderQueue(queue)) {
+      return () => _openOrderStatus(queue);
+    }
+    return () => _openPickupQr(queue);
+  }
+
+  String _primaryActionLabel(QueueModel queue) {
+    if (QueueDisplayUtils.isPreorderQueue(queue)) {
+      return 'Lihat Status Pesanan';
+    }
+    return 'QR Pengambilan';
   }
 
   @override
@@ -121,6 +137,7 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
               },
               listener: (context, authState) {
                 setState(() => _history = []);
+                context.read<QueueCubit>().reset();
                 if (authState is Authenticated) {
                   _refreshAll();
                 }
@@ -173,17 +190,22 @@ class _QueueListScreenState extends State<QueueListScreen> with WidgetsBindingOb
                     );
                   }
 
-                  final primaryQueue = _primaryQueue(queueState);
+                  final authState = context.read<AuthBloc>().state;
+                  final userId = authState is Authenticated ? authState.user.id : '';
+                  final activeQueues = userId.isEmpty
+                      ? const <QueueModel>[]
+                      : QueueDisplayUtils.sortedActiveQueues(
+                          QueueDisplayUtils.queuesForUser(queueState.activeQueues, userId),
+                        );
 
                   return QueueListBody(
-                    activeQueue: primaryQueue,
+                    activeQueues: activeQueues,
                     currentServing: queueState.currentServing,
                     totalWaiting: queueState.totalWaiting,
                     history: _history,
                     onEmptyAction: () => context.go('/catalog'),
-                    onPrimaryAction:
-                        primaryQueue != null ? () => _openPickupQr(primaryQueue) : null,
-                    primaryActionLabel: 'QR Pengambilan',
+                    onPrimaryAction: _primaryAction,
+                    primaryActionLabel: _primaryActionLabel,
                     onRefresh: _onRefresh,
                   );
                 },

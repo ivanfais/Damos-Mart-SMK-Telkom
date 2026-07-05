@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
-import 'app_text_styles.dart';
 import 'app_dimensions.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
+    final base = ThemeData(
+      useMaterial3: true,
+      primaryColor: AppColors.primary,
+      scaffoldBackgroundColor: AppColors.background,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.primary,
+        secondary: AppColors.accent,
+        surface: AppColors.surface,
+        background: AppColors.background,
+        error: AppColors.error,
+        onPrimary: AppColors.textOnPrimary,
+      ),
+    );
+
+    final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
+      bodyColor: AppColors.textPrimary,
+      displayColor: AppColors.textPrimary,
+    );
+
+    final interFamily = GoogleFonts.inter().fontFamily;
+
     return ThemeData(
       useMaterial3: true,
       primaryColor: AppColors.primary,
@@ -17,13 +38,20 @@ class AppTheme {
         error: AppColors.error,
         onPrimary: AppColors.textOnPrimary,
       ),
-      fontFamily: AppTextStyles.fontFamily,
-      appBarTheme: const AppBarTheme(
+      fontFamily: interFamily,
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: true,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
-        titleTextStyle: AppTextStyles.headingSmall,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+          height: 1.3,
+        ),
         toolbarHeight: AppDimensions.appBarHeight,
       ),
       cardTheme: CardThemeData(
@@ -39,8 +67,18 @@ class AppTheme {
         selectedColor: AppColors.primary,
         secondarySelectedColor: AppColors.accent,
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-        labelStyle: AppTextStyles.labelSmall.copyWith(color: AppColors.textPrimary),
-        secondaryLabelStyle: AppTextStyles.labelSmall.copyWith(color: AppColors.textOnPrimary),
+        labelStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+          height: 1.2,
+        ),
+        secondaryLabelStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textOnPrimary,
+          height: 1.2,
+        ),
         brightness: Brightness.light,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
@@ -51,7 +89,12 @@ class AppTheme {
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-        hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+        hintStyle: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textHint,
+          height: 1.5,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.inputRadius),
           borderSide: BorderSide.none,
@@ -81,7 +124,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.buttonRadius),
           ),
-          textStyle: AppTextStyles.labelLarge,
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
           elevation: 1,
         ),
       ),
@@ -93,7 +140,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.buttonRadius),
           ),
-          textStyle: AppTextStyles.labelLarge,
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
         ),
       ),
       dividerTheme: const DividerThemeData(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppTextStyles {
-  static const String fontFamily = 'Poppins';
+  static const String fontFamily = 'Inter';
 
   // Display (splash, hero text)
   static const TextStyle displayLarge = TextStyle(

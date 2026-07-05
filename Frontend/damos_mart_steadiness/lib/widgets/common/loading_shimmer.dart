@@ -35,8 +35,9 @@ class LoadingShimmer extends StatelessWidget {
 
 class ProductGridShimmer extends StatelessWidget {
   final int itemCount;
+  final bool catalog;
 
-  const ProductGridShimmer({super.key, this.itemCount = 6});
+  const ProductGridShimmer({super.key, this.itemCount = 6, this.catalog = false});
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +46,7 @@ class ProductGridShimmer extends StatelessWidget {
       primary: false,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,
-      gridDelegate: ProductGridLayout.responsiveDelegate(context),
+      gridDelegate: ProductGridLayout.responsiveDelegate(context, catalog: catalog),
       itemBuilder: (context, index) {
         return Container(
           decoration: BoxDecoration(

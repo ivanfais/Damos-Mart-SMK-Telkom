@@ -515,20 +515,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
         else
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final product in _featuredProducts)
-                SizedBox(
-                  width: ProductGridLayout.itemWidth(context),
-                  child: _HomeProductCard(
-                    product: product,
-                    onTap: () => context.push('/catalog/${product.id}'),
-                    onBuy: () => _addToCart(product),
-                  ),
-                ),
-            ],
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: ProductGridLayout.homeGridDelegate(context),
+            itemCount: _featuredProducts.length,
+            itemBuilder: (context, index) {
+              final product = _featuredProducts[index];
+              return _HomeProductCard(
+                product: product,
+                onTap: () => context.push('/catalog/${product.id}'),
+                onBuy: () => _addToCart(product),
+              );
+            },
           ),
       ],
     );
@@ -554,97 +553,111 @@ class _HomeProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageHeight = ProductGridLayout.itemWidth(context) * 0.85;
+    final imageHeight = ProductGridLayout.homeImageHeight(context);
+    final cardHeight = ProductGridLayout.homeCardHeight(context);
     final hasStock = product.stock > 0 || product.isPreorder;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          GestureDetector(
-            onTap: onTap,
-            child: SizedBox(
-              height: imageHeight,
-              child: ColoredBox(
-                color: _imageBg,
-                child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => const Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
+    return SizedBox(
+      height: cardHeight,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GestureDetector(
+              onTap: onTap,
+              child: SizedBox(
+                height: imageHeight,
+                child: ColoredBox(
+                  color: _imageBg,
+                  child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => const Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
+                            ),
                           ),
-                        ),
-                        errorWidget: (_, __, ___) => const Center(
+                          errorWidget: (_, __, ___) => const Center(
+                            child: Icon(Icons.shopping_bag_outlined, color: _textSecondary, size: 32),
+                          ),
+                        )
+                      : const Center(
                           child: Icon(Icons.shopping_bag_outlined, color: _textSecondary, size: 32),
                         ),
-                      )
-                    : const Center(
-                        child: Icon(Icons.shopping_bag_outlined, color: _textSecondary, size: 32),
-                      ),
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: onTap,
-                  child: Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: _textPrimary,
-                      height: 1.2,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: onTap,
+                        behavior: HitTestBehavior.opaque,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _textPrimary,
+                                height: 1.2,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              CurrencyFormatter.format(product.price),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13, color: _textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  CurrencyFormatter.format(product.price),
-                  style: const TextStyle(fontSize: 13, color: _textSecondary),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 36,
-                  child: ElevatedButton(
-                    onPressed: hasStock ? onBuy : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: _textSecondary,
-                      elevation: 0,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 36,
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: hasStock ? onBuy : null,
+                        style: ProductGridLayout.buyButtonStyle(
+                          primary: _primary,
+                          disabledBg: _textSecondary,
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.shopping_cart_outlined, size: 16),
+                            SizedBox(width: 6),
+                            Text('Beli', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.shopping_cart_outlined, size: 16),
-                        SizedBox(width: 6),
-                        Text('Beli', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

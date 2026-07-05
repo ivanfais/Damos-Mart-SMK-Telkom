@@ -1,6 +1,6 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middlewares/error.middleware';
-import { emitQueueUpdate, emitQueueCalled, emitQueueReady } from '../../socket';
+import { emitQueueUpdate, emitQueueCalled, emitQueueReady, emitUserNotification } from '../../socket';
 
 /**
  * Returns [startOfDay, endOfDay] for the current local day. Used to filter
@@ -227,7 +227,7 @@ export class QueuesService {
       });
 
       // Add Notification row
-      await tx.notification.create({
+      const notification = await tx.notification.create({
         data: {
           userId: queue.userId,
           title: 'Pesanan Siap Diambil',
@@ -237,18 +237,26 @@ export class QueuesService {
         },
       });
 
-      return uQueue;
+      return { queue: uQueue, notification };
     });
 
     // Notify student via Websockets
     emitQueueReady(queue.userId, {
-      queueId: updated.id,
+      queueId: updated.queue.id,
       orderId: queue.orderId,
-      queueNumber: updated.queueNumber,
+      queueNumber: updated.queue.queueNumber,
       orderNumber: queue.order.orderNumber,
     });
 
-    return updated;
+    emitUserNotification(queue.userId, {
+      id: updated.notification.id,
+      title: updated.notification.title,
+      body: updated.notification.body,
+      type: updated.notification.type,
+      referenceId: updated.notification.referenceId,
+    });
+
+    return updated.queue;
   }
 
   /**

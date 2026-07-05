@@ -99,6 +99,11 @@ class SocketService {
     _queueSocket!.on('order:status_updated', callback);
   }
 
+  void onNotificationNew(void Function(dynamic) callback) {
+    _ensureQueueSocket();
+    _queueSocket!.on('notification:new', callback);
+  }
+
   void offQueueUpdated(void Function(dynamic) callback) {
     _queueSocket?.off('queue:updated', callback);
   }

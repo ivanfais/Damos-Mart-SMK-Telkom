@@ -143,11 +143,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       setState(_clearInlineErrors);
       _clearPasswordFields();
 
-      context.go('/profile');
       DamosSuccessBanner.show(
+        context: context,
         title: 'Notifikasi Berhasil',
         message: 'Password berhasil diperbarui!',
       );
+      context.go('/profile');
     } on ApiException catch (e) {
       if (!mounted) return;
       if (_isIncorrectPasswordError(e)) {

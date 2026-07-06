@@ -9,6 +9,7 @@
     "start": "prisma migrate deploy && node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:recover-complaint-migration": "prisma migrate resolve --rolled-back 20260705000000_add_complaint_number_and_photos",
     "prisma:seed": "prisma db seed"
   },
   "prisma": {

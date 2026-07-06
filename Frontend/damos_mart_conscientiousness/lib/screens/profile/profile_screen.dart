@@ -199,9 +199,9 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildMenuContainer([
                     _buildMenuTile(
-                      icon: Icons.history,
-                      title: 'Riwayat Pesanan',
-                      onTap: () => context.push('/profile/history'),
+                      icon: Icons.favorite_border,
+                      title: 'Favorit Produk',
+                      onTap: () => context.push('/profile/favorites'),
                     ),
                     const Divider(height: 1, color: _Ds.borderLight),
                     _buildMenuTile(

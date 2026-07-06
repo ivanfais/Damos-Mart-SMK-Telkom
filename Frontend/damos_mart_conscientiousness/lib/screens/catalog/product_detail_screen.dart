@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/product/product_cubit.dart';
 import '../../blocs/cart/cart_cubit.dart';
+import '../../blocs/favorite/favorite_cubit.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/product_variant_model.dart';
 import '../../core/utils/currency_formatter.dart';
@@ -87,6 +88,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          BlocBuilder<FavoriteCubit, FavoriteState>(
+            builder: (context, state) {
+              final isFavorite = context.read<FavoriteCubit>().isFavorite(widget.productId);
+              return IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? _red : Colors.white,
+                ),
+                onPressed: () => context.read<FavoriteCubit>().toggleFavorite(widget.productId),
+              );
+            },
+          ),
+        ],
       ),
       body: BlocBuilder<ProductCubit, ProductState>(
         builder: (context, state) {
@@ -114,6 +129,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     final maxStock = _selectedVariant?.stock ?? product.stock;
     final isOutOfStock = maxStock <= 0 && !product.isPreorder;
+    final displayImageUrl = (_selectedVariant?.imageUrl != null && _selectedVariant!.imageUrl!.isNotEmpty)
+        ? _selectedVariant!.imageUrl
+        : product.imageUrl;
 
     return Column(
       children: [
@@ -129,9 +147,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   padding: const EdgeInsets.all(24),
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                    child: displayImageUrl != null && displayImageUrl.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+                            // Keying by URL makes the fade/placeholder replay when switching variants.
+                            key: ValueKey(displayImageUrl),
+                            imageUrl: ApiConfig.imageUrl(displayImageUrl),
                             fit: BoxFit.contain,
                             placeholder: (_, __) => const Center(
                               child: CircularProgressIndicator(

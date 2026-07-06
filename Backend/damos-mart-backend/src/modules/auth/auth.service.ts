@@ -1,4 +1,5 @@
 import prisma from '../../config/database';
+import { env } from '../../config/env';
 import { hashPassword, comparePassword } from '../../utils/hash';
 import {
   generateAccessToken,
@@ -11,6 +12,19 @@ import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPas
 
 /** Dummy verification code for password reset (development/demo). */
 const RESET_PASSWORD_CODE = '1234';
+
+/**
+ * Computes the refresh token's DB expiry from JWT_REFRESH_EXPIRES_IN (e.g. "30d", "12h"),
+ * so the stored expiry always matches the signed JWT's own lifetime.
+ */
+function refreshTokenExpiresAt(): Date {
+  const match = /^(\d+)\s*(d|h|m|s)$/i.exec(env.JWT_REFRESH_EXPIRES_IN.trim());
+  const amount = match ? parseInt(match[1], 10) : 7;
+  const unit = match ? match[2].toLowerCase() : 'd';
+  const msPerUnit: Record<string, number> = { d: 86400000, h: 3600000, m: 60000, s: 1000 };
+
+  return new Date(Date.now() + amount * (msPerUnit[unit] ?? msPerUnit.d));
+}
 
 /**
  * Strips password hash from user object.
@@ -57,8 +71,7 @@ export class AuthService {
     const refreshToken = generateRefreshToken(payload);
 
     // Save refresh token in database (expires in 7 days)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = refreshTokenExpiresAt();
 
     await prisma.refreshToken.create({
       data: {
@@ -105,8 +118,7 @@ export class AuthService {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = refreshTokenExpiresAt();
 
     // Remove old refresh tokens for this user to keep db clean
     await prisma.refreshToken.deleteMany({
@@ -193,8 +205,7 @@ export class AuthService {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = refreshTokenExpiresAt();
 
     await prisma.refreshToken.deleteMany({
       where: { userId: user.id }
@@ -261,8 +272,7 @@ export class AuthService {
     const newRefreshToken = generateRefreshToken(payload);
 
     // Update in database (rotate refresh token)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = refreshTokenExpiresAt();
 
     await prisma.refreshToken.delete({
       where: { token },

@@ -70,4 +70,10 @@ class ApiConfig {
   static const String myComplaints = '/complaints/me';
   static String scheduleReturn(String complaintId) => '/complaints/$complaintId/return-schedule';
   static const String myReturnSchedules = '/complaints/return-schedules/me';
+
+  // Favorites
+  static const String favorites = '/favorites';
+  static const String favoriteIds = '/favorites/ids';
+  static String favoriteToggle(String productId) => '/favorites/$productId/toggle';
+  static String favoriteRemove(String productId) => '/favorites/$productId';
 }

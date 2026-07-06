@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "conscientiousness-web",
+      "runtimeExecutable": "flutter",
+      "runtimeArgs": [
+        "run",
+        "-d",
+        "chrome",
+        "--web-port",
+        "5174",
+        "--dart-define=API_BASE_URL=http://localhost:3000",
+        "--dart-define=APP_ENV=development"
+      ],
+      "cwd": "Frontend/damos_mart_conscientiousness",
+      "port": 5174
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import 'blocs/queue/queue_cubit.dart';
 import 'blocs/chat/chat_cubit.dart';
 import 'blocs/notification/notification_cubit.dart';
 import 'blocs/cooperative/cooperative_cubit.dart';
+import 'blocs/favorite/favorite_cubit.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/disc/disc_build_guard.dart';
 import 'core/socket/socket_service.dart';
@@ -162,6 +163,9 @@ class _DamosMartAppState extends State<DamosMartApp> {
         BlocProvider<CooperativeCubit>(
           create: (context) => CooperativeCubit(),
         ),
+        BlocProvider<FavoriteCubit>(
+          create: (context) => FavoriteCubit(),
+        ),
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
@@ -169,6 +173,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
             PushNotificationService.instance.ensurePermission();
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
+            context.read<FavoriteCubit>().loadFavoriteIds();
           } else if (state is Unauthenticated) {
             SocketService.instance.disconnect();
             _socketListenersRegistered = false;

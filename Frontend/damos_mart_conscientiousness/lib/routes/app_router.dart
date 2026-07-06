@@ -30,6 +30,7 @@ import '../screens/info/coop_info_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/profile/disc_theme_settings_screen.dart';
+import '../screens/profile/favorite_products_screen.dart';
 import '../screens/history/purchase_history_screen.dart';
 import '../screens/history/order_history_detail_screen.dart';
 import '../screens/complaint/complaint_landing_screen.dart';
@@ -352,6 +353,10 @@ class AppRouter {
       GoRoute(
         path: '/profile/chat',
         pageBuilder: (context, state) => _page(state, const ChatScreen()),
+      ),
+      GoRoute(
+        path: '/profile/favorites',
+        pageBuilder: (context, state) => _page(state, const FavoriteProductsScreen()),
       ),
       GoRoute(
         path: '/complaint',

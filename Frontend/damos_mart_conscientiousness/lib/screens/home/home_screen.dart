@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/product/product_cubit.dart';
 import '../../blocs/cart/cart_cubit.dart';
 import '../../blocs/queue/queue_cubit.dart';
+import '../../blocs/favorite/favorite_cubit.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/queue_model.dart';
 import '../../data/repositories/product_repository.dart';
@@ -679,9 +680,18 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () {},
-                  child: const Icon(Icons.favorite_border, size: 18, color: _grey),
+                BlocBuilder<FavoriteCubit, FavoriteState>(
+                  builder: (context, state) {
+                    final isFavorite = context.read<FavoriteCubit>().isFavorite(product.id);
+                    return GestureDetector(
+                      onTap: () => context.read<FavoriteCubit>().toggleFavorite(product.id),
+                      child: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        size: 18,
+                        color: isFavorite ? _red : _grey,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(width: 6),
                 Expanded(

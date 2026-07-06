@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { AppError } from '../../middlewares/error.middleware';
 import { UsersService } from './users.service';
 
 const usersService = new UsersService();
@@ -51,6 +52,12 @@ export class UsersController {
     try {
       const userId = req.user!.userId;
       const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return next(
+          new AppError(400, 'VALIDATION_ERROR', 'Current and new password are required')
+        );
+      }
 
       await usersService.changePassword(userId, currentPassword, newPassword);
 

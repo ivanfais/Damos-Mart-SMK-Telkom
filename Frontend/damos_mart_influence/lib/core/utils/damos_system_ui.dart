@@ -33,6 +33,9 @@ class DamosSystemUi {
   /// Only splash & login use a white top area with dark icons.
   /// All other routes use green header styling (white icons).
   static SystemUiOverlayStyle forRoute(String location) {
+    if (location == '/disc-picker') {
+      return lightHeader;
+    }
     if (location == '/' || location.startsWith('/?')) {
       return lightHeader;
     }

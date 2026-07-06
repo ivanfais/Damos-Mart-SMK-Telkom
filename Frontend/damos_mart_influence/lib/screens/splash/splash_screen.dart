@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_state.dart';
+import '../../core/storage/prefs_storage.dart';
 import '../../config/app_constants.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -72,6 +73,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final discVariant = PrefsStorage.instance.getSelectedDiscVariant();
+
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is Authenticated || state is Unauthenticated) {
@@ -125,6 +128,18 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         color: _taglineColor,
                       ),
                     ),
+                    if (discVariant != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        'Versi ${discVariant.label}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _spinnerColor,
+                        ),
+                      ),
+                    ],
 
                     const Spacer(flex: 2),
 

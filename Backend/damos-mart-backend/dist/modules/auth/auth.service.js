@@ -8,6 +8,8 @@ const database_1 = __importDefault(require("../../config/database"));
 const hash_1 = require("../../utils/hash");
 const jwt_1 = require("../../utils/jwt");
 const error_middleware_1 = require("../../middlewares/error.middleware");
+/** Dummy verification code for password reset (development/demo). */
+const RESET_PASSWORD_CODE = '1234';
 /**
  * Strips password hash from user object.
  */
@@ -249,6 +251,53 @@ class AuthService {
         catch {
             // Fail silently if token is already deleted or not found
         }
+    }
+    /**
+     * Validates that an email is registered before password reset.
+     */
+    async requestPasswordReset(input) {
+        const user = await database_1.default.user.findUnique({
+            where: { email: input.email },
+        });
+        if (!user) {
+            throw new error_middleware_1.AppError(404, 'USER_NOT_FOUND', 'Email tidak terdaftar');
+        }
+        if (!user.isActive) {
+            throw new error_middleware_1.AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+        }
+        return {
+            email: user.email,
+            message: 'Kode verifikasi telah dikirim (demo: gunakan 1234)',
+        };
+    }
+    /**
+     * Resets password after dummy verification code check.
+     */
+    async resetPassword(input) {
+        if (input.code !== RESET_PASSWORD_CODE) {
+            throw new error_middleware_1.AppError(400, 'INVALID_CODE', 'Kode verifikasi salah');
+        }
+        const user = await database_1.default.user.findUnique({
+            where: { email: input.email },
+        });
+        if (!user) {
+            throw new error_middleware_1.AppError(404, 'USER_NOT_FOUND', 'Email tidak terdaftar');
+        }
+        if (!user.isActive) {
+            throw new error_middleware_1.AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+        }
+        const hashed = await (0, hash_1.hashPassword)(input.newPassword);
+        await database_1.default.user.update({
+            where: { id: user.id },
+            data: { passwordHash: hashed },
+        });
+        await database_1.default.refreshToken.deleteMany({
+            where: { userId: user.id },
+        });
+        return {
+            email: user.email,
+            message: 'Password berhasil diperbarui',
+        };
     }
 }
 exports.AuthService = AuthService;

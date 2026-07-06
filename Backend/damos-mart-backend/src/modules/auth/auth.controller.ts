@@ -84,6 +84,38 @@ export class AuthController {
       return next(error);
     }
   }
+
+  /**
+   * HTTP Handler for forgot password (validate registered email).
+   */
+  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await authService.requestPasswordReset(req.body);
+      return res.status(200).json({
+        success: true,
+        data,
+        message: data.message,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * HTTP Handler for reset password with verification code.
+   */
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await authService.resetPassword(req.body);
+      return res.status(200).json({
+        success: true,
+        data,
+        message: data.message,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 export default AuthController;

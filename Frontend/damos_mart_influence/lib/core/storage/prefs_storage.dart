@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/app_constants.dart';
+import '../disc/disc_variant.dart';
 
 class PrefsStorage {
   late final SharedPreferences _prefs;
@@ -27,5 +28,17 @@ class PrefsStorage {
 
   bool getDarkThemeEnabled() {
     return _prefs.getBool(AppConstants.keySettingsDarkTheme) ?? false;
+  }
+
+  Future<void> setSelectedDiscVariant(DiscVariant variant) async {
+    await _prefs.setString(AppConstants.keySelectedDiscVariant, variant.name);
+  }
+
+  DiscVariant? getSelectedDiscVariant() {
+    return DiscVariant.fromStored(_prefs.getString(AppConstants.keySelectedDiscVariant));
+  }
+
+  Future<void> clearSelectedDiscVariant() async {
+    await _prefs.remove(AppConstants.keySelectedDiscVariant);
   }
 }

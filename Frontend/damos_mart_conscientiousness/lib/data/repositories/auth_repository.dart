@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import '../../core/storage/prefs_storage.dart';
+import '../../core/disc/disc_variant.dart';
 import '../../config/api_config.dart';
 import '../../core/network/dio_client.dart';
 import '../models/user_model.dart';
@@ -63,7 +65,8 @@ class AuthRepository {
         'email': email,
         'password': password,
         if (phone != null) 'phone': phone,
-        'discType': 'CONSCIENTIOUSNESS',
+        'discType': PrefsStorage.instance.getSelectedDiscVariant()?.apiValue ??
+            DiscVariant.conscientiousness.apiValue,
       },
     );
 

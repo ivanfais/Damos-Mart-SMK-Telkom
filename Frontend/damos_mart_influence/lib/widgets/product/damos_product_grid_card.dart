@@ -27,40 +27,60 @@ class DamosProductGridCard extends StatelessWidget {
   static const Color _bgGrey = Color(0xFFF2F2F2);
   static const Color _red = Color(0xFFD42427);
   static const Color _star = Color(0xFFFFC107);
+  static const Color _soldOutButton = Color(0xFF9CCC9C);
 
-  Widget _buildProductImage(double height) {
+  Widget _buildProductImage(double height, {required bool dimmed}) {
+    final Widget imageContent = product.imageUrl != null && product.imageUrl!.isNotEmpty
+        ? CachedNetworkImage(
+            imageUrl: ApiConfig.imageUrl(product.imageUrl!),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: height,
+            placeholder: (_, __) => const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
+              ),
+            ),
+            errorWidget: (_, __, ___) => const Center(
+              child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
+            ),
+          )
+        : const Center(
+            child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
+          );
+
     return SizedBox(
       height: height,
       width: double.infinity,
       child: ColoredBox(
         color: _bgGrey,
-        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-            ? CachedNetworkImage(
-                imageUrl: ApiConfig.imageUrl(product.imageUrl!),
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: height,
-                placeholder: (_, __) => const Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
-                  ),
-                ),
-                errorWidget: (_, __, ___) => const Center(
-                  child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
-                ),
+        child: dimmed
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  imageContent,
+                  ColoredBox(color: Colors.black.withValues(alpha: 0.28)),
+                ],
               )
-            : const Center(
-                child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
-              ),
+            : imageContent,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool hasStock = product.stock > 0 || product.isPreorder;
+    final bool isPreorder = product.isPreorder;
+    final bool isOutOfStock = !isPreorder && product.stock <= 0;
+    final bool hasStock = !isPreorder && product.stock > 0;
+    final bool canOrder = isPreorder || hasStock;
+    final String availabilityLabel = isPreorder
+        ? 'Pre-Order'
+        : isOutOfStock
+            ? 'Stok Habis'
+            : 'Tersedia';
+    final Color availabilityColor = isOutOfStock ? _red : _primary;
     final imageHeight = ProductGridLayout.imageHeight(context);
 
     return SizedBox(
@@ -79,7 +99,7 @@ class DamosProductGridCard extends StatelessWidget {
             onTap: onTap,
             child: Stack(
               children: [
-                _buildProductImage(imageHeight),
+                _buildProductImage(imageHeight, dimmed: isOutOfStock),
                 if (product.categoryName.isNotEmpty)
                   Positioned(
                     top: 6,
@@ -100,21 +120,44 @@ class DamosProductGridCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (!hasStock)
+                if (isPreorder)
                   Positioned(
-                    left: 0,
-                    right: 0,
-                    top: imageHeight / 2 - 14,
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'PRE-ORDER',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (isOutOfStock)
+                  Positioned.fill(
                     child: Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _red,
-                          borderRadius: BorderRadius.circular(6),
+                          color: _greenLight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _primary.withValues(alpha: 0.25)),
                         ),
                         child: const Text(
                           'STOK HABIS',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: _red,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
@@ -122,14 +165,14 @@ class DamosProductGridCard extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(
-            height: ProductGridLayout.contentHeight,
+          Expanded(
             child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
+                Expanded(
+                  child: GestureDetector(
                   onTap: onTap,
                   behavior: HitTestBehavior.opaque,
                   child: Column(
@@ -153,19 +196,19 @@ class DamosProductGridCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              hasStock ? 'Tersedia' : 'Stok Habis',
+                              availabilityLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: hasStock ? _primary : _red,
+                                color: availabilityColor,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
+                      const Spacer(),
                       Text(
                         CurrencyFormatter.format(product.price),
                         maxLines: 1,
@@ -175,28 +218,30 @@ class DamosProductGridCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                ),
                 const SizedBox(height: 6),
                 SizedBox(
                   height: 30,
                   width: double.infinity,
-                  child: hasStock
-                      ? OutlinedButton(
+                  child: canOrder
+                      ? ElevatedButton(
                           onPressed: onAddToCart,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: _primary,
-                            side: const BorderSide(color: _primary),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
                             padding: EdgeInsets.zero,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text(
-                            'Add to Cart',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          child: Text(
+                            isPreorder ? 'Pre-Order' : 'Add to Cart',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                           ),
                         )
                       : ElevatedButton(
                           onPressed: null,
                           style: ElevatedButton.styleFrom(
-                            disabledBackgroundColor: _hint,
+                            disabledBackgroundColor: _soldOutButton,
                             disabledForegroundColor: Colors.white,
                             elevation: 0,
                             padding: EdgeInsets.zero,
@@ -204,7 +249,7 @@ class DamosProductGridCard extends StatelessWidget {
                           ),
                           child: const Text(
                             'Sold Out',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                           ),
                         ),
                 ),

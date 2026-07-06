@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../core/storage/secure_storage.dart';
+import '../core/storage/prefs_storage.dart';
 import '../blocs/product/product_cubit.dart';
 import 'damos_page_transitions.dart';
 
 // Screens
+import '../screens/disc/disc_picker_screen.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
@@ -27,6 +29,7 @@ import '../screens/queue/order_complete_screen.dart';
 import '../screens/info/coop_info_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
+import '../screens/profile/disc_theme_settings_screen.dart';
 import '../screens/history/purchase_history_screen.dart';
 import '../screens/history/order_history_detail_screen.dart';
 import '../screens/complaint/complaint_landing_screen.dart';
@@ -65,18 +68,29 @@ class AppRouter {
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     redirect: (BuildContext context, GoRouterState state) async {
-      final path = state.uri.toString();
+      final path = state.uri.path;
       print('DEBUG ROUTER: redirect called for path=$path');
       try {
+        final selectedDisc = PrefsStorage.instance.getSelectedDiscVariant();
+        final isDiscPicker = path == '/disc-picker';
+        final isSplash = path == '/';
+
+        if (selectedDisc == null && !isDiscPicker) {
+          return '/disc-picker';
+        }
+
+        if (selectedDisc != null && isDiscPicker) {
+          return '/';
+        }
+
         final token = await SecureStorage.instance.getAccessToken();
         final isLoggedIn = token != null && token.isNotEmpty;
         print('DEBUG ROUTER: isLoggedIn=$isLoggedIn');
 
         final isAuthPath = path == '/login' || path == '/register';
-        final isSplash = path == '/';
 
-        if (isSplash) {
-          print('DEBUG ROUTER: splash path, returning null');
+        if (isSplash || isDiscPicker) {
+          print('DEBUG ROUTER: splash/disc-picker path, returning null');
           return null;
         }
 
@@ -98,6 +112,10 @@ class AppRouter {
       }
     },
     routes: [
+      GoRoute(
+        path: '/disc-picker',
+        pageBuilder: (context, state) => _page(state, const DiscPickerScreen()),
+      ),
       GoRoute(
         path: '/',
         pageBuilder: (context, state) => _page(state, const SplashScreen()),
@@ -315,6 +333,10 @@ class AppRouter {
       GoRoute(
         path: '/profile/edit',
         pageBuilder: (context, state) => _page(state, const EditProfileScreen()),
+      ),
+      GoRoute(
+        path: '/profile/disc-theme',
+        pageBuilder: (context, state) => _page(state, const DiscThemeSettingsScreen()),
       ),
       GoRoute(
         path: '/profile/history',

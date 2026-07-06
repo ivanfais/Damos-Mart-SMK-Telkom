@@ -49,6 +49,9 @@ class AppDimensions {
   // Quick menu icon box
   static const double quickMenuBoxSize = 64.0;
   static const double quickMenuIconSize = 28.0;
+
+  // Home banner slider
+  static const double bannerHeight = 160.0;
 }
 
 class AppAnimations {

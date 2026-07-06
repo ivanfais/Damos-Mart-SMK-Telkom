@@ -13,6 +13,8 @@ const bind = (method) => {
 router.post('/register', (0, validate_middleware_1.validateRequest)(auth_schema_1.registerSchema), bind('register'));
 router.post('/login', (0, validate_middleware_1.validateRequest)(auth_schema_1.loginSchema), bind('login'));
 router.post('/login/sso', (0, validate_middleware_1.validateRequest)(auth_schema_1.ssoLoginSchema), bind('loginSso'));
+router.post('/forgot-password', (0, validate_middleware_1.validateRequest)(auth_schema_1.forgotPasswordSchema), bind('forgotPassword'));
+router.post('/reset-password', (0, validate_middleware_1.validateRequest)(auth_schema_1.resetPasswordSchema), bind('resetPassword'));
 router.post('/refresh', (0, validate_middleware_1.validateRequest)(auth_schema_1.refreshTokenSchema), bind('refresh'));
 router.post('/logout', (0, validate_middleware_1.validateRequest)(auth_schema_1.refreshTokenSchema), bind('logout'));
 exports.default = router;

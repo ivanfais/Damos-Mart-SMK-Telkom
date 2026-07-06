@@ -1,6 +1,6 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middlewares/error.middleware';
-import { emitQueueUpdate, emitQueueCalled, emitQueueReady } from '../../socket';
+import { emitQueueUpdate, emitQueueCalled, emitQueueReady, emitUserNotification, emitOrderStatusUpdate } from '../../socket';
 
 /**
  * Returns [startOfDay, endOfDay] for the current local day. Used to filter
@@ -17,32 +17,37 @@ function todayRange() {
 
 export class QueuesService {
   /**
-   * Fetches active queues belonging to the student (WAITING, PREPARING, READY).
+   * Antrean aktif siswa = subset board admin hari ini (sumber data sama persis).
    */
   async getActiveQueues(userId: string) {
-    return prisma.queue.findMany({
-      where: {
-        userId,
-        status: { in: ['WAITING', 'PREPARING', 'READY'] },
-        order: {
-          paymentStatus: 'PAID',
-        },
-      },
-      include: {
-        order: {
-          include: {
-            orderItems: {
-              include: {
-                product: {
-                  select: { imageUrl: true },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { queueNumber: 'asc' },
-    });
+    const allToday = await this.getAllTodayQueues();
+    return allToday
+      .filter((queue) => this.isVisibleOnStudentBoard(queue, userId))
+      .sort((a, b) => a.queueNumber.localeCompare(b.queueNumber));
+  }
+
+  private isVisibleOnStudentBoard(
+    queue: {
+      userId: string;
+      status: string;
+      order: {
+        userId: string;
+        status: string;
+        paymentStatus: string;
+        paymentMethod: string | null;
+      } | null;
+    },
+    userId: string,
+  ): boolean {
+    if (queue.userId !== userId) return false;
+    if (!['WAITING', 'PREPARING', 'READY'].includes(queue.status)) return false;
+
+    const order = queue.order;
+    if (!order || order.userId !== userId) return false;
+    if (['COMPLETED', 'CANCELLED'].includes(order.status)) return false;
+    if (order.paymentStatus === 'UNPAID' && order.paymentMethod === 'QRIS') return false;
+
+    return true;
   }
 
   /**
@@ -176,9 +181,16 @@ export class QueuesService {
     });
 
     // Notify student via Websockets
+    const order = await prisma.order.findUnique({
+      where: { id: queue.orderId },
+      select: { orderNumber: true },
+    });
+
     emitQueueCalled(queue.userId, {
       queueId: updated.id,
+      orderId: queue.orderId,
       queueNumber: updated.queueNumber,
+      orderNumber: order?.orderNumber,
       status: updated.status,
       message: `Nomor antrean ${updated.queueNumber} sedang dipersiapkan.`,
     });
@@ -192,6 +204,9 @@ export class QueuesService {
   async readyQueue(queueId: string) {
     const queue = await prisma.queue.findUnique({
       where: { id: queueId },
+      include: {
+        order: { select: { orderNumber: true } },
+      },
     });
 
     if (!queue) {
@@ -212,27 +227,36 @@ export class QueuesService {
       });
 
       // Add Notification row
-      await tx.notification.create({
+      const notification = await tx.notification.create({
         data: {
           userId: queue.userId,
           title: 'Pesanan Siap Diambil',
           body: `Pesanan Anda dengan nomor antrean ${queue.queueNumber} sudah siap diambil di kasir Damos Mart!`,
           type: 'QUEUE_READY',
-          referenceId: queue.id,
+          referenceId: queue.orderId,
         },
       });
 
-      return uQueue;
+      return { queue: uQueue, notification };
     });
 
     // Notify student via Websockets
     emitQueueReady(queue.userId, {
-      queueId: updated.id,
-      queueNumber: updated.queueNumber,
-      status: updated.status,
+      queueId: updated.queue.id,
+      orderId: queue.orderId,
+      queueNumber: updated.queue.queueNumber,
+      orderNumber: queue.order.orderNumber,
     });
 
-    return updated;
+    emitUserNotification(queue.userId, {
+      id: updated.notification.id,
+      title: updated.notification.title,
+      body: updated.notification.body,
+      type: updated.notification.type,
+      referenceId: updated.notification.referenceId,
+    });
+
+    return updated.queue;
   }
 
   /**
@@ -264,11 +288,47 @@ export class QueuesService {
       return uQueue;
     });
 
+    const order = await prisma.order.findUnique({
+      where: { id: queue.orderId },
+      select: { orderNumber: true },
+    });
+
+    const notification = await prisma.notification.create({
+      data: {
+        userId: queue.userId,
+        title: 'Pesanan Selesai',
+        body: `Pesanan ${order?.orderNumber ?? 'Anda'} telah selesai diambil. Terima kasih telah berbelanja!`,
+        type: 'ORDER_STATUS',
+        referenceId: queue.orderId,
+      },
+    });
+
     // Notify student via Websockets
     emitQueueUpdate(queue.userId, {
       queueId: updated.id,
+      orderId: queue.orderId,
+      orderNumber: order?.orderNumber,
       status: updated.status,
       queueNumber: updated.queueNumber,
+    });
+
+    emitOrderStatusUpdate(queue.userId, {
+      orderId: queue.orderId,
+      orderNumber: order?.orderNumber,
+      status: 'COMPLETED',
+      statusLabel: 'Selesai',
+      title: notification.title,
+      body: notification.body,
+      queueId: updated.id,
+      queueNumber: updated.queueNumber,
+    });
+
+    emitUserNotification(queue.userId, {
+      id: notification.id,
+      title: notification.title,
+      body: notification.body,
+      type: notification.type,
+      referenceId: notification.referenceId,
     });
 
     return updated;
@@ -301,6 +361,7 @@ export class QueuesService {
     // Notify student via Websockets
     emitQueueUpdate(queue.userId, {
       queueId: updated.id,
+      orderId: queue.orderId,
       status: updated.status,
       queueNumber: updated.queueNumber,
     });

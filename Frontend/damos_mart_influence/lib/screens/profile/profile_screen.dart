@@ -5,6 +5,7 @@ import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../data/models/user_model.dart';
+import '../../core/storage/prefs_storage.dart';
 import '../../widgets/common/pop_up_alert.dart';
 import '../../widgets/common/user_avatar.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
@@ -176,6 +177,25 @@ class ProfileScreen extends StatelessWidget {
                       letterSpacing: 1,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _buildMenuContainer([
+                    _buildMenuTile(
+                      icon: Icons.palette_outlined,
+                      title: 'Gaya Aplikasi DISC',
+                      onTap: () => context.push('/profile/disc-theme'),
+                    ),
+                    if (PrefsStorage.instance.getSelectedDiscVariant() != null) ...[
+                      const Divider(height: 1, color: _Ds.borderLight),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        leading: const Icon(Icons.check_circle_outline, color: _Ds.primary, size: 22),
+                        title: Text(
+                          'Aktif: ${PrefsStorage.instance.getSelectedDiscVariant()!.label}',
+                          style: const TextStyle(fontSize: 14, color: _Ds.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ]),
                   const SizedBox(height: 12),
                   _buildMenuContainer([
                     _buildMenuTile(

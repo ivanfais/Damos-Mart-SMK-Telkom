@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/queue/queue_cubit.dart';
 import '../../core/socket/socket_service.dart';
+import '../../data/models/order_model.dart';
 import '../../data/models/queue_model.dart';
 import '../../data/repositories/queue_repository.dart';
 import '../../widgets/common/error_state.dart';
@@ -205,6 +206,38 @@ class _QueueDetailScreenState extends State<QueueDetailScreen> {
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isCashUnpaid(QueueModel queue) {
+    final order = queue.order;
+    return order != null &&
+        order.paymentMethod == PaymentMethod.cashAtCounter &&
+        order.paymentStatus == PaymentStatus.unpaid;
+  }
+
+  Widget _buildCashPaymentBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFE082)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.payments_outlined, size: 20, color: Color(0xFFE65100)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Pembayaran belum dilakukan. Bayar tunai di kasir saat nomor antrean Anda dipanggil.',
+              style: TextStyle(fontSize: 13, color: Color(0xFFE65100), height: 1.4),
             ),
           ),
         ],
@@ -523,6 +556,10 @@ class _QueueDetailScreenState extends State<QueueDetailScreen> {
       child: Column(
         children: [
           _buildStatusBanner(queue.status),
+          if (_isCashUnpaid(queue)) ...[
+            const SizedBox(height: 12),
+            _buildCashPaymentBanner(),
+          ],
           const SizedBox(height: 20),
           _buildQueueNumberCard(queue),
           const SizedBox(height: 16),

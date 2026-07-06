@@ -45,4 +45,7 @@ class AppColors {
   // Link
   static const Color link           = Color(0xFF018D1A);
   static const Color linkDanger     = Color(0xFFD32F2F);
+
+  // Accent (badges/tags, e.g. Pre-Order)
+  static const Color accent         = Color(0xFFF57C00);
 }

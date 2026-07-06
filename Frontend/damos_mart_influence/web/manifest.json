@@ -1,6 +1,6 @@
 {
-    "name": "damos_mart_influence",
-    "short_name": "damos_mart_influence",
+    "name": "Damos Mart Influence",
+    "short_name": "Damos Influence",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

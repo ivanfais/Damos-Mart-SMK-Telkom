@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import '../../core/storage/prefs_storage.dart';
+import '../../core/disc/disc_variant.dart';
 import '../../config/api_config.dart';
 import '../../core/network/dio_client.dart';
 import '../models/user_model.dart';
@@ -63,7 +65,8 @@ class AuthRepository {
         'email': email,
         'password': password,
         if (phone != null) 'phone': phone,
-        'discType': 'INFLUENCE', // Automatically flag as INFLUENCE DISC type
+        'discType': PrefsStorage.instance.getSelectedDiscVariant()?.apiValue ??
+            DiscVariant.influence.apiValue,
       },
     );
 
@@ -84,6 +87,28 @@ class AuthRepository {
       ApiConfig.logout,
       data: {
         'token': refreshToken,
+      },
+    );
+  }
+
+  Future<void> requestPasswordReset(String email) async {
+    await _client.post(
+      ApiConfig.forgotPassword,
+      data: {'email': email},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _client.post(
+      ApiConfig.resetPassword,
+      data: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
       },
     );
   }

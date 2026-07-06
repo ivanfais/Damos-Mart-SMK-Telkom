@@ -10,6 +10,7 @@ class AppConstants {
   // Preferences Keys
   static const String keySettingsNotifications = 'settings_notifications';
   static const String keySettingsDarkTheme = 'settings_dark_theme';
+  static const String keySelectedDiscVariant = 'selected_disc_variant';
 
   // Asset paths
   static const String imageLogo = 'assets/images/logo damos.png';

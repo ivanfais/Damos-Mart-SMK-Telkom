@@ -47,6 +47,13 @@ class _QueueListScreenState extends State<QueueListScreen> {
     }
   }
 
+  bool _isCashUnpaid(QueueModel queue) {
+    final order = queue.order;
+    return order != null &&
+        order.paymentMethod == PaymentMethod.cashAtCounter &&
+        order.paymentStatus == PaymentStatus.unpaid;
+  }
+
   String _categoryBadge(QueueModel queue) {
     if (queue.order?.isPreorder == true) return 'Atribut Sekolah';
 
@@ -144,6 +151,10 @@ class _QueueListScreenState extends State<QueueListScreen> {
   }
 
   String _statusText(QueueModel queue) {
+    if (_isCashUnpaid(queue)) {
+      return 'Belum Bayar · Menunggu Antrean';
+    }
+
     if (queue.order?.isPreorder == true) {
       switch (queue.order!.status) {
         case OrderStatus.pending:
@@ -247,6 +258,23 @@ class _QueueListScreenState extends State<QueueListScreen> {
           ),
           const SizedBox(height: 12),
           _buildInfoRow(_referenceLabel(queue), _referenceValue(queue)),
+          if (_isCashUnpaid(queue))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFFE082)),
+                ),
+                child: const Text(
+                  'Bayar tunai di kasir saat nomor antrean Anda dipanggil.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFFE65100), height: 1.4),
+                ),
+              ),
+            ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

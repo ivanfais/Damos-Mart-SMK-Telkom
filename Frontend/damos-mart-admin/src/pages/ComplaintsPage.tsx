@@ -475,7 +475,7 @@ export const ComplaintsPage: React.FC = () => {
                     placeholder="Tulis tanggapan resmi untuk siswa..."
                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-brand-500 resize-none placeholder-slate-400"
                   />
-                  <div className="flex justify-end gap-3 mt-3">
+                  <div className="flex flex-wrap justify-end gap-3 mt-3">
                     <button
                       onClick={() => respondMutation.mutate({ adminResponse: responseText })}
                       disabled={!responseText.trim() || respondMutation.isPending}
@@ -489,16 +489,53 @@ export const ComplaintsPage: React.FC = () => {
                       <span>Kirim Balasan</span>
                     </button>
                     <button
-                      onClick={() =>
-                        respondMutation.mutate({ adminResponse: responseText || detailData.adminResponse || '-', status: 'RESOLVED' })
-                      }
+                      onClick={() => {
+                        if (
+                          !confirm(
+                            'Selesaikan komplain ini? Siswa akan melihat status Selesai beserta tanggapan Anda.',
+                          )
+                        ) {
+                          return;
+                        }
+                        respondMutation.mutate({
+                          adminResponse: responseText.trim() || detailData.adminResponse || '-',
+                          status: 'RESOLVED',
+                        });
+                      }}
                       disabled={respondMutation.isPending}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-sm disabled:opacity-50 transition-colors"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Balas & Selesaikan</span>
                     </button>
+                    <button
+                      onClick={() => {
+                        if (!responseText.trim()) {
+                          alert('Tulis alasan penolakan terlebih dahulu sebelum menolak komplain.');
+                          return;
+                        }
+                        if (
+                          !confirm(
+                            'Tolak komplain ini? Siswa akan melihat status Ditolak beserta alasan Anda.',
+                          )
+                        ) {
+                          return;
+                        }
+                        respondMutation.mutate({
+                          adminResponse: responseText.trim(),
+                          status: 'REJECTED',
+                        });
+                      }}
+                      disabled={!responseText.trim() || respondMutation.isPending}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-sm disabled:opacity-50 transition-colors"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span>Balas & Tolak</span>
+                    </button>
                   </div>
+                  <p className="text-xs text-slate-400 mt-2 text-right">
+                    Gunakan <span className="font-semibold">Balas & Tolak</span> jika komplain tidak valid. Alasan wajib diisi.
+                  </p>
                 </div>
               </div>
             )}

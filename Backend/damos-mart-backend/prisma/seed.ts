@@ -277,7 +277,11 @@ async function main() {
   // 6. Seed Crowd Levels (Hourly averages for weekdays)
   // hourSlot: 0-23, dayOfWeek: 1-7
   // Let's seed slots from 7:00 to 16:00 for Monday-Friday (days 1-5) and Saturday (day 6)
-  const crowdSlots = [];
+  const crowdSlots: {
+    hourSlot: number;
+    dayOfWeek: number;
+    avgCrowdLevel: number;
+  }[] = [];
   for (let day = 1; day <= 6; day++) {
     const maxHour = day === 6 ? 12 : 16;
     for (let hour = 7; hour <= maxHour; hour++) {
@@ -387,6 +391,160 @@ async function main() {
     console.log('✅ Sample complaints seeded.');
   } else {
     console.log('ℹ️ Complaints already exist, skipping sample seed.');
+  }
+
+  // 8. Seed demo orders for all status tabs (siswa demo account)
+  const demoMarker = await prisma.order.findFirst({
+    where: { userId: student.id, orderNumber: 'DEMO-UNPAID-001' },
+  });
+
+  if (!demoMarker) {
+    const airMineral = await prisma.product.findFirst({ where: { name: 'Air Mineral' } });
+    const esTeh = await prisma.product.findFirst({ where: { name: 'Es Teh' } });
+    const seragam = await prisma.product.findFirst({
+      where: { name: 'Seragam Harian' },
+      include: { variants: true },
+    });
+
+    if (airMineral && esTeh && seragam) {
+      const seragamVariant = seragam.variants[0];
+      const now = new Date();
+      const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
+
+      type DemoOrder = {
+        orderNumber: string;
+        status: 'PENDING' | 'PAID' | 'PREPARING' | 'IN_PRODUCTION' | 'READY' | 'COMPLETED' | 'CANCELLED';
+        paymentStatus: 'UNPAID' | 'PAID' | 'FAILED';
+        paymentMethod?: 'QRIS' | 'CASH_AT_COUNTER';
+        isPreorder?: boolean;
+        paidAt?: Date;
+        createdAt?: Date;
+        product: {
+          id: string;
+          name: string;
+          price: number;
+          variantId?: string;
+          variantName?: string;
+        };
+        queueStatus?: 'WAITING' | 'PREPARING' | 'READY' | 'COMPLETED';
+      };
+
+      const demoOrders: DemoOrder[] = [
+        {
+          orderNumber: 'DEMO-UNPAID-001',
+          status: 'PENDING',
+          paymentStatus: 'UNPAID',
+          paymentMethod: 'QRIS',
+          createdAt: daysAgo(1),
+          product: { id: airMineral.id, name: airMineral.name, price: Number(airMineral.price) },
+        },
+        {
+          orderNumber: 'DEMO-PROCESS-001',
+          status: 'PREPARING',
+          paymentStatus: 'PAID',
+          paymentMethod: 'QRIS',
+          paidAt: daysAgo(0),
+          createdAt: daysAgo(0),
+          product: { id: esTeh.id, name: esTeh.name, price: Number(esTeh.price) },
+          queueStatus: 'PREPARING',
+        },
+        {
+          orderNumber: 'DEMO-PO-001',
+          status: 'IN_PRODUCTION',
+          paymentStatus: 'PAID',
+          paymentMethod: 'QRIS',
+          isPreorder: true,
+          paidAt: daysAgo(3),
+          createdAt: daysAgo(3),
+          product: {
+            id: seragam.id,
+            name: seragam.name,
+            price: Number(seragam.price),
+            variantId: seragamVariant?.id,
+            variantName: seragamVariant?.variantName,
+          },
+          queueStatus: 'PREPARING',
+        },
+        {
+          orderNumber: 'DEMO-READY-001',
+          status: 'READY',
+          paymentStatus: 'PAID',
+          paymentMethod: 'CASH_AT_COUNTER',
+          paidAt: daysAgo(1),
+          createdAt: daysAgo(1),
+          product: { id: airMineral.id, name: airMineral.name, price: Number(airMineral.price) },
+          queueStatus: 'READY',
+        },
+        {
+          orderNumber: 'DEMO-DONE-001',
+          status: 'COMPLETED',
+          paymentStatus: 'PAID',
+          paymentMethod: 'QRIS',
+          paidAt: daysAgo(7),
+          createdAt: daysAgo(7),
+          product: { id: esTeh.id, name: esTeh.name, price: Number(esTeh.price) },
+          queueStatus: 'COMPLETED',
+        },
+        {
+          orderNumber: 'DEMO-CANCEL-001',
+          status: 'CANCELLED',
+          paymentStatus: 'UNPAID',
+          paymentMethod: 'QRIS',
+          createdAt: daysAgo(2),
+          product: { id: airMineral.id, name: airMineral.name, price: Number(airMineral.price) },
+        },
+      ];
+
+      let queueCounter = 901;
+      for (const demo of demoOrders) {
+        const price = demo.product.price;
+        const order = await prisma.order.create({
+          data: {
+            userId: student.id,
+            orderNumber: demo.orderNumber,
+            status: demo.status,
+            isPreorder: demo.isPreorder ?? false,
+            subtotal: price,
+            total: price,
+            paymentMethod: demo.paymentMethod,
+            paymentStatus: demo.paymentStatus,
+            paidAt: demo.paidAt,
+            createdAt: demo.createdAt ?? now,
+            orderItems: {
+              create: {
+                productId: demo.product.id,
+                variantId: demo.product.variantId,
+                productName: demo.product.name,
+                variantName: demo.product.variantName,
+                productPrice: price,
+                quantity: 1,
+                subtotal: price,
+              },
+            },
+          },
+        });
+
+        if (demo.queueStatus) {
+          await prisma.queue.create({
+            data: {
+              orderId: order.id,
+              userId: student.id,
+              queueNumber: `A-${String(queueCounter).padStart(3, '0')}`,
+              queueDate: now,
+              status: demo.queueStatus,
+              completedAt: demo.queueStatus === 'COMPLETED' ? now : undefined,
+            },
+          });
+          queueCounter += 1;
+        }
+      }
+
+      console.log('✅ Demo orders seeded for siswa@damosmart.com (6 status samples).');
+    } else {
+      console.log('⚠️ Skipped demo orders: required products not found.');
+    }
+  } else {
+    console.log('ℹ️ Demo orders already exist, skipping.');
   }
 
   console.log('🌱 Seeding process complete!');

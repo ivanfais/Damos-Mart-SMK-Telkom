@@ -34,11 +34,26 @@ model User {
   notifications     Notification[]
   chatRoomAsStudent ChatRoom?      @relation("StudentRoom")
   chatRoomAsAdmin   ChatRoom[]     @relation("AdminRoom")
-  chatMessages      ChatMessage[]
-  complaints        Complaint[]
-  returnSchedules   ReturnSchedule[]
+  chatMessages        ChatMessage[]
+  complaints          Complaint[]
+  returnSchedules     ReturnSchedule[]
+  passwordResetTokens PasswordResetToken[]
+  productFavorites    ProductFavorite[]
 
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }
 
 enum Role {
@@ -99,8 +114,22 @@ model Product {
   cartItems  CartItem[]
   orderItems OrderItem[]
   reviews    Review[]
+  favorites  ProductFavorite[]
 
   @@map("products")
+}
+
+model ProductFavorite {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("product_favorites")
 }
 
 model ProductVariant {
@@ -109,6 +138,7 @@ model ProductVariant {
   variantName     String   @map("variant_name")
   additionalPrice Decimal  @default(0) @db.Decimal(12, 2) @map("additional_price")
   stock           Int      @default(0)
+  imageUrl        String?  @map("image_url")
   createdAt       DateTime @default(now()) @map("created_at")
 
   product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -328,6 +358,7 @@ enum NotificationType {
   ORDER_STATUS
   PROMO
   CHAT
+  COMPLAINT
 }
 
 // ==========================================

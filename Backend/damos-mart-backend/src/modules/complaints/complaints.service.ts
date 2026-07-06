@@ -1,6 +1,8 @@
 import prisma from '../../config/database';
+import { NotificationType } from '@prisma/client';
 import { AppError } from '../../middlewares/error.middleware';
 import { generateNextComplaintNumber } from '../../utils/complaint-number';
+import { emitComplaintUpdate, emitUserNotification } from '../../socket';
 
 type ComplaintCategory = 'PRODUCT' | 'SERVICE' | 'ORDER' | 'QUEUE' | 'OTHER';
 type ComplaintStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
@@ -36,6 +38,15 @@ const orderSelect = {
     select: { productName: true },
   },
 } as const;
+
+const statusLabels: Record<ComplaintStatus, string> = {
+  OPEN: 'Komplain Dikirim',
+  IN_PROGRESS: 'Sedang Ditinjau',
+  RESOLVED: 'Selesai',
+  REJECTED: 'Ditolak',
+};
+
+type ComplaintWithRelations = Awaited<ReturnType<ComplaintsService['getById']>>;
 
 export class ComplaintsService {
   /**
@@ -266,13 +277,19 @@ export class ComplaintsService {
     if (data.priority) patch.priority = data.priority;
     if (data.status) {
       patch.status = data.status;
-      patch.resolvedAt = data.status === 'RESOLVED' ? new Date() : null;
+      patch.resolvedAt =
+        data.status === 'RESOLVED' || data.status === 'REJECTED' ? new Date() : null;
     }
 
     return prisma.complaint.update({
       where: { id },
       data: patch,
       include: { user: { select: userSelect }, order: { select: orderSelect } },
+    }).then(async (updated) => {
+      if (data.status) {
+        await this.notifyStudentUpdate(updated, 'status');
+      }
+      return updated;
     });
   }
 
@@ -288,7 +305,8 @@ export class ComplaintsService {
     };
     if (data.status) {
       patch.status = data.status;
-      patch.resolvedAt = data.status === 'RESOLVED' ? new Date() : null;
+      patch.resolvedAt =
+        data.status === 'RESOLVED' || data.status === 'REJECTED' ? new Date() : null;
     } else {
       // Default: move an untouched complaint into IN_PROGRESS once replied.
       patch.status = 'IN_PROGRESS';
@@ -298,6 +316,59 @@ export class ComplaintsService {
       where: { id },
       data: patch,
       include: { user: { select: userSelect }, order: { select: orderSelect } },
+    }).then(async (updated) => {
+      await this.notifyStudentUpdate(updated, 'response');
+      return updated;
+    });
+  }
+
+  /**
+   * Persists in-app notification + pushes realtime update to the student app.
+   */
+  private async notifyStudentUpdate(
+    complaint: ComplaintWithRelations,
+    kind: 'status' | 'response',
+  ) {
+    if (!complaint.userId) return;
+
+    const statusLabel = statusLabels[complaint.status as ComplaintStatus] ?? complaint.status;
+    const title = kind === 'response' ? 'Balasan Komplain' : 'Status Komplain Diperbarui';
+
+    let body = `Komplain "${complaint.subject}" kini berstatus ${statusLabel}.`;
+    if (complaint.adminResponse?.trim()) {
+      body = `Admin membalas komplain Anda: ${complaint.adminResponse.trim()}`;
+    }
+
+    const notification = await prisma.notification.create({
+      data: {
+        userId: complaint.userId,
+        title,
+        body,
+        type: NotificationType.COMPLAINT,
+        referenceId: complaint.id,
+      },
+    });
+
+    const notificationPayload = {
+      complaintId: complaint.id,
+      orderId: complaint.orderId,
+      status: complaint.status,
+      subject: complaint.subject,
+      adminResponse: complaint.adminResponse,
+      respondedAt: complaint.respondedAt,
+      resolvedAt: complaint.resolvedAt,
+      title,
+      body,
+    };
+
+    emitComplaintUpdate(complaint.userId, notificationPayload);
+
+    emitUserNotification(complaint.userId, {
+      id: notification.id,
+      title: notification.title,
+      body: notification.body,
+      type: notification.type,
+      referenceId: notification.referenceId,
     });
   }
 

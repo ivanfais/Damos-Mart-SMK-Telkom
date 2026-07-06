@@ -58,8 +58,13 @@ class DamosScreenHeader extends StatelessWidget {
                     style: const TextStyle(fontSize: 14, color: textPrimary),
                     decoration: const InputDecoration(
                       isDense: true,
+                      filled: true,
+                      fillColor: Colors.white,
                       contentPadding: EdgeInsets.zero,
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
                       hintText: 'Cari produk, kategori, atau merek...',
                       hintStyle: TextStyle(color: hint, fontSize: 14),
                     ),

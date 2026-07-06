@@ -158,15 +158,37 @@ class AuthRepository {
       },
     );
 
-    final data = response.data;
-    if (data is Map && data['success'] == true) {
-      return data['message'] as String? ?? 'Password berhasil diperbarui.';
+    final statusCode = response.statusCode ?? 0;
+    if (statusCode < 200 || statusCode >= 300) {
+      throw ApiException(
+        message: 'Gagal mengubah password',
+        statusCode: statusCode,
+      );
     }
 
-    throw ApiException(
-      message: 'Gagal mengubah password',
-      statusCode: response.statusCode,
-    );
+    final data = response.data;
+    if (data is Map && data['success'] == false) {
+      final error = data['error'];
+      final message = error is Map
+          ? error['message']?.toString()
+          : data['message']?.toString();
+      throw ApiException(
+        message: message ?? 'Gagal mengubah password',
+        statusCode: statusCode,
+        code: error is Map ? error['code']?.toString() : null,
+      );
+    }
+
+    if (data is Map) {
+      final serverMessage = data['message'] as String?;
+      if (serverMessage != null && serverMessage.isNotEmpty) {
+        return serverMessage.toLowerCase().contains('changed')
+            ? 'Password berhasil diperbarui.'
+            : serverMessage;
+      }
+    }
+
+    return 'Password berhasil diperbarui.';
   }
 
   Future<UserModel> updateMe({

@@ -39,6 +39,12 @@ const orderSelect = {
   },
 } as const;
 
+const adminComplaintInclude = {
+  user: { select: userSelect },
+  order: { select: orderSelect },
+  photos: { orderBy: { createdAt: 'asc' as const } },
+} as const;
+
 const statusLabels: Record<ComplaintStatus, string> = {
   OPEN: 'Komplain Dikirim',
   IN_PROGRESS: 'Sedang Ditinjau',
@@ -81,7 +87,7 @@ export class ComplaintsService {
         category: (data.category ?? 'OTHER') as any,
         priority: (data.priority ?? 'MEDIUM') as any,
       },
-      include: { user: { select: userSelect }, order: { select: orderSelect } },
+      include: adminComplaintInclude,
     });
   }
 
@@ -129,7 +135,7 @@ export class ComplaintsService {
 
       return tx.complaint.findUnique({
         where: { id: complaint.id },
-        include: { user: { select: userSelect }, order: { select: orderSelect }, photos: true },
+        include: adminComplaintInclude,
       });
     });
   }
@@ -227,7 +233,7 @@ export class ComplaintsService {
         orderBy: { createdAt: 'desc' },
         skip: offset,
         take: limit,
-        include: { user: { select: userSelect }, order: { select: orderSelect } },
+        include: adminComplaintInclude,
       }),
       prisma.complaint.count({ where }),
     ]);
@@ -259,7 +265,7 @@ export class ComplaintsService {
   async getById(id: string) {
     const complaint = await prisma.complaint.findUnique({
       where: { id },
-      include: { user: { select: userSelect }, order: { select: orderSelect } },
+      include: adminComplaintInclude,
     });
     if (!complaint) {
       throw new AppError(404, 'COMPLAINT_NOT_FOUND', 'Komplain tidak ditemukan');
@@ -284,7 +290,7 @@ export class ComplaintsService {
     return prisma.complaint.update({
       where: { id },
       data: patch,
-      include: { user: { select: userSelect }, order: { select: orderSelect } },
+      include: adminComplaintInclude,
     }).then(async (updated) => {
       if (data.status) {
         await this.notifyStudentUpdate(updated, 'status');
@@ -315,7 +321,7 @@ export class ComplaintsService {
     return prisma.complaint.update({
       where: { id },
       data: patch,
-      include: { user: { select: userSelect }, order: { select: orderSelect } },
+      include: adminComplaintInclude,
     }).then(async (updated) => {
       await this.notifyStudentUpdate(updated, 'response');
       return updated;

@@ -13,8 +13,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  ImageIcon,
 } from 'lucide-react';
 import apiClient from '../api/client';
+import { assetUrl } from '../config/env';
 
 // ---- Label & style maps ----
 const STATUS_META: Record<string, { label: string; badge: string }> = {
@@ -416,6 +418,33 @@ export const ComplaintsPage: React.FC = () => {
                     {detailData.description}
                   </p>
                 </div>
+
+                {/* Evidence photos */}
+                {detailData.photos?.length > 0 && (
+                  <div className="p-4 rounded-xl bg-slate-50/40 border border-slate-200">
+                    <p className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      Foto Bukti ({detailData.photos.length})
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {detailData.photos.map((photo: { id: string; photoUrl: string }) => (
+                        <a
+                          key={photo.id}
+                          href={assetUrl(photo.photoUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-brand-500 transition-colors bg-white"
+                        >
+                          <img
+                            src={assetUrl(photo.photoUrl)}
+                            alt="Foto bukti komplain"
+                            className="w-full h-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Status & priority controls */}
                 <div className="grid grid-cols-2 gap-4">

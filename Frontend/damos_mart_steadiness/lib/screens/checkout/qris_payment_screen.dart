@@ -10,6 +10,7 @@ import '../../blocs/queue/queue_cubit.dart';
 import '../../config/app_constants.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/order_model.dart';
+import '../../core/notifications/order_notification_dispatcher.dart';
 import '../../widgets/common/pop_up_alert.dart';
 import '../../widgets/common/steadiness_app_header.dart';
 
@@ -321,7 +322,26 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
             final userId = authState is Authenticated ? authState.user.id : null;
             context.read<QueueCubit>().loadActiveQueues(userId: userId);
             context.read<NotificationCubit>().loadNotifications();
-            context.go('/checkout/ticket/${state.order.id}');
+
+            final order = state.order;
+            final queueNumber = order.queueNumber ?? order.orderNumber;
+            OrderNotificationDispatcher.instance.showPaymentSuccess(
+              orderId: order.id,
+              title: 'Pembayaran Berhasil',
+              body:
+                  'Pesanan ${order.orderNumber} telah dibayar. Nomor antrean Anda adalah $queueNumber.',
+              queueId: order.queueId,
+              queueNumber: queueNumber,
+              orderNumber: order.orderNumber,
+            );
+
+            if (order.isPreorder) {
+              context.go('/checkout/status/${order.id}');
+            } else if (order.queueId != null && order.queueId!.isNotEmpty) {
+              context.go('/queue/${order.queueId}/qr');
+            } else {
+              context.go('/checkout/status/${order.id}');
+            }
           }
 
           if (state is OrderError && _isVerifying) {

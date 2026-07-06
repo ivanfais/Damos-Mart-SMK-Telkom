@@ -196,7 +196,7 @@ class OrderModel extends Equatable {
 
     final createdAtRaw = json['createdAt'];
     final createdAt = createdAtRaw != null
-        ? DateTime.tryParse(createdAtRaw.toString()) ?? DateTime.now()
+        ? DateTime.tryParse(createdAtRaw.toString())?.toLocal() ?? DateTime.now()
         : DateTime.now();
 
     return OrderModel(
@@ -208,7 +208,9 @@ class OrderModel extends Equatable {
       total: double.tryParse(json['total']?.toString() ?? '') ?? 0.0,
       paymentMethod: parsedMethod,
       paymentStatus: parsedPayStatus,
-      paidAt: json['paidAt'] != null ? DateTime.tryParse(json['paidAt'].toString()) : null,
+      paidAt: json['paidAt'] != null
+          ? DateTime.tryParse(json['paidAt'].toString())?.toLocal()
+          : null,
       notes: json['notes']?.toString(),
       createdAt: createdAt,
       orderItems: items,

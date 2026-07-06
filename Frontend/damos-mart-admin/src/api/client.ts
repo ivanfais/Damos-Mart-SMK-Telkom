@@ -13,6 +13,11 @@ export const apiClient = axios.create({
 // Request Interceptor to dynamically inject access token from local storage
 apiClient.interceptors.request.use(
   (config) => {
+    // Let the browser set multipart boundary for file uploads.
+    if (config.data instanceof FormData) {
+      config.headers.set('Content-Type', undefined as unknown as string);
+    }
+
     const authStoreString = localStorage.getItem('damos_mart_auth');
     if (authStoreString) {
       try {

@@ -473,7 +473,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       children: [
                         _buildScrollHeader(),
                         _buildProductHeroImage(
-                          imageUrl: product.imageUrl,
+                          imageUrl: ProductVariantModel.displayImageUrl(
+                            productImageUrl: product.imageUrl,
+                            variant: _selectedVariant,
+                          ),
                           isOutOfStock: isOutOfStock,
                         ),
 

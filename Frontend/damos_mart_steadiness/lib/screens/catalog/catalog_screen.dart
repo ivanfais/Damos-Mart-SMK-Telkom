@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -100,46 +99,34 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget _buildCategoryChips(String selectedCategoryId, List<CategoryModel> categories) {
     final sortedCategories = _sortedCategories(categories);
 
-    return SizedBox(
-      height: 40,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(
-          dragDevices: {
-            PointerDeviceKind.touch,
-            PointerDeviceKind.mouse,
-            PointerDeviceKind.stylus,
-            PointerDeviceKind.trackpad,
-          },
-        ),
-        child: Scrollbar(
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: SizedBox(
+        height: 44,
+        child: ListView.separated(
           controller: _categoryScrollController,
-          thumbVisibility: true,
-          interactive: true,
-          child: ListView.separated(
-            controller: _categoryScrollController,
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: sortedCategories.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return _buildCategoryChip(
-                  label: 'Semua',
-                  isSelected: selectedCategoryId.isEmpty,
-                  onTap: () => context.read<ProductCubit>().filterByCategory(''),
-                );
-              }
-
-              final category = sortedCategories[index - 1];
+          scrollDirection: Axis.horizontal,
+          primary: false,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: sortedCategories.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            if (index == 0) {
               return _buildCategoryChip(
-                label: category.name,
-                isSelected: selectedCategoryId == category.id,
-                onTap: () => context.read<ProductCubit>().filterByCategory(category.id),
+                label: 'Semua',
+                isSelected: selectedCategoryId.isEmpty,
+                onTap: () => context.read<ProductCubit>().filterByCategory(''),
               );
-            },
-          ),
+            }
+
+            final category = sortedCategories[index - 1];
+            return _buildCategoryChip(
+              label: category.name,
+              isSelected: selectedCategoryId == category.id,
+              onTap: () => context.read<ProductCubit>().filterByCategory(category.id),
+            );
+          },
         ),
       ),
     );
@@ -209,11 +196,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
-  double _catalogCardHeight(BuildContext context) {
-    final width = ProductGridLayout.itemWidth(context);
-    return width * 0.92 + 158;
-  }
-
   Widget _buildProductGrid(ProductCatalogLoaded state) {
     if (state.products.isEmpty) {
       return SliverFillRemaining(
@@ -237,14 +219,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final itemCount = state.products.length + (state.isLoadMoreRunning ? 2 : 0);
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          mainAxisExtent: _catalogCardHeight(context),
-        ),
+        gridDelegate: ProductGridLayout.catalogGridDelegate(context),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             if (index >= state.products.length) {
@@ -301,7 +278,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           const SizedBox(height: 12),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: ProductGridShimmer(itemCount: 4),
+            child: ProductGridShimmer(itemCount: 4, catalog: true),
           ),
         ],
       );
@@ -327,10 +304,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             return Column(
               children: [
                 _buildHeader(),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, bottom: 4),
-                  child: _buildCategoryChips(state.selectedCategoryId, state.categories),
-                ),
+                _buildCategoryChips(state.selectedCategoryId, state.categories),
                 Expanded(
                   child: RefreshIndicator(
                     color: _Ds.primary,

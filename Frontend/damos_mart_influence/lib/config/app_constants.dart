@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'Damos Mart';
+  static const String appName = 'Damos Mart Influence';
   static const String schoolName = 'SMK Telkom Jakarta';
 
   // Secure Storage Keys

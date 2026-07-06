@@ -125,11 +125,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuTile({
-    required IconData icon,
+    IconData? icon,
+    Widget? leading,
     required String title,
     String? subtitle,
     required VoidCallback onTap,
   }) {
+    assert(icon != null || leading != null, 'icon atau leading wajib diisi');
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -137,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: _Ds.primary, size: ProfileMenuIcons.size),
+            leading ?? Icon(icon, color: _Ds.primary, size: ProfileMenuIcons.size),
             const SizedBox(width: 14),
             Expanded(
               child: subtitle == null
@@ -283,7 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               _buildDivider(),
                               _buildMenuTile(
-                                icon: ProfileMenuIcons.usageGuide,
+                                leading: ProfileMenuIcons.usageGuideIcon(),
                                 title: 'Tata Cara Penggunaan',
                                 onTap: () => context.push('/profile/usage-guide'),
                               ),

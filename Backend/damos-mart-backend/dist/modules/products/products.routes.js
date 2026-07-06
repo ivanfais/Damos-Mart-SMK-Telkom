@@ -26,7 +26,7 @@ exports.adminProductRouter.post('/', upload_middleware_1.uploadProduct.single('i
 exports.adminProductRouter.put('/:id', upload_middleware_1.uploadProduct.single('image'), (0, validate_middleware_1.validateRequest)(products_schema_1.updateProductSchema), bind('update'));
 exports.adminProductRouter.delete('/:id', bind('delete'));
 // Product Variants routes
-exports.adminProductRouter.post('/:id/variants', (0, validate_middleware_1.validateRequest)(products_schema_1.createVariantSchema), bind('createVariant'));
-exports.adminProductRouter.put('/:id/variants/:vid', (0, validate_middleware_1.validateRequest)(products_schema_1.updateVariantSchema), bind('updateVariant'));
+exports.adminProductRouter.post('/:id/variants', upload_middleware_1.uploadProduct.single('image'), (0, validate_middleware_1.validateRequest)(products_schema_1.createVariantSchema), bind('createVariant'));
+exports.adminProductRouter.put('/:id/variants/:vid', upload_middleware_1.uploadProduct.single('image'), (0, validate_middleware_1.validateRequest)(products_schema_1.updateVariantSchema), bind('updateVariant'));
 exports.adminProductRouter.delete('/:id/variants/:vid', bind('deleteVariant'));
 exports.default = router;

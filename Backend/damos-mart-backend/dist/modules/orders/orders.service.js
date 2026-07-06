@@ -235,7 +235,7 @@ class OrdersService {
                 });
             }
             // 5. Create notification row
-            await tx.notification.create({
+            const notification = await tx.notification.create({
                 data: {
                     userId,
                     title: 'Pembayaran Berhasil',
@@ -247,14 +247,35 @@ class OrdersService {
             return {
                 order: updatedOrder,
                 queue,
+                notification,
             };
         });
         // Broadcast queue update to real-time socket
         (0, socket_1.emitQueueUpdate)(userId, {
             queueId: result.queue.id,
+            orderId: result.order.id,
+            orderNumber: order.orderNumber,
             status: result.queue.status,
             queueNumber: result.queue.queueNumber,
             estimatedWait: result.queue.estimatedWaitMinutes,
+            event: 'PAYMENT_SUCCESS',
+        });
+        (0, socket_1.emitOrderStatusUpdate)(userId, {
+            orderId: result.order.id,
+            orderNumber: order.orderNumber,
+            status: result.order.status,
+            statusLabel: 'Dibayar',
+            queueId: result.queue.id,
+            queueNumber: result.queue.queueNumber,
+            title: 'Pembayaran Berhasil',
+            body: `Pesanan ${order.orderNumber} telah dibayar. Nomor antrean Anda adalah ${result.queue.queueNumber}.`,
+        });
+        (0, socket_1.emitUserNotification)(userId, {
+            id: result.notification.id,
+            title: result.notification.title,
+            body: result.notification.body,
+            type: result.notification.type,
+            referenceId: result.notification.referenceId,
         });
         return result;
     }
@@ -491,7 +512,7 @@ class OrdersService {
         const title = 'Status Pesanan Diperbarui';
         const body = `Status pesanan ${updated.orderNumber} diubah menjadi ${statusLabel}.`;
         // Create notification entry for order status change
-        await database_1.default.notification.create({
+        const notification = await database_1.default.notification.create({
             data: {
                 userId: updated.userId,
                 title,
@@ -500,6 +521,10 @@ class OrdersService {
                 referenceId: updated.id,
             },
         });
+        const queue = await database_1.default.queue.findUnique({
+            where: { orderId: updated.id },
+            select: { id: true },
+        });
         (0, socket_1.emitOrderStatusUpdate)(updated.userId, {
             orderId: updated.id,
             orderNumber: updated.orderNumber,
@@ -507,6 +532,15 @@ class OrdersService {
             statusLabel,
             title,
             body,
+            queueId: queue?.id ?? null,
+            isPreorder: order.isPreorder,
+        });
+        (0, socket_1.emitUserNotification)(updated.userId, {
+            id: notification.id,
+            title: notification.title,
+            body: notification.body,
+            type: notification.type,
+            referenceId: notification.referenceId,
         });
         return updated;
     }

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum NotificationType { queueReady, orderStatus, promo, chat }
+enum NotificationType { queueReady, orderStatus, promo, chat, complaint }
 
 class NotificationModel extends Equatable {
   final String id;
@@ -38,6 +38,9 @@ class NotificationModel extends Equatable {
         break;
       case 'CHAT':
         parsedType = NotificationType.chat;
+        break;
+      case 'COMPLAINT':
+        parsedType = NotificationType.complaint;
         break;
     }
 
@@ -90,6 +93,9 @@ class NotificationModel extends Equatable {
         break;
       case NotificationType.chat:
         typeStr = 'CHAT';
+        break;
+      case NotificationType.complaint:
+        typeStr = 'COMPLAINT';
         break;
     }
 

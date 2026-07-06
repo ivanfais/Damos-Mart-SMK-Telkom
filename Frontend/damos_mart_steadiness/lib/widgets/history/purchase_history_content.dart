@@ -2,10 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/api_config.dart';
+import '../../core/navigation/order_navigation_utils.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/order_display_utils.dart';
 import '../../data/models/order_model.dart';
 import '../../data/repositories/order_repository.dart';
+import '../../theme/app_text_styles.dart';
 
 class _Ui {
   static const Color primary = Color(0xFF1B8C2E);
@@ -22,26 +24,26 @@ class _Ui {
     fontSize: 15,
     fontWeight: FontWeight.w700,
     color: textPrimary,
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
   );
 
   static const TextStyle subtitle = TextStyle(
     fontSize: 12,
     color: textSecondary,
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
   );
 
   static const TextStyle label = TextStyle(
     fontSize: 11,
     color: hint,
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
   );
 
   static const TextStyle price = TextStyle(
     fontSize: 17,
     fontWeight: FontWeight.w800,
     color: textPrimary,
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
   );
 
   /// Tema global app memakai minimumSize lebar infinite — pecah layout di Row/ListView.
@@ -129,7 +131,7 @@ class _PurchaseHistoryContentState extends State<PurchaseHistoryContent> {
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color, fontFamily: 'Arial'),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color, fontFamily: AppTextStyles.fontFamily),
       ),
     );
   }
@@ -160,77 +162,88 @@ class _PurchaseHistoryContentState extends State<PurchaseHistoryContent> {
     final item = order.orderItems.isNotEmpty ? order.orderItems.first : null;
     final canBuy = OrderDisplayUtils.canBuyAgain(order);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _Ui.border),
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _productThumb(item?.imageUrl),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      OrderDisplayUtils.productName(order),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: _Ui.title,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(OrderDisplayUtils.dateBarangLine(order), style: _Ui.subtitle),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _statusBadge(badge.label, badge.bg, badge.text),
-            ],
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, thickness: 1, color: _Ui.border),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Total Belanja', style: _Ui.label),
-                    const SizedBox(height: 2),
-                    Text(CurrencyFormatter.format(order.total), style: _Ui.price),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: canBuy ? () => _buyAgain(order) : null,
-                  style: _Ui.compactElevatedStyle(
-                    backgroundColor: canBuy ? _Ui.primary : _Ui.disabledBtnBg,
-                    foregroundColor: canBuy ? Colors.white : _Ui.disabledBtnText,
-                    disabledBackgroundColor: _Ui.disabledBtnBg,
-                    disabledForegroundColor: _Ui.disabledBtnText,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    minimumSize: const Size(0, 40),
+        child: InkWell(
+          onTap: () => OrderNavigationUtils.openDetail(context, order),
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _Ui.border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _productThumb(item?.imageUrl),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              OrderDisplayUtils.productName(order),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: _Ui.title,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(OrderDisplayUtils.dateBarangLine(order), style: _Ui.subtitle),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _statusBadge(badge.label, badge.bg, badge.text),
+                    ],
                   ),
-                  child: const Text(
-                    'Beli Lagi',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Arial'),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(height: 1, thickness: 1, color: _Ui.border),
                   ),
-                ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Total Belanja', style: _Ui.label),
+                            const SizedBox(height: 2),
+                            Text(CurrencyFormatter.format(order.total), style: _Ui.price),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: canBuy ? () => _buyAgain(order) : null,
+                          style: _Ui.compactElevatedStyle(
+                            backgroundColor: canBuy ? _Ui.primary : _Ui.disabledBtnBg,
+                            foregroundColor: canBuy ? Colors.white : _Ui.disabledBtnText,
+                            disabledBackgroundColor: _Ui.disabledBtnBg,
+                            disabledForegroundColor: _Ui.disabledBtnText,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            minimumSize: const Size(0, 40),
+                          ),
+                          child: const Text(
+                            'Beli Lagi',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: AppTextStyles.fontFamily),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -253,14 +266,14 @@ class _PurchaseHistoryContentState extends State<PurchaseHistoryContent> {
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: _Ui.textPrimary,
-            fontFamily: 'Arial',
+            fontFamily: AppTextStyles.fontFamily,
           ),
         ),
         const SizedBox(height: 8),
         const Text(
           'Riwayat pembelian Anda akan muncul di sini.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: _Ui.textSecondary, fontFamily: 'Arial'),
+          style: TextStyle(fontSize: 13, color: _Ui.textSecondary, fontFamily: AppTextStyles.fontFamily),
         ),
         const SizedBox(height: 24),
         SizedBox(
@@ -275,7 +288,7 @@ class _PurchaseHistoryContentState extends State<PurchaseHistoryContent> {
             ),
             child: const Text(
               'Mulai Belanja',
-              style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Arial'),
+              style: TextStyle(fontWeight: FontWeight.w700, fontFamily: AppTextStyles.fontFamily),
             ),
           ),
         ),
@@ -294,7 +307,7 @@ class _PurchaseHistoryContentState extends State<PurchaseHistoryContent> {
           child: Text(
             _error!,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: _Ui.textSecondary, fontFamily: 'Arial'),
+            style: const TextStyle(fontSize: 14, color: _Ui.textSecondary, fontFamily: AppTextStyles.fontFamily),
           ),
         ),
         const SizedBox(height: 16),
@@ -306,7 +319,7 @@ class _PurchaseHistoryContentState extends State<PurchaseHistoryContent> {
             minimumSize: const Size(0, 44),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           ),
-          child: const Text('Coba Lagi', style: TextStyle(fontFamily: 'Arial')),
+          child: const Text('Coba Lagi', style: TextStyle(fontFamily: AppTextStyles.fontFamily)),
         ),
       ],
     );

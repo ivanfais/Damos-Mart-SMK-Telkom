@@ -21,39 +21,27 @@ function todayRange() {
 }
 class QueuesService {
     /**
-     * Fetches active queues belonging to the student (WAITING, PREPARING, READY).
+     * Antrean aktif siswa = subset board admin hari ini (sumber data sama persis).
      */
     async getActiveQueues(userId) {
-        return database_1.default.queue.findMany({
-            where: {
-                userId,
-                status: { in: ['WAITING', 'PREPARING', 'READY'] },
-                order: {
-                    status: { notIn: ['COMPLETED', 'CANCELLED'] },
-                    OR: [
-                        { paymentStatus: 'PAID' },
-                        {
-                            paymentStatus: 'UNPAID',
-                            paymentMethod: 'CASH_AT_COUNTER',
-                        },
-                    ],
-                },
-            },
-            include: {
-                order: {
-                    include: {
-                        orderItems: {
-                            include: {
-                                product: {
-                                    select: { imageUrl: true },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-            orderBy: { queueNumber: 'asc' },
-        });
+        const allToday = await this.getAllTodayQueues();
+        return allToday
+            .filter((queue) => this.isVisibleOnStudentBoard(queue, userId))
+            .sort((a, b) => a.queueNumber.localeCompare(b.queueNumber));
+    }
+    isVisibleOnStudentBoard(queue, userId) {
+        if (queue.userId !== userId)
+            return false;
+        if (!['WAITING', 'PREPARING', 'READY'].includes(queue.status))
+            return false;
+        const order = queue.order;
+        if (!order || order.userId !== userId)
+            return false;
+        if (['COMPLETED', 'CANCELLED'].includes(order.status))
+            return false;
+        if (order.paymentStatus === 'UNPAID' && order.paymentMethod === 'QRIS')
+            return false;
+        return true;
     }
     /**
      * Gets details of a queue by ID.
@@ -211,7 +199,7 @@ class QueuesService {
                 data: { status: 'READY' },
             });
             // Add Notification row
-            await tx.notification.create({
+            const notification = await tx.notification.create({
                 data: {
                     userId: queue.userId,
                     title: 'Pesanan Siap Diambil',
@@ -220,16 +208,23 @@ class QueuesService {
                     referenceId: queue.orderId,
                 },
             });
-            return uQueue;
+            return { queue: uQueue, notification };
         });
         // Notify student via Websockets
         (0, socket_1.emitQueueReady)(queue.userId, {
-            queueId: updated.id,
+            queueId: updated.queue.id,
             orderId: queue.orderId,
-            queueNumber: updated.queueNumber,
+            queueNumber: updated.queue.queueNumber,
             orderNumber: queue.order.orderNumber,
         });
-        return updated;
+        (0, socket_1.emitUserNotification)(queue.userId, {
+            id: updated.notification.id,
+            title: updated.notification.title,
+            body: updated.notification.body,
+            type: updated.notification.type,
+            referenceId: updated.notification.referenceId,
+        });
+        return updated.queue;
     }
     /**
      * Admin: Complete queue (student picked up the order) -> status = COMPLETED.
@@ -255,12 +250,43 @@ class QueuesService {
             });
             return uQueue;
         });
+        const order = await database_1.default.order.findUnique({
+            where: { id: queue.orderId },
+            select: { orderNumber: true },
+        });
+        const notification = await database_1.default.notification.create({
+            data: {
+                userId: queue.userId,
+                title: 'Pesanan Selesai',
+                body: `Pesanan ${order?.orderNumber ?? 'Anda'} telah selesai diambil. Terima kasih telah berbelanja!`,
+                type: 'ORDER_STATUS',
+                referenceId: queue.orderId,
+            },
+        });
         // Notify student via Websockets
         (0, socket_1.emitQueueUpdate)(queue.userId, {
             queueId: updated.id,
             orderId: queue.orderId,
+            orderNumber: order?.orderNumber,
             status: updated.status,
             queueNumber: updated.queueNumber,
+        });
+        (0, socket_1.emitOrderStatusUpdate)(queue.userId, {
+            orderId: queue.orderId,
+            orderNumber: order?.orderNumber,
+            status: 'COMPLETED',
+            statusLabel: 'Selesai',
+            title: notification.title,
+            body: notification.body,
+            queueId: updated.id,
+            queueNumber: updated.queueNumber,
+        });
+        (0, socket_1.emitUserNotification)(queue.userId, {
+            id: notification.id,
+            title: notification.title,
+            body: notification.body,
+            type: notification.type,
+            referenceId: notification.referenceId,
         });
         return updated;
     }

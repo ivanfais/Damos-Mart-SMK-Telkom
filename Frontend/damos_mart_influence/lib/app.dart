@@ -30,6 +30,16 @@ class DamosMartApp extends StatefulWidget {
 
 class _DamosMartAppState extends State<DamosMartApp> {
   bool _socketListenersRegistered = false;
+  String? _currentUserId;
+
+  bool _isEventForCurrentUser(dynamic data) {
+    if (_currentUserId == null) return false;
+    if (data is! Map) return true;
+    final payload = Map<String, dynamic>.from(data);
+    final eventUserId = payload['userId']?.toString();
+    if (eventUserId == null || eventUserId.isEmpty) return true;
+    return eventUserId == _currentUserId;
+  }
 
   @override
   void initState() {
@@ -54,6 +64,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
     _socketListenersRegistered = true;
 
     SocketService.instance.onQueueCalled((data) {
+      if (!_isEventForCurrentUser(data)) return;
       final queueNumber = data['queueNumber']?.toString() ?? '-';
       _showQueueNotification(
         title: 'Antrean Dipanggil',
@@ -62,15 +73,17 @@ class _DamosMartAppState extends State<DamosMartApp> {
         queueNumber: queueNumber,
         isReady: false,
       );
-      _refreshQueuesAfterSocketEvent();
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
     });
 
     SocketService.instance.onQueueUpdated((data) {
+      if (!_isEventForCurrentUser(data)) return;
       _handleQueueCompleted(data);
-      _refreshQueuesAfterSocketEvent();
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
     });
 
     SocketService.instance.onQueueReady((data) {
+      if (!_isEventForCurrentUser(data)) return;
       final queueNumber = data['queueNumber']?.toString() ?? '-';
       _showQueueNotification(
         title: 'Pesanan Siap Diambil!',
@@ -79,15 +92,24 @@ class _DamosMartAppState extends State<DamosMartApp> {
         queueNumber: queueNumber,
         isReady: true,
       );
-      _refreshQueuesAfterSocketEvent();
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
+    });
+
+    SocketService.instance.onOrderStatusUpdated((data) {
+      if (!_isEventForCurrentUser(data)) return;
+      _refreshRealtimeData(queueId: data?['queueId']?.toString());
     });
   }
 
-  void _refreshQueuesAfterSocketEvent() {
+  void _refreshRealtimeData({String? queueId}) {
     final context = AppRouter.rootNavigatorKey.currentContext;
-    if (context != null) {
-      context.read<QueueCubit>().updateActiveQueuesSilently();
+    if (context == null) return;
+
+    context.read<QueueCubit>().updateActiveQueuesSilently();
+    if (queueId != null && queueId.isNotEmpty) {
+      context.read<QueueCubit>().updateQueueDetailSilently(queueId);
     }
+    context.read<OrderCubit>().refreshMyOrdersSilently();
   }
 
   void _handleQueueCompleted(dynamic data) {
@@ -100,7 +122,6 @@ class _DamosMartAppState extends State<DamosMartApp> {
       if (context == null) return;
 
       context.read<OrderCubit>().loadMyOrders();
-
       final location = GoRouterState.of(context).uri.toString();
       if (location.contains('/queue/$queueId/complete')) return;
 
@@ -166,17 +187,19 @@ class _DamosMartAppState extends State<DamosMartApp> {
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
+            _currentUserId = state.user.id;
             PushNotificationService.instance.ensurePermission();
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
           } else if (state is Unauthenticated) {
+            _currentUserId = null;
             SocketService.instance.disconnect();
             _socketListenersRegistered = false;
             NotificationBanner.hide();
           }
         },
         child: MaterialApp.router(
-          title: 'Damos Mart',
+          title: 'Damos Mart Influence',
           theme: AppTheme.lightTheme,
           debugShowCheckedModeBanner: false,
           routerConfig: AppRouter.router,

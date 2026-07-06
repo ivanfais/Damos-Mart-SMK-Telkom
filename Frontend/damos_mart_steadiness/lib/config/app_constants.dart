@@ -11,7 +11,7 @@ class AppConstants {
   // Preferences Keys
   static const String keySettingsNotifications = 'settings_notifications';
   static const String keySettingsDarkTheme = 'settings_dark_theme';
-  static const String keySelectedDiscVariant = 'selected_disc_variant';
+  static const String keySelectedDiscVariant = 'user_selected_disc_variant';
 
   // Asset paths
   static const String imageLogo = 'assets/images/logo damos.png';
@@ -26,6 +26,7 @@ class AppConstants {
   static const String imageUsagePayment = 'assets/images/pembayaran.png';
   static const String imageUsageQrCode = 'assets/images/Qr_code.png';
   static const String imageUsageComplaint = 'assets/images/Komplain.png';
+  static const String imageUsageGuideMenu = 'assets/images/Container.png';
 
   static const String iconHome = 'assets/icons/ic_home.svg';
   static const String iconCatalog = 'assets/icons/ic_catalog.svg';

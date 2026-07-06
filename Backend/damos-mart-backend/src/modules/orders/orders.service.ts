@@ -3,7 +3,7 @@ import { AppError } from '../../middlewares/error.middleware';
 import { getPaginationMetadata } from '../../utils/pagination';
 import { generateNextOrderNumber } from '../../utils/order-number';
 import { generateNextQueueNumber } from '../../utils/queue-number';
-import { emitNewOrderAdmin, emitQueueUpdate, emitOrderStatusUpdate } from '../../socket';
+import { emitNewOrderAdmin, emitQueueUpdate, emitOrderStatusUpdate, emitUserNotification } from '../../socket';
 
 export class OrdersService {
   /**
@@ -258,7 +258,7 @@ export class OrdersService {
       }
 
       // 5. Create notification row
-      await tx.notification.create({
+      const notification = await tx.notification.create({
         data: {
           userId,
           title: 'Pembayaran Berhasil',
@@ -271,15 +271,38 @@ export class OrdersService {
       return {
         order: updatedOrder,
         queue,
+        notification,
       };
     });
 
     // Broadcast queue update to real-time socket
     emitQueueUpdate(userId, {
       queueId: result.queue.id,
+      orderId: result.order.id,
+      orderNumber: order.orderNumber,
       status: result.queue.status,
       queueNumber: result.queue.queueNumber,
       estimatedWait: result.queue.estimatedWaitMinutes,
+      event: 'PAYMENT_SUCCESS',
+    });
+
+    emitOrderStatusUpdate(userId, {
+      orderId: result.order.id,
+      orderNumber: order.orderNumber,
+      status: result.order.status,
+      statusLabel: 'Dibayar',
+      queueId: result.queue.id,
+      queueNumber: result.queue.queueNumber,
+      title: 'Pembayaran Berhasil',
+      body: `Pesanan ${order.orderNumber} telah dibayar. Nomor antrean Anda adalah ${result.queue.queueNumber}.`,
+    });
+
+    emitUserNotification(userId, {
+      id: result.notification.id,
+      title: result.notification.title,
+      body: result.notification.body,
+      type: result.notification.type,
+      referenceId: result.notification.referenceId,
     });
 
     return result;
@@ -557,7 +580,7 @@ export class OrdersService {
     const body = `Status pesanan ${updated.orderNumber} diubah menjadi ${statusLabel}.`;
 
     // Create notification entry for order status change
-    await prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId: updated.userId,
         title,
@@ -567,6 +590,11 @@ export class OrdersService {
       },
     });
 
+    const queue = await prisma.queue.findUnique({
+      where: { orderId: updated.id },
+      select: { id: true },
+    });
+
     emitOrderStatusUpdate(updated.userId, {
       orderId: updated.id,
       orderNumber: updated.orderNumber,
@@ -574,6 +602,16 @@ export class OrdersService {
       statusLabel,
       title,
       body,
+      queueId: queue?.id ?? null,
+      isPreorder: order.isPreorder,
+    });
+
+    emitUserNotification(updated.userId, {
+      id: notification.id,
+      title: notification.title,
+      body: notification.body,
+      type: notification.type,
+      referenceId: notification.referenceId,
     });
 
     return updated;

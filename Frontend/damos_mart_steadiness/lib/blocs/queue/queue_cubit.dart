@@ -69,40 +69,51 @@ class QueueCubit extends Cubit<QueueState> {
   }
 
   List<QueueModel> _queuesForUser(List<QueueModel> queues) {
-    if (_currentUserId == null) return queues;
-    return queues.where((queue) => queue.userId == _currentUserId).toList();
+    final userId = _currentUserId;
+    if (userId == null || userId.isEmpty) return [];
+    return QueueDisplayUtils.queuesForUser(queues, userId);
   }
 
   QueueActiveLoaded _buildActiveLoaded(List<QueueModel> queues, Map<String, dynamic> stats) {
-    final userQueues = _queuesForUser(queues);
-    final currentServing = stats['currentServing']?.toString() ?? 'N/A';
-    final activeQueues = <QueueModel>[];
-    final passedQueues = <QueueModel>[];
-
-    for (final queue in userQueues) {
-      if (QueueDisplayUtils.shouldShowInActive(
-        queue: queue,
-        currentServing: currentServing,
-      )) {
-        activeQueues.add(queue);
-      } else {
-        passedQueues.add(queue);
-      }
+    if (_currentUserId == null || _currentUserId!.isEmpty) {
+      return const QueueActiveLoaded(
+        activeQueues: [],
+        passedQueues: [],
+        currentServing: 'N/A',
+        totalWaiting: 0,
+      );
     }
 
+    final userQueues = _queuesForUser(queues);
+    final currentServing = stats['currentServing']?.toString() ?? 'N/A';
+
+    // Daftar aktif mengikuti respons API (selaras admin); tanpa filter giliran client.
     return QueueActiveLoaded(
-      activeQueues: activeQueues,
-      passedQueues: passedQueues,
+      activeQueues: userQueues,
+      passedQueues: const [],
       currentServing: currentServing,
       totalWaiting: stats['totalWaiting'] as int? ?? 0,
     );
   }
 
   Future<void> loadActiveQueues({String? userId}) async {
-    if (userId != null) {
+    if (userId != null && userId.isNotEmpty) {
       _currentUserId = userId;
     }
+
+    if (_currentUserId == null || _currentUserId!.isEmpty) {
+      _cachedActiveQueues = const QueueActiveLoaded(
+        activeQueues: [],
+        passedQueues: [],
+        currentServing: 'N/A',
+        totalWaiting: 0,
+      );
+      emit(_cachedActiveQueues!);
+      return;
+    }
+
     emit(QueueLoading());
+    _cachedActiveQueues = null;
     try {
       final queues = await _repository.getActiveQueues();
       final stats = await _repository.getCurrentQueueState();
@@ -114,13 +125,30 @@ class QueueCubit extends Cubit<QueueState> {
   }
 
   /// Restore list view instantly after leaving a detail screen.
-  void restoreActiveQueuesView() {
-    if (_cachedActiveQueues != null) {
+  void restoreActiveQueuesView({String? userId}) {
+    if (userId != null && userId.isNotEmpty) {
+      _currentUserId = userId;
+    }
+
+    if (_cachedActiveQueues != null &&
+        _currentUserId != null &&
+        _currentUserId!.isNotEmpty) {
       emit(_cachedActiveQueues!);
     }
+
+    if (_currentUserId == null || _currentUserId!.isEmpty) {
+      emit(const QueueActiveLoaded(
+        activeQueues: [],
+        passedQueues: [],
+        currentServing: 'N/A',
+        totalWaiting: 0,
+      ));
+      return;
+    }
+
     _refreshActiveQueuesInBackground();
     if (_cachedActiveQueues == null) {
-      loadActiveQueues();
+      loadActiveQueues(userId: _currentUserId);
     }
   }
 
@@ -138,6 +166,8 @@ class QueueCubit extends Cubit<QueueState> {
   }
 
   Future<void> _refreshActiveQueuesInBackground() async {
+    if (_currentUserId == null || _currentUserId!.isEmpty) return;
+
     try {
       final queues = await _repository.getActiveQueues();
       final stats = await _repository.getCurrentQueueState();
@@ -153,11 +183,14 @@ class QueueCubit extends Cubit<QueueState> {
 
   /// Always reloads and emits list state for the Antrean tab.
   Future<void> refreshQueueList({String? userId}) async {
-    await loadActiveQueues(userId: userId);
+    await loadActiveQueues(userId: userId ?? _currentUserId);
   }
   
   // Custom update trigger (e.g. from WebSockets without full loading state)
-  Future<void> updateActiveQueuesSilently() async {
+  Future<void> updateActiveQueuesSilently({String? userId}) async {
+    if (userId != null && userId.isNotEmpty) {
+      _currentUserId = userId;
+    }
     await _refreshActiveQueuesInBackground();
   }
 

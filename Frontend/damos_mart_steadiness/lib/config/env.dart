@@ -1,9 +1,9 @@
 /// Runtime configuration via `--dart-define`.
 ///
-/// Default: Railway production API.
+/// Default: Railway production API (sama dengan admin production).
 ///
-/// Local backend:
-///   flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000 --dart-define=APP_ENV=development
+/// Backend lokal (Laragon):
+///   flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000
 class Env {
   static const String _railwayApiOrigin =
       'https://damos-mart-smk-telkom-production.up.railway.app';
@@ -14,7 +14,8 @@ class Env {
     defaultValue: 'staging',
   );
 
-  /// API origin without trailing slash, e.g. `https://api.example.com` or `http://localhost:3000`
+  /// Default Railway — selaras dengan admin production.
+  /// Lokal: `--dart-define=API_BASE_URL=http://localhost:3000`
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: _railwayApiOrigin,

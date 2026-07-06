@@ -185,7 +185,12 @@ export class ProductsController {
   async createVariant(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const variant = await productsService.createVariant(id, req.body);
+      let imageUrl: string | undefined;
+      if (req.file) {
+        imageUrl = `/uploads/products/${req.file.filename}`;
+      }
+
+      const variant = await productsService.createVariant(id, req.body, imageUrl);
       return res.status(201).json({
         success: true,
         data: variant,
@@ -202,7 +207,12 @@ export class ProductsController {
   async updateVariant(req: Request, res: Response, next: NextFunction) {
     try {
       const { id, vid } = req.params;
-      const variant = await productsService.updateVariant(id, vid, req.body);
+      let imageUrl: string | undefined;
+      if (req.file) {
+        imageUrl = `/uploads/products/${req.file.filename}`;
+      }
+
+      const variant = await productsService.updateVariant(id, vid, req.body, imageUrl);
       return res.status(200).json({
         success: true,
         data: variant,

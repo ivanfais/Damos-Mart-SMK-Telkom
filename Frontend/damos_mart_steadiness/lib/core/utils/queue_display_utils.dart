@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../blocs/order/order_cubit.dart';
 import '../../data/models/order_model.dart';
 import '../../data/models/queue_model.dart';
+import 'relative_date_utils.dart';
 
 class QueueDisplayColors {
   static const Color primary = Color(0xFF1B8C2E);
@@ -80,6 +81,12 @@ class QueueDisplayUtils {
       return false;
     }
 
+    // Pre-order / produksi: tetap aktif sampai selesai diambil (bukan antrean loket harian).
+    if (order != null &&
+        (order.isPreorder || order.status == OrderStatus.inProduction)) {
+      return true;
+    }
+
     if (isQueueTurnPassed(
       userQueueNumber: queue.queueNumber,
       currentServing: currentServing,
@@ -88,6 +95,70 @@ class QueueDisplayUtils {
     }
 
     return true;
+  }
+
+  /// Daftar antrean aktif terurut nomor antrean (sama seperti board admin).
+  static List<QueueModel> sortedActiveQueues(List<QueueModel> activeQueues) {
+    final candidates = activeQueues
+        .where(
+          (queue) =>
+              queue.status == QueueStatus.waiting ||
+              queue.status == QueueStatus.preparing ||
+              queue.status == QueueStatus.ready,
+        )
+        .toList();
+    candidates.sort((a, b) => a.queueNumber.compareTo(b.queueNumber));
+    return candidates;
+  }
+
+  /// Antrean utama yang ditampilkan di tab Antrean / beranda.
+  static QueueModel? pickPrimaryQueue(List<QueueModel> activeQueues) {
+    final sorted = sortedActiveQueues(activeQueues);
+    return sorted.isEmpty ? null : sorted.first;
+  }
+
+  static bool isPreorderQueue(QueueModel queue) {
+    final order = queue.order;
+    return order != null &&
+        (order.isPreorder || order.status == OrderStatus.inProduction);
+  }
+
+  /// Selaras filter board admin untuk siswa.
+  static bool isVisibleOnStudentBoard(QueueModel queue, String userId) {
+    if (userId.isEmpty || queue.userId != userId) return false;
+    if (queue.status == QueueStatus.completed || queue.status == QueueStatus.skipped) {
+      return false;
+    }
+
+    final order = queue.order;
+    if (order == null) return false;
+    if (order.status == OrderStatus.completed || order.status == OrderStatus.cancelled) {
+      return false;
+    }
+    if (order.paymentStatus == PaymentStatus.unpaid &&
+        order.paymentMethod == PaymentMethod.qris) {
+      return false;
+    }
+
+    return queue.status == QueueStatus.waiting ||
+        queue.status == QueueStatus.preparing ||
+        queue.status == QueueStatus.ready;
+  }
+
+  /// Hanya antrean milik user yang sedang login; duplikat & data tidak valid diabaikan.
+  static List<QueueModel> queuesForUser(List<QueueModel> queues, String userId) {
+    if (userId.isEmpty) return const [];
+
+    final seenIds = <String>{};
+    final result = <QueueModel>[];
+
+    for (final queue in queues) {
+      if (!isVisibleOnStudentBoard(queue, userId)) continue;
+      if (!seenIds.add(queue.id)) continue;
+      result.add(queue);
+    }
+
+    return result;
   }
 
   static double queueProgress(int remaining, QueueStatus status) {
@@ -100,18 +171,20 @@ class QueueDisplayUtils {
   }
 
   static String formatHistoryDate(DateTime dateTime) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(dateTime.year, dateTime.month, dateTime.day);
-    final time = DateFormat('HH:mm', 'id_ID').format(dateTime);
+    final local = dateTime.toLocal();
+    final diffDays = RelativeDateUtils.daysAgo(local);
+    final time = DateFormat('HH:mm', 'id_ID').format(local);
 
-    if (target == today) {
+    if (diffDays == 0) {
       return 'Hari ini, $time';
     }
-    if (target == today.subtract(const Duration(days: 1))) {
+    if (diffDays == 1) {
       return 'Kemarin, $time';
     }
-    return DateFormat('dd MMM, HH:mm', 'id_ID').format(dateTime);
+    if (diffDays < 7) {
+      return '$diffDays hari lalu, $time';
+    }
+    return DateFormat('dd MMM, HH:mm', 'id_ID').format(local);
   }
 
   static String historyStatusLabel(OrderModel order) {

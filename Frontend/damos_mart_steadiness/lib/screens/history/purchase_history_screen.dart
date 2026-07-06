@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/order/order_cubit.dart';
 import '../../config/api_config.dart';
+import '../../core/navigation/order_navigation_utils.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../data/models/order_model.dart';
@@ -47,19 +48,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> with Sing
   }
 
   void _openOrderDetail(OrderModel order) {
-    if (order.queueId != null) {
-      if (order.isPreorder && order.status != OrderStatus.completed && order.status != OrderStatus.cancelled) {
-        context.push('/queue/${order.queueId}/tracking');
-        return;
-      }
-      if (order.status == OrderStatus.completed) {
-        context.push('/queue/${order.queueId}/complete');
-        return;
-      }
-      context.push('/queue/${order.queueId}');
-      return;
-    }
-    context.push('/checkout/ticket/${order.id}');
+    OrderNavigationUtils.openDetail(context, order);
   }
 
   String _cardTitle(OrderModel order, {required bool isCompletedTab}) {

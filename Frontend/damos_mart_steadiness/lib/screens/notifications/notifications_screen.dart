@@ -8,8 +8,9 @@ import '../../core/utils/notification_display_utils.dart';
 import '../../data/models/notification_model.dart';
 import '../../widgets/common/error_state.dart';
 import '../../widgets/common/steadiness_app_header.dart';
+import '../../theme/app_text_styles.dart';
 
-/// Teks notifikasi pakai font sistem — hindari bug render Poppins di Flutter Web.
+/// Teks notifikasi memakai Inter (via [AppTextStyles.fontFamily]).
 class _NotificationTextTheme extends StatelessWidget {
   const _NotificationTextTheme({required this.child});
 
@@ -18,7 +19,7 @@ class _NotificationTextTheme extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const base = TextStyle(
-      fontFamily: 'Arial',
+      fontFamily: AppTextStyles.fontFamily,
       decoration: TextDecoration.none,
       decorationColor: Colors.transparent,
     );
@@ -28,7 +29,7 @@ class _NotificationTextTheme extends StatelessWidget {
       child: Theme(
         data: Theme.of(context).copyWith(
           textTheme: Theme.of(context).textTheme.apply(
-                fontFamily: 'Arial',
+                fontFamily: AppTextStyles.fontFamily,
                 bodyColor: NotificationDisplayColors.textPrimary,
                 displayColor: NotificationDisplayColors.textPrimary,
               ),
@@ -134,9 +135,16 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         return;
       case NotificationType.orderStatus:
         if (ref != null && ref.isNotEmpty) {
-          context.push('/checkout/ticket/$ref');
+          context.push('/orders/history/$ref');
         } else {
           context.go('/profile?view=history');
+        }
+        return;
+      case NotificationType.complaint:
+        if (ref != null && ref.isNotEmpty) {
+          context.push('/profile/chat/complaints/$ref/track');
+        } else {
+          context.push('/profile/chat');
         }
         return;
       case NotificationType.chat:
@@ -283,7 +291,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  fontFamily: 'Arial',
+                                  fontFamily: AppTextStyles.fontFamily,
                                 ),
                               ),
                               style: TextButton.styleFrom(
@@ -337,7 +345,7 @@ class _NotificationsEmptyState extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: NotificationDisplayColors.textSecondary,
-                    fontFamily: 'Arial',
+                    fontFamily: AppTextStyles.fontFamily,
                   ),
                 ),
                 SizedBox(height: 8),
@@ -347,7 +355,7 @@ class _NotificationsEmptyState extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     color: NotificationDisplayColors.textSecondary,
-                    fontFamily: 'Arial',
+                    fontFamily: AppTextStyles.fontFamily,
                   ),
                 ),
               ],
@@ -372,7 +380,7 @@ class _SectionHeader extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w800,
         color: NotificationDisplayColors.textPrimary,
-        fontFamily: 'Arial',
+        fontFamily: AppTextStyles.fontFamily,
       ),
     );
   }
@@ -392,28 +400,28 @@ class _NotificationCard extends StatelessWidget {
     fontSize: 14,
     fontWeight: FontWeight.w800,
     color: Color(0xFF1B8C2E),
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
     height: 1.3,
   );
 
   static const TextStyle _bodyStyle = TextStyle(
     fontSize: 13,
     color: Color(0xFF6B7280),
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
     height: 1.45,
   );
 
   static const TextStyle _timeStyle = TextStyle(
     fontSize: 12,
     color: Color(0xFF6B7280),
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
   );
 
   static const TextStyle _tagStyle = TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w600,
     color: Color(0xFF1B8C2E),
-    fontFamily: 'Arial',
+    fontFamily: AppTextStyles.fontFamily,
   );
 
   @override

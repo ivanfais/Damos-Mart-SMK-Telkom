@@ -10,6 +10,7 @@ class QueueActiveCard extends StatelessWidget {
     required this.remaining,
     required this.progress,
     required this.estimateMinutes,
+    this.isPreorder = false,
     this.onPrimaryAction,
     this.primaryActionLabel = 'Batalkan Antrean',
     this.isPrimaryActionLoading = false,
@@ -19,6 +20,7 @@ class QueueActiveCard extends StatelessWidget {
   final int remaining;
   final double progress;
   final int estimateMinutes;
+  final bool isPreorder;
   final VoidCallback? onPrimaryAction;
   final String primaryActionLabel;
   final bool isPrimaryActionLoading;
@@ -49,15 +51,26 @@ class QueueActiveCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Sisa Antrean: $remaining Orang',
-                style: const TextStyle(fontSize: 13, color: QueueDisplayColors.textSecondary),
+              Expanded(
+                child: Text(
+                  isPreorder ? 'Status: Pre-order diproses' : 'Sisa Antrean: $remaining Orang',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, color: QueueDisplayColors.textSecondary),
+                ),
               ),
-              Text(
-                '$progressPercent% Menuju Loket',
-                style: const TextStyle(fontSize: 13, color: QueueDisplayColors.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isPreorder
+                      ? 'Menunggu produksi'
+                      : '$progressPercent% Menuju Loket',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(fontSize: 13, color: QueueDisplayColors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -84,9 +97,13 @@ class QueueActiveCard extends StatelessWidget {
               children: [
                 const Icon(Icons.access_time, size: 18, color: QueueDisplayColors.textSecondary),
                 const SizedBox(width: 8),
-                Text(
-                  'Estimasi Waktu Tunggu: ± $estimateMinutes Menit',
-                  style: const TextStyle(fontSize: 13, color: QueueDisplayColors.textSecondary),
+                Flexible(
+                  child: Text(
+                    'Estimasi Waktu Tunggu: ± $estimateMinutes Menit',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: QueueDisplayColors.textSecondary),
+                  ),
                 ),
               ],
             ),
@@ -357,27 +374,212 @@ class QueueEmptyCard extends StatelessWidget {
   }
 }
 
+class QueueActiveCarousel extends StatefulWidget {
+  const QueueActiveCarousel({
+    super.key,
+    required this.queues,
+    required this.currentServing,
+    required this.totalWaiting,
+    required this.onPrimaryAction,
+    required this.primaryActionLabel,
+    this.isPrimaryActionLoading = false,
+  });
+
+  final List<QueueModel> queues;
+  final String currentServing;
+  final int totalWaiting;
+  final VoidCallback? Function(QueueModel queue) onPrimaryAction;
+  final String Function(QueueModel queue) primaryActionLabel;
+  final bool isPrimaryActionLoading;
+
+  @override
+  State<QueueActiveCarousel> createState() => _QueueActiveCarouselState();
+}
+
+class _QueueActiveCarouselState extends State<QueueActiveCarousel> {
+  static const Duration _slideDuration = Duration(milliseconds: 300);
+  static const Curve _slideCurve = Curves.easeInOut;
+  static const double _cardViewportHeight = 326;
+
+  late final PageController _pageController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void didUpdateWidget(covariant QueueActiveCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_currentIndex >= widget.queues.length) {
+      _currentIndex = widget.queues.isEmpty ? 0 : widget.queues.length - 1;
+      if (widget.queues.isNotEmpty && _pageController.hasClients) {
+        _pageController.jumpToPage(_currentIndex);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goToPage(int index) {
+    if (index < 0 || index >= widget.queues.length) return;
+    _pageController.animateToPage(
+      index,
+      duration: _slideDuration,
+      curve: _slideCurve,
+    );
+  }
+
+  Widget _navButton({
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: enabled ? 0.95 : 0.7),
+            shape: BoxShape.circle,
+            border: Border.all(color: QueueDisplayColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: enabled ? QueueDisplayColors.primary : QueueDisplayColors.hint,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCarouselPage(QueueModel queue) {
+    return _ActiveQueueCard(
+      queue: queue,
+      currentServing: widget.currentServing,
+      totalWaiting: widget.totalWaiting,
+      onPrimaryAction: widget.onPrimaryAction(queue),
+      primaryActionLabel: widget.primaryActionLabel(queue),
+      isPrimaryActionLoading: widget.isPrimaryActionLoading,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final queues = widget.queues;
+    if (queues.isEmpty) return const SizedBox.shrink();
+
+    if (queues.length == 1) {
+      return _buildCarouselPage(queues.first);
+    }
+
+    final canGoBack = _currentIndex > 0;
+    final canGoForward = _currentIndex < queues.length - 1;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: _cardViewportHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                itemCount: queues.length,
+                onPageChanged: (index) => setState(() => _currentIndex = index),
+                itemBuilder: (context, index) => _buildCarouselPage(queues[index]),
+              ),
+              if (canGoBack)
+                Positioned(
+                  left: 4,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _navButton(
+                      icon: Icons.chevron_left_rounded,
+                      enabled: true,
+                      onTap: () => _goToPage(_currentIndex - 1),
+                    ),
+                  ),
+                ),
+              if (canGoForward)
+                Positioned(
+                  right: 4,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _navButton(
+                      icon: Icons.chevron_right_rounded,
+                      enabled: true,
+                      onTap: () => _goToPage(_currentIndex + 1),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(queues.length, (index) {
+            final isActive = index == _currentIndex;
+            return AnimatedContainer(
+              duration: _slideDuration,
+              curve: _slideCurve,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: isActive ? 18 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: isActive ? QueueDisplayColors.primary : const Color(0xFFD1D5DB),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
 class QueueListBody extends StatelessWidget {
   const QueueListBody({
     super.key,
-    this.activeQueue,
+    this.activeQueues = const [],
     required this.currentServing,
     required this.totalWaiting,
     required this.history,
     this.onEmptyAction,
-    this.onPrimaryAction,
-    this.primaryActionLabel = 'QR Pengambilan',
+    required this.onPrimaryAction,
+    required this.primaryActionLabel,
     this.isPrimaryActionLoading = false,
     this.onRefresh,
   });
 
-  final QueueModel? activeQueue;
+  final List<QueueModel> activeQueues;
   final String currentServing;
   final int totalWaiting;
   final List<OrderModel> history;
   final VoidCallback? onEmptyAction;
-  final VoidCallback? onPrimaryAction;
-  final String primaryActionLabel;
+  final VoidCallback? Function(QueueModel queue) onPrimaryAction;
+  final String Function(QueueModel queue) primaryActionLabel;
   final bool isPrimaryActionLoading;
   final Future<void> Function()? onRefresh;
 
@@ -389,16 +591,16 @@ class QueueListBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (activeQueue != null) ...[
-            _ActiveQueueCard(
-              queue: activeQueue!,
+          if (activeQueues.isNotEmpty)
+            QueueActiveCarousel(
+              queues: activeQueues,
               currentServing: currentServing,
               totalWaiting: totalWaiting,
               onPrimaryAction: onPrimaryAction,
               primaryActionLabel: primaryActionLabel,
               isPrimaryActionLoading: isPrimaryActionLoading,
-            ),
-          ] else
+            )
+          else
             QueueEmptyCard(onAction: onEmptyAction ?? () {}),
           const SizedBox(height: 14),
           QueueHistorySection(history: history),
@@ -435,12 +637,17 @@ class _ActiveQueueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final remaining = QueueDisplayUtils.remainingPeople(
-      userQueueNumber: queue.queueNumber,
-      currentServing: currentServing,
-      totalWaiting: totalWaiting,
-    );
-    final progress = QueueDisplayUtils.queueProgress(remaining, queue.status);
+    final isPreorder = QueueDisplayUtils.isPreorderQueue(queue);
+    final remaining = isPreorder
+        ? 0
+        : QueueDisplayUtils.remainingPeople(
+            userQueueNumber: queue.queueNumber,
+            currentServing: currentServing,
+            totalWaiting: totalWaiting,
+          );
+    final progress = isPreorder
+        ? (queue.status == QueueStatus.ready ? 1.0 : 0.35)
+        : QueueDisplayUtils.queueProgress(remaining, queue.status);
     final waitMinutes = queue.estimatedWaitMinutes ?? (remaining * 4).clamp(5, 60);
 
     return QueueActiveCard(
@@ -448,6 +655,7 @@ class _ActiveQueueCard extends StatelessWidget {
       remaining: remaining,
       progress: progress,
       estimateMinutes: waitMinutes,
+      isPreorder: isPreorder,
       onPrimaryAction: onPrimaryAction,
       primaryActionLabel: primaryActionLabel,
       isPrimaryActionLoading: isPrimaryActionLoading,

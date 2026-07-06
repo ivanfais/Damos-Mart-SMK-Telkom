@@ -9,6 +9,7 @@ import '../../blocs/product/product_cubit.dart';
 import '../../config/api_config.dart';
 import '../../core/utils/cart_navigation.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/product_stock_utils.dart';
 import '../../core/utils/damos_horizontal_scroll_behavior.dart';
 import '../../core/utils/damos_system_ui.dart';
 import '../../data/models/product_model.dart';
@@ -339,17 +340,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
               const Spacer(),
               _statusTag(
-                label: product.isPreorder ? 'Pre-Order' : isOutOfStock ? 'Habis' : 'Tersedia',
-                bg: product.isPreorder
-                    ? const Color(0xFFE8F5E9)
+                label: product.isPreorder
+                    ? (isOutOfStock ? 'Kuota Habis' : 'Pre-Order')
                     : isOutOfStock
-                        ? const Color(0xFFFFEBEE)
-                        : const Color(0xFFE8F5E9),
-                fg: product.isPreorder
-                    ? DamosDominanceColors.primary
-                    : isOutOfStock
-                        ? DamosDominanceColors.error
-                        : DamosDominanceColors.primary,
+                        ? 'Habis'
+                        : 'Tersedia',
+                bg: isOutOfStock
+                    ? const Color(0xFFFFEBEE)
+                    : const Color(0xFFE8F5E9),
+                fg: isOutOfStock
+                    ? DamosDominanceColors.error
+                    : DamosDominanceColors.primary,
               ),
             ],
           ),
@@ -608,7 +609,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         listener: (context, state) {
           if (state is ProductDetailLoaded) {
             final product = state.product;
-            final isOutOfStock = product.stock <= 0 && !product.isPreorder;
+            final isOutOfStock = !ProductStockUtils.hasAvailableStock(product);
             if (isOutOfStock && _similarProducts.isEmpty && !_loadingSimilar) {
               _loadSimilarProducts(product);
             }
@@ -628,7 +629,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           if (state is ProductDetailLoaded) {
             final product = state.product;
-            final isOutOfStock = product.stock <= 0 && !product.isPreorder;
+            final isOutOfStock = !ProductStockUtils.hasAvailableStock(product);
 
             return Column(
               children: [

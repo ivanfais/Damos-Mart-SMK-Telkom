@@ -147,11 +147,13 @@ class _DamosMartAppState extends State<DamosMartApp> {
         orderId: orderId,
       );
       _refreshAfterQueueEvent();
+      _refreshNotificationCenter();
     });
 
     SocketService.instance.onQueueUpdated((data) {
       _handleQueueCompleted(data);
       _refreshAfterQueueEvent();
+      _refreshNotificationCenter();
     });
 
     SocketService.instance.onQueueReady((data) {
@@ -168,6 +170,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
         orderId: orderId,
       );
       _refreshAfterQueueEvent(reloadOrders: true);
+      _refreshNotificationCenter();
     });
 
     SocketService.instance.onComplaintUpdated((data) {
@@ -175,6 +178,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
       final payload = Map<String, dynamic>.from(data);
       ComplaintRealtimeService.instance.publish(payload);
       _showComplaintNotification(payload);
+      _refreshNotificationCenter();
     });
 
     SocketService.instance.onOrderStatusUpdated((data) {
@@ -182,7 +186,14 @@ class _DamosMartAppState extends State<DamosMartApp> {
       final payload = Map<String, dynamic>.from(data);
       _showOrderStatusNotification(payload);
       _refreshAfterOrderStatusEvent(payload);
+      _refreshNotificationCenter();
     });
+  }
+
+  void _refreshNotificationCenter() {
+    final context = AppRouter.rootNavigatorKey.currentContext;
+    if (context == null) return;
+    context.read<NotificationCubit>().refreshSilently();
   }
 
   void _refreshAfterOrderStatusEvent(Map<String, dynamic> data) {
@@ -238,6 +249,9 @@ class _DamosMartAppState extends State<DamosMartApp> {
         NotificationBanner.show(
           title: title,
           message: message,
+          tapActionLabel: isReady
+              ? 'Ketuk untuk lihat QR Pengambilan'
+              : 'Ketuk untuk lihat detail pesanan',
           onTap: () {
             NotificationBanner.hide();
             _openOrderDetail(orderId);
@@ -282,6 +296,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
       NotificationBanner.show(
         title: title,
         message: body,
+        tapActionLabel: 'Ketuk untuk lihat detail komplain',
         onTap: () {
           NotificationBanner.hide();
           _openComplaintDetail(complaintId);
@@ -312,6 +327,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
       NotificationBanner.show(
         title: title,
         message: body,
+        tapActionLabel: 'Ketuk untuk lihat detail pesanan',
         onTap: () {
           NotificationBanner.hide();
           _openOrderDetail(orderId);
@@ -368,6 +384,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
             PushNotificationService.instance.ensurePermission();
             SocketService.instance.init(state.user.id);
             _registerNotificationListeners();
+            context.read<NotificationCubit>().loadNotifications();
             context.read<QueueCubit>().loadActiveQueues();
             context.read<FavoriteCubit>().loadFavoriteIds();
             AuthRefreshNotifier.instance.refresh();
@@ -375,6 +392,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
             SocketService.instance.disconnect();
             _socketListenersRegistered = false;
             NotificationBanner.hide();
+            context.read<NotificationCubit>().reset();
             context.read<CartCubit>().resetSession();
             context.read<FavoriteCubit>().resetSession();
             AuthRefreshNotifier.instance.refresh();
@@ -382,7 +400,7 @@ class _DamosMartAppState extends State<DamosMartApp> {
           }
         },
         child: MaterialApp.router(
-          title: 'Damos Mart',
+          title: 'Damos Mart Dominance',
           theme: AppTheme.lightTheme,
           debugShowCheckedModeBanner: false,
           routerConfig: AppRouter.router,

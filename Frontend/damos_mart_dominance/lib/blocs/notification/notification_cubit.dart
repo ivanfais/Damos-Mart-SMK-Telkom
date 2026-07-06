@@ -2,11 +2,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/repositories/notification_repository.dart';
+import '../../core/utils/notification_navigation.dart';
 
-// States
 abstract class NotificationState extends Equatable {
   const NotificationState();
-  
+
   @override
   List<Object?> get props => [];
 }
@@ -18,14 +18,16 @@ class NotificationLoading extends NotificationState {}
 class NotificationLoaded extends NotificationState {
   final List<NotificationModel> notifications;
   final int unreadCount;
+  final DateTime updatedAt;
 
   const NotificationLoaded({
     required this.notifications,
     required this.unreadCount,
+    required this.updatedAt,
   });
 
   @override
-  List<Object?> get props => [notifications, unreadCount];
+  List<Object?> get props => [notifications, unreadCount, updatedAt];
 }
 
 class NotificationError extends NotificationState {
@@ -37,7 +39,6 @@ class NotificationError extends NotificationState {
   List<Object?> get props => [message];
 }
 
-// Cubit
 class NotificationCubit extends Cubit<NotificationState> {
   final NotificationRepository _repository;
 
@@ -45,15 +46,62 @@ class NotificationCubit extends Cubit<NotificationState> {
       : _repository = repository ?? NotificationRepository(),
         super(NotificationInitial());
 
-  Future<void> loadNotifications() async {
-    emit(NotificationLoading());
+  Future<void> loadNotifications({bool showLoading = true}) async {
+    final previous = state;
+    if (previous is! NotificationLoaded && showLoading) {
+      emit(NotificationLoading());
+    }
     try {
       final list = await _repository.getNotifications();
-      final unread = list.where((n) => !n.isRead).length;
-      emit(NotificationLoaded(notifications: list, unreadCount: unread));
+      _emitLoaded(list);
     } catch (e) {
-      emit(NotificationError(e.toString()));
+      if (previous is! NotificationLoaded) {
+        emit(NotificationError(e.toString()));
+      }
     }
+  }
+
+  Future<void> refreshSilently() async {
+    if (state is NotificationLoading) return;
+    try {
+      final list = await _repository.getNotifications();
+      _emitLoaded(list);
+    } catch (_) {}
+  }
+
+  void reset() {
+    emit(NotificationInitial());
+  }
+
+  void _emitLoaded(List<NotificationModel> list) {
+    final unread = list.where((n) => !n.isRead).length;
+    emit(
+      NotificationLoaded(
+        notifications: List.unmodifiable(list),
+        unreadCount: unread,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  List<NotificationModel> get unreadNotifications {
+    final current = state;
+    if (current is! NotificationLoaded) return const [];
+    return current.notifications.where((n) => !n.isRead).toList();
+  }
+
+  bool get hasHistoryUnread {
+    final current = state;
+    if (current is! NotificationLoaded) return false;
+    return NotificationNavigation.hasHistoryUnread(current.notifications);
+  }
+
+  NotificationModel? latestUnread(
+    bool Function(NotificationModel notification) where,
+  ) {
+    final current = state;
+    if (current is! NotificationLoaded) return null;
+    return NotificationNavigation.latestUnread(current.notifications, where);
   }
 
   Future<void> markAsRead(String id) async {
@@ -61,7 +109,7 @@ class NotificationCubit extends Cubit<NotificationState> {
     if (currentState is NotificationLoaded) {
       try {
         await _repository.markAsRead(id);
-        
+
         final updatedList = currentState.notifications.map((n) {
           if (n.id == id) {
             return NotificationModel(
@@ -78,10 +126,9 @@ class NotificationCubit extends Cubit<NotificationState> {
           return n;
         }).toList();
 
-        final unread = updatedList.where((n) => !n.isRead).length;
-        emit(NotificationLoaded(notifications: updatedList, unreadCount: unread));
-      } catch (e) {
-        emit(NotificationError(e.toString()));
+        _emitLoaded(updatedList);
+      } catch (_) {
+        // Mark-as-read is non-critical; keep the list visible.
       }
     }
   }
@@ -91,7 +138,7 @@ class NotificationCubit extends Cubit<NotificationState> {
     if (currentState is NotificationLoaded) {
       try {
         await _repository.markAllAsRead();
-        
+
         final updatedList = currentState.notifications.map((n) {
           return NotificationModel(
             id: n.id,
@@ -105,9 +152,9 @@ class NotificationCubit extends Cubit<NotificationState> {
           );
         }).toList();
 
-        emit(NotificationLoaded(notifications: updatedList, unreadCount: 0));
-      } catch (e) {
-        emit(NotificationError(e.toString()));
+        _emitLoaded(updatedList);
+      } catch (_) {
+        // Mark-all-read is non-critical; keep the list visible.
       }
     }
   }

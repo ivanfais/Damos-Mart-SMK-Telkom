@@ -22,6 +22,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   final Set<String> _selectedItemIds = {};
+  final Set<String> _dismissedItemIds = {};
 
   @override
   void initState() {
@@ -44,7 +45,7 @@ class _CartScreenState extends State<CartScreen> {
       if (selectAll == true) {
         _selectedItemIds
           ..clear()
-          ..addAll(items.where((i) => i.inStock || i.isPreorder).map((i) => i.id));
+          ..addAll(items.where((i) => i.inStock).map((i) => i.id));
       } else {
         _selectedItemIds.clear();
       }
@@ -78,6 +79,7 @@ class _CartScreenState extends State<CartScreen> {
 
     final cubit = context.read<CartCubit>();
     final ids = _selectedItemIds.toList();
+    setState(() => _dismissedItemIds.addAll(ids));
     for (final id in ids) {
       await cubit.removeCartItem(id);
     }
@@ -87,10 +89,20 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _removeItem(String id) async {
+    _markItemRemoved(id);
     await context.read<CartCubit>().removeCartItem(id);
-    if (mounted) {
-      setState(() => _selectedItemIds.remove(id));
-    }
+  }
+
+  List<CartItemModel> _visibleItems(List<CartItemModel> items) {
+    if (_dismissedItemIds.isEmpty) return items;
+    return items.where((item) => !_dismissedItemIds.contains(item.id)).toList();
+  }
+
+  void _markItemRemoved(String id) {
+    setState(() {
+      _dismissedItemIds.add(id);
+      _selectedItemIds.remove(id);
+    });
   }
 
   void _proceedToCheckout(List<CartItemModel> items) {
@@ -261,7 +273,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildSelectAllHeader(List<CartItemModel> items) {
-    final selectableItems = items.where((i) => i.inStock || i.isPreorder).toList();
+    final selectableItems = items.where((i) => i.inStock).toList();
     final selectedCount = _selectedCount(items);
     final isAllChecked =
         selectableItems.isNotEmpty && selectedCount == selectableItems.length;
@@ -316,13 +328,44 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildCartItem(CartItemModel item) {
     final isSelected = _selectedItemIds.contains(item.id);
-    final maxQty = item.isPreorder ? 99 : item.availableStock;
-    final enabled = item.inStock || item.isPreorder;
+    final maxQty = item.availableStock > 0 ? item.availableStock : 1;
+    final enabled = item.inStock;
     final categoryLabel = item.categoryName?.trim().isNotEmpty == true
         ? item.categoryName!
         : (item.variantName ?? '-');
 
-    return Container(
+    return Dismissible(
+      key: Key('cart-item-${item.id}'),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) {
+        _markItemRemoved(item.id);
+        context.read<CartCubit>().removeCartItem(item.id);
+      },
+      background: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: DamosDominanceColors.error,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Icon(Icons.delete_outline, color: Colors.white, size: 22),
+            SizedBox(width: 6),
+            Text(
+              'Hapus',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+      child: Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -437,6 +480,7 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -600,14 +644,27 @@ class _CartScreenState extends State<CartScreen> {
       backgroundColor: DamosDominanceColors.screenBackground,
       body: BlocConsumer<CartCubit, CartState>(
         listener: (context, state) {
-          if (state is CartLoaded && _selectedItemIds.isEmpty) {
-            setState(() {
-              for (final item in state.items) {
-                if (item.inStock || item.isPreorder) {
-                  _selectedItemIds.add(item.id);
+          if (state is CartLoaded) {
+            final restoredIds = _dismissedItemIds
+                .where((id) => state.items.any((item) => item.id == id))
+                .toList();
+            if (restoredIds.isNotEmpty) {
+              setState(() {
+                for (final id in restoredIds) {
+                  _dismissedItemIds.remove(id);
                 }
-              }
-            });
+              });
+            }
+
+            if (_selectedItemIds.isEmpty) {
+              setState(() {
+                for (final item in _visibleItems(state.items)) {
+                  if (item.inStock) {
+                    _selectedItemIds.add(item.id);
+                  }
+                }
+              });
+            }
           }
         },
         builder: (context, state) {
@@ -633,8 +690,8 @@ class _CartScreenState extends State<CartScreen> {
           }
 
           if (state is CartLoaded) {
-            final items = state.items;
-            final itemCount = state.totalItems;
+            final items = _visibleItems(state.items);
+            final itemCount = items.fold<int>(0, (sum, item) => sum + item.quantity);
             final selectedCount = _selectedCount(items);
             final selectedTotal = _calculateSelectedTotal(items);
 

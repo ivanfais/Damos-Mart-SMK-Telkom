@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/disc/disc_app_launcher.dart';
 import '../../core/disc/disc_app_config.dart';
 import '../../core/disc/disc_variant.dart';
-import '../../core/storage/prefs_storage.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
 
 class _Ds {

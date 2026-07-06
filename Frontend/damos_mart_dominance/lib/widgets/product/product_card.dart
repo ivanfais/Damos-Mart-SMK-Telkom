@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_model.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimensions.dart';
@@ -48,7 +49,7 @@ class _ProductCardState extends State<ProductCard> {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasStock = widget.product.stock > 0 || widget.product.isPreorder;
+    final bool hasStock = ProductStockUtils.hasAvailableStock(widget.product);
 
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -128,7 +129,7 @@ class _ProductCardState extends State<ProductCard> {
                           ),
                         ),
                       ),
-                    if (!widget.product.isPreorder && widget.product.stock <= 0)
+                    if (!hasStock)
                       Positioned.fill(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(AppDimensions.cardRadius),

@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/repositories/queue_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
-import '../../widgets/common/error_state.dart';
 
-/// Legacy queue routes redirect to [OrderDetailScreen] via order id.
+/// Legacy queue routes and QUEUE_READY notification refs redirect to order detail.
 class QueueRouteRedirectScreen extends StatefulWidget {
   final String queueId;
 
@@ -16,7 +15,6 @@ class QueueRouteRedirectScreen extends StatefulWidget {
 
 class _QueueRouteRedirectScreenState extends State<QueueRouteRedirectScreen> {
   final QueueRepository _repository = QueueRepository();
-  String? _error;
 
   @override
   void initState() {
@@ -29,24 +27,15 @@ class _QueueRouteRedirectScreenState extends State<QueueRouteRedirectScreen> {
       final queue = await _repository.getQueueDetails(widget.queueId);
       if (!mounted) return;
       context.go('/orders/${queue.orderId}');
-    } catch (e) {
+    } catch (_) {
+      // Newer notifications may store order id directly in referenceId.
       if (!mounted) return;
-      setState(() => _error = e.toString());
+      context.go('/orders/${widget.queueId}');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_error != null) {
-      return Scaffold(
-        backgroundColor: DamosDominanceColors.screenBackground,
-        body: ErrorState(
-          message: _error!,
-          onRetry: _redirect,
-        ),
-      );
-    }
-
     return const Scaffold(
       backgroundColor: DamosDominanceColors.screenBackground,
       body: Center(

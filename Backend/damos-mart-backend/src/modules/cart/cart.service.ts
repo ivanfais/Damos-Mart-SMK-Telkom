@@ -49,7 +49,7 @@ export class CartService {
       totalPrice += subtotal;
 
       const availableStock = item.variant ? item.variant.stock : item.product.stock;
-      const isAvailable = item.product.isPreorder || availableStock >= item.quantity;
+      const isAvailable = availableStock >= item.quantity;
 
       return {
         id: item.id,
@@ -93,11 +93,13 @@ export class CartService {
     }
 
     // 2. Verify variant if provided
+    let availableStock = product.stock;
     if (data.variantId) {
       const variant = product.variants.find((v) => v.id === data.variantId);
       if (!variant) {
         throw new AppError(404, 'VARIANT_NOT_FOUND', 'Product variant not found');
       }
+      availableStock = variant.stock;
     }
 
     const productId = data.productId;
@@ -111,6 +113,15 @@ export class CartService {
         variantId,
       },
     });
+
+    const nextQuantity = (existingItem?.quantity ?? 0) + data.quantity;
+    if (nextQuantity > availableStock) {
+      throw new AppError(
+        400,
+        'INSUFFICIENT_STOCK',
+        `Stok tidak mencukupi untuk ${product.name}. Stok tersedia: ${availableStock}`
+      );
+    }
 
     if (existingItem) {
       return prisma.cartItem.update({
@@ -137,10 +148,23 @@ export class CartService {
   async updateQuantity(userId: string, cartItemId: string, quantity: number) {
     const item = await prisma.cartItem.findUnique({
       where: { id: cartItemId },
+      include: {
+        product: true,
+        variant: true,
+      },
     });
 
     if (!item || item.userId !== userId) {
       throw new AppError(404, 'CART_ITEM_NOT_FOUND', 'Cart item not found');
+    }
+
+    const availableStock = item.variant ? item.variant.stock : item.product.stock;
+    if (quantity > availableStock) {
+      throw new AppError(
+        400,
+        'INSUFFICIENT_STOCK',
+        `Stok tidak mencukupi. Stok tersedia: ${availableStock}`
+      );
     }
 
     return prisma.cartItem.update({

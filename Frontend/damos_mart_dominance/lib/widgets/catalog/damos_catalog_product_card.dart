@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../config/api_config.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_model.dart';
 import '../../theme/damos_dominance_colors.dart';
 
@@ -27,7 +28,7 @@ class DamosCatalogProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasStock = product.stock > 0 || product.isPreorder;
+    final hasStock = ProductStockUtils.hasAvailableStock(product);
 
     return SizedBox(
       width: cardWidth,
@@ -106,7 +107,7 @@ class DamosCatalogProductCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (!hasStock && !product.isPreorder)
+                      if (!hasStock)
                         Positioned.fill(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
@@ -176,15 +177,17 @@ class DamosCatalogProductCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        product.isPreorder ? 'Pre-Order' : hasStock ? 'Tersedia' : 'Habis',
+                        product.isPreorder
+                            ? (hasStock ? 'Pre-Order' : 'Kuota Habis')
+                            : hasStock
+                                ? 'Tersedia'
+                                : 'Habis',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: product.isPreorder
+                          color: hasStock
                               ? DamosDominanceColors.primary
-                              : hasStock
-                                  ? DamosDominanceColors.primary
-                                  : DamosDominanceColors.error,
+                              : DamosDominanceColors.error,
                         ),
                       ),
                     ],

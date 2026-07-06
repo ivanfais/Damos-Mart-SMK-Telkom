@@ -64,7 +64,7 @@ class DamosSimilarProductCard extends StatelessWidget {
                                   ),
                                 ),
                         ),
-                        if (!product.isPreorder && product.stock <= 0)
+                        if (product.stock <= 0)
                           Positioned.fill(
                             child: Container(
                               color: Colors.white.withOpacity(0.65),

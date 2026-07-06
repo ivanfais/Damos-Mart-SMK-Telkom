@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'api_exception.dart';
 import '../../config/api_config.dart';
 import '../../config/env.dart';
@@ -204,7 +205,11 @@ class DioClient {
         cancelToken: cancelToken,
       );
     } on DioException catch (e) {
-      print('DEBUG DIO POST ERROR: type=${e.type}, message=${e.message}, statusCode=${e.response?.statusCode}, data=${e.response?.data}, error=${e.error}');
+      if (kDebugMode) {
+        debugPrint(
+          'DIO POST ERROR: type=${e.type}, statusCode=${e.response?.statusCode}',
+        );
+      }
       if (e.error is ApiException) throw e.error!;
       throw ApiException(message: 'Terjadi kesalahan jaringan 🌐');
     }

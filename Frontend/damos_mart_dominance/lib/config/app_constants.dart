@@ -23,6 +23,7 @@ class AppConstants {
 
   static const String iconHome = 'assets/icons/ic_home.svg';
   static const String iconCatalog = 'assets/icons/ic_catalog.svg';
+  static const String iconHistory = 'assets/icons/ic_history.svg';
   static const String iconQueue = 'assets/icons/ic_queue.svg';
   static const String iconCart = 'assets/icons/ic_cart.svg';
   static const String iconProfile = 'assets/icons/ic_profile.svg';

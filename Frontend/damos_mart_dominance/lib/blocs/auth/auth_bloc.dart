@@ -21,24 +21,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onAppStarted(AppStarted event, Emitter<AuthState> emit) async {
-    print('DEBUG BLOC: _onAppStarted triggered');
     emit(AuthLoading());
     try {
-      print('DEBUG BLOC: fetching token...');
       final token = await SecureStorage.instance.getAccessToken();
-      print('DEBUG BLOC: token=$token');
       final userData = await SecureStorage.instance.getUserData();
-      print('DEBUG BLOC: userData=$userData');
-      
+
       if (token != null && token.isNotEmpty && userData != null) {
-        print('DEBUG BLOC: emitting Authenticated');
         emit(Authenticated(UserModel.fromJson(userData)));
       } else {
-        print('DEBUG BLOC: emitting Unauthenticated');
         emit(Unauthenticated());
       }
     } catch (e) {
-      print('DEBUG BLOC: error check auth: $e');
       emit(Unauthenticated());
     }
   }

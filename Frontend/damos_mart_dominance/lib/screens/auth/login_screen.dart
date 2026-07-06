@@ -278,14 +278,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 32),
+                        const Center(child: DamosPoweredByFooter()),
+                        SizedBox(height: MediaQuery.paddingOf(context).bottom + 24),
                       ],
                     ),
                   ),
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 24),
-                child: DamosPoweredByFooter(),
               ),
             ],
           );

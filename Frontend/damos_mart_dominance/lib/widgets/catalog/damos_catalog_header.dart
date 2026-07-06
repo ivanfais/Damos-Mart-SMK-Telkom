@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import '../../blocs/cart/cart_cubit.dart';
 import '../../core/utils/cart_navigation.dart';
 import '../../core/utils/damos_system_ui.dart';

@@ -123,21 +123,58 @@ class CartCubit extends Cubit<CartState> {
 
   Future<void> removeCartItem(String cartItemId) async {
     final currentState = state;
-    if (currentState is CartLoaded) {
-      emit(currentState.copyWith(isUpdating: true));
-      try {
-        await _repository.removeCartItem(cartItemId);
-        final result = await _repository.getCart();
-        emit(CartLoaded(
-          items: result['items'] as List<CartItemModel>,
-          totalItems: result['totalItems'] as int,
-          totalPrice: result['totalPrice'] as double,
+    if (currentState is! CartLoaded) return;
+
+    final optimisticItems =
+        currentState.items.where((item) => item.id != cartItemId).toList();
+    final optimisticTotals = _summarizeItems(optimisticItems);
+
+    emit(
+      CartLoaded(
+        items: optimisticItems,
+        totalItems: optimisticTotals.totalItems,
+        totalPrice: optimisticTotals.totalPrice,
+        isUpdating: true,
+      ),
+    );
+
+    try {
+      await _repository.removeCartItem(cartItemId);
+      emit(
+        CartLoaded(
+          items: optimisticItems,
+          totalItems: optimisticTotals.totalItems,
+          totalPrice: optimisticTotals.totalPrice,
           isUpdating: false,
-        ));
-      } catch (e) {
+        ),
+      );
+    } catch (e) {
+      try {
+        final result = await _repository.getCart();
+        emit(
+          CartLoaded(
+            items: result['items'] as List<CartItemModel>,
+            totalItems: result['totalItems'] as int,
+            totalPrice: result['totalPrice'] as double,
+            isUpdating: false,
+          ),
+        );
+      } catch (_) {
         emit(CartError(e.toString()));
       }
     }
+  }
+
+  ({int totalItems, double totalPrice}) _summarizeItems(
+    List<CartItemModel> items,
+  ) {
+    var totalItems = 0;
+    var totalPrice = 0.0;
+    for (final item in items) {
+      totalItems += item.quantity;
+      totalPrice += item.subtotal;
+    }
+    return (totalItems: totalItems, totalPrice: totalPrice);
   }
 
   Future<void> clearCart() async {

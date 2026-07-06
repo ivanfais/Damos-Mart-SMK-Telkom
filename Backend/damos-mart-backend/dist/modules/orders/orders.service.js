@@ -37,12 +37,10 @@ class OrdersService {
             if (isPreorder) {
                 containsPreorder = true;
             }
-            // Check stock for normal items
-            if (!isPreorder) {
-                const availableStock = item.variant ? item.variant.stock : item.product.stock;
-                if (item.quantity > availableStock) {
-                    throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Insufficient stock for product: ${item.product.name}${item.variant ? ` (Variant: ${item.variant.variantName})` : ''}. Available stock: ${availableStock}`);
-                }
+            // Check stock for all items (including pre-order quota).
+            const availableStock = item.variant ? item.variant.stock : item.product.stock;
+            if (item.quantity > availableStock) {
+                throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Insufficient stock for product: ${item.product.name}${item.variant ? ` (Variant: ${item.variant.variantName})` : ''}. Available stock: ${availableStock}`);
             }
             // Price calculation
             const productPrice = Number(item.product.price);
@@ -148,38 +146,32 @@ class OrdersService {
         const result = await database_1.default.$transaction(async (tx) => {
             // 1. Double check and decrement stock
             for (const item of order.orderItems) {
-                if (!item.product.isPreorder) {
-                    if (item.variantId) {
-                        const variant = await tx.productVariant.findUnique({ where: { id: item.variantId } });
-                        if (!variant || variant.stock < item.quantity) {
-                            throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Variant ${item.variantName} is out of stock`);
-                        }
-                        // Decrement variant stock
-                        await tx.productVariant.update({
-                            where: { id: item.variantId },
-                            data: { stock: variant.stock - item.quantity },
-                        });
-                        // Also decrement the parent product's main stock so the catalog
-                        // total reflects the sale (guarded so it never goes negative).
-                        const parent = await tx.product.findUnique({ where: { id: item.productId } });
-                        if (parent) {
-                            await tx.product.update({
-                                where: { id: item.productId },
-                                data: { stock: Math.max(0, parent.stock - item.quantity) },
-                            });
-                        }
+                if (item.variantId) {
+                    const variant = await tx.productVariant.findUnique({ where: { id: item.variantId } });
+                    if (!variant || variant.stock < item.quantity) {
+                        throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Variant ${item.variantName} is out of stock`);
                     }
-                    else {
-                        const product = await tx.product.findUnique({ where: { id: item.productId } });
-                        if (!product || product.stock < item.quantity) {
-                            throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Product ${item.productName} is out of stock`);
-                        }
-                        // Decrement product stock
+                    await tx.productVariant.update({
+                        where: { id: item.variantId },
+                        data: { stock: variant.stock - item.quantity },
+                    });
+                    const parent = await tx.product.findUnique({ where: { id: item.productId } });
+                    if (parent) {
                         await tx.product.update({
                             where: { id: item.productId },
-                            data: { stock: product.stock - item.quantity },
+                            data: { stock: Math.max(0, parent.stock - item.quantity) },
                         });
                     }
+                }
+                else {
+                    const product = await tx.product.findUnique({ where: { id: item.productId } });
+                    if (!product || product.stock < item.quantity) {
+                        throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Product ${item.productName} is out of stock`);
+                    }
+                    await tx.product.update({
+                        where: { id: item.productId },
+                        data: { stock: product.stock - item.quantity },
+                    });
                 }
             }
             // 2. Set order status as PAID (or PREPARING since normal flow proceeds immediately to preparation)
@@ -487,27 +479,57 @@ class OrdersService {
             return tx.order.update({
                 where: { id: orderId },
                 data: { status },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                        },
-                    },
+                select: {
+                    id: true,
+                    userId: true,
+                    orderNumber: true,
+                    status: true,
                 },
             });
         });
+        const statusLabel = orderStatusLabel(status);
+        const title = 'Status Pesanan Diperbarui';
+        const body = `Status pesanan ${updated.orderNumber} diubah menjadi ${statusLabel}.`;
         // Create notification entry for order status change
         await database_1.default.notification.create({
             data: {
                 userId: updated.userId,
-                title: 'Status Pesanan Diperbarui',
-                body: `Status pesanan Anda ${updated.orderNumber} diubah menjadi ${status}.`,
+                title,
+                body,
                 type: 'ORDER_STATUS',
                 referenceId: updated.id,
             },
+        });
+        (0, socket_1.emitOrderStatusUpdate)(updated.userId, {
+            orderId: updated.id,
+            orderNumber: updated.orderNumber,
+            status: updated.status,
+            statusLabel,
+            title,
+            body,
         });
         return updated;
     }
 }
 exports.OrdersService = OrdersService;
+function orderStatusLabel(status) {
+    switch (status) {
+        case 'PENDING':
+            return 'Menunggu Pembayaran';
+        case 'PAID':
+            return 'Dibayar';
+        case 'PREPARING':
+            return 'Sedang Disiapkan';
+        case 'IN_PRODUCTION':
+            return 'Dalam Produksi';
+        case 'READY':
+            return 'Siap Diambil';
+        case 'COMPLETED':
+            return 'Selesai';
+        case 'CANCELLED':
+            return 'Dibatalkan';
+        default:
+            return status;
+    }
+}
 exports.default = OrdersService;

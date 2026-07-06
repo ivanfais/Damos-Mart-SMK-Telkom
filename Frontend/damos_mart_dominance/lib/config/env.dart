@@ -24,6 +24,17 @@ class Env {
   static bool get isStaging => appEnv == 'staging';
   static bool get isDevelopment => appEnv == 'development';
 
+  /// Aktifkan simulasi pembayaran di APK release untuk uji internal.
+  /// Production: `--dart-define=APP_ENV=production` (simulasi mati).
+  /// Testing: default `staging` atau `--dart-define=ENABLE_PAYMENT_SIMULATION=true`.
+  static const bool forcePaymentSimulation = bool.fromEnvironment(
+    'ENABLE_PAYMENT_SIMULATION',
+    defaultValue: false,
+  );
+
+  static bool get showPaymentSimulation =>
+      forcePaymentSimulation || isDevelopment || isStaging;
+
   static String get baseUrl {
     final normalized = _normalizedApiBase;
     if (normalized.endsWith('/api/v1')) {

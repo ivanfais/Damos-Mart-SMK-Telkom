@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/api_config.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/product_grid_layout.dart';
+import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_model.dart';
 
 /// Compact product card for home/catalog grids.
@@ -60,7 +61,7 @@ class DamosProductGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasStock = product.stock > 0 || product.isPreorder;
+    final bool hasStock = ProductStockUtils.hasAvailableStock(product);
     final imageHeight = ProductGridLayout.imageHeight(context);
 
     return SizedBox(
@@ -156,13 +157,21 @@ class DamosProductGridCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              product.isPreorder ? 'Pre-Order' : hasStock ? 'Tersedia' : 'Stok Habis',
+                              product.isPreorder
+                                  ? (hasStock ? 'Pre-Order' : 'Kuota Habis')
+                                  : hasStock
+                                      ? 'Tersedia'
+                                      : 'Stok Habis',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: product.isPreorder ? _primary : hasStock ? _primary : _red,
+                                color: product.isPreorder
+                                    ? (hasStock ? _primary : _red)
+                                    : hasStock
+                                        ? _primary
+                                        : _red,
                               ),
                             ),
                           ),

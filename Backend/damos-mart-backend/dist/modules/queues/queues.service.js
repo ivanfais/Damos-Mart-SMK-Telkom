@@ -29,6 +29,7 @@ class QueuesService {
                 userId,
                 status: { in: ['WAITING', 'PREPARING', 'READY'] },
                 order: {
+                    status: { notIn: ['COMPLETED', 'CANCELLED'] },
                     OR: [
                         { paymentStatus: 'PAID' },
                         {
@@ -216,7 +217,7 @@ class QueuesService {
                     title: 'Pesanan Siap Diambil',
                     body: `Pesanan Anda dengan nomor antrean ${queue.queueNumber} sudah siap diambil di kasir Damos Mart!`,
                     type: 'QUEUE_READY',
-                    referenceId: queue.id,
+                    referenceId: queue.orderId,
                 },
             });
             return uQueue;

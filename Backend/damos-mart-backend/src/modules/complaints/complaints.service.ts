@@ -1,4 +1,5 @@
 import prisma from '../../config/database';
+import { NotificationType } from '@prisma/client';
 import { AppError } from '../../middlewares/error.middleware';
 import { emitComplaintUpdate } from '../../socket';
 
@@ -227,7 +228,7 @@ export class ComplaintsService {
         userId: complaint.userId,
         title,
         body,
-        type: 'COMPLAINT',
+        type: NotificationType.COMPLAINT,
         referenceId: complaint.id,
       },
     });

@@ -16,10 +16,10 @@ class NotificationRepository {
   }
 
   Future<void> markAsRead(String id) async {
-    await _client.post(ApiConfig.readNotification(id));
+    await _client.put(ApiConfig.readNotification(id));
   }
 
   Future<void> markAllAsRead() async {
-    await _client.post(ApiConfig.readAllNotifications);
+    await _client.put(ApiConfig.readAllNotifications);
   }
 }

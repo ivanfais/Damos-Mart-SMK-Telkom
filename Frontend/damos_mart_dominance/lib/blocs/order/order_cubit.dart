@@ -131,9 +131,12 @@ class OrderCubit extends Cubit<OrderState> {
   }
 
   Future<void> loadOrderDetail(String orderId) async {
+    emit(OrderLoading());
     try {
       final order = await _repository.getOrderDetails(orderId);
       emit(OrderDetailLoaded(order));
+    } on ApiException catch (e) {
+      emit(OrderError(e.message));
     } catch (e) {
       emit(OrderError(e.toString()));
     }

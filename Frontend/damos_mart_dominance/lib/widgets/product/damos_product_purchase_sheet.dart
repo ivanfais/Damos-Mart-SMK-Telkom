@@ -8,6 +8,7 @@ import '../../config/api_config.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/cart_item_model.dart';
 import '../../data/models/product_model.dart';
+import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_variant_model.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../common/pop_up_alert.dart';
@@ -61,6 +62,15 @@ class _DamosProductPurchaseSheetState extends State<DamosProductPurchaseSheet> {
   ProductVariantModel? _selectedVariant;
   bool _isSubmitting = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.product.variants.isNotEmpty) {
+      _selectedVariant = ProductStockUtils.firstInStockVariant(widget.product) ??
+          widget.product.variants.first;
+    }
+  }
+
   bool get _requiresVariant => widget.product.variants.isNotEmpty;
 
   bool get _hasSelectedVariant => !_requiresVariant || _selectedVariant != null;
@@ -89,6 +99,7 @@ class _DamosProductPurchaseSheetState extends State<DamosProductPurchaseSheet> {
       _isBuyNow ? 'Beli Sekarang' : 'Masukan Keranjang';
 
   void _selectVariant(ProductVariantModel variant) {
+    if (!ProductStockUtils.variantHasStock(variant)) return;
     HapticFeedback.selectionClick();
     setState(() {
       _selectedVariant = variant;
@@ -205,12 +216,16 @@ class _DamosProductPurchaseSheetState extends State<DamosProductPurchaseSheet> {
 
   Widget _buildSizeChip(ProductVariantModel variant) {
     final selected = _selectedVariant?.id == variant.id;
+    final enabled = ProductStockUtils.variantHasStock(variant);
 
     return AnimatedScale(
       scale: selected ? 1.04 : 1.0,
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutBack,
-      child: AnimatedContainer(
+      child: AnimatedOpacity(
+        opacity: enabled ? 1 : 0.45,
+        duration: const Duration(milliseconds: 200),
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
         decoration: BoxDecoration(
@@ -231,7 +246,7 @@ class _DamosProductPurchaseSheetState extends State<DamosProductPurchaseSheet> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _selectVariant(variant),
+            onTap: enabled ? () => _selectVariant(variant) : null,
             borderRadius: BorderRadius.circular(8),
             splashColor: DamosDominanceColors.primary.withValues(alpha: 0.15),
             highlightColor: DamosDominanceColors.primary.withValues(alpha: 0.08),
@@ -251,6 +266,7 @@ class _DamosProductPurchaseSheetState extends State<DamosProductPurchaseSheet> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

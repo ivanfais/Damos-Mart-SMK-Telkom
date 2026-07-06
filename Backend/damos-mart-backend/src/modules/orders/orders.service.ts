@@ -36,16 +36,14 @@ export class OrdersService {
         containsPreorder = true;
       }
 
-      // Check stock for normal items
-      if (!isPreorder) {
-        const availableStock = item.variant ? item.variant.stock : item.product.stock;
-        if (item.quantity > availableStock) {
-          throw new AppError(
-            400,
-            'INSUFFICIENT_STOCK',
-            `Insufficient stock for product: ${item.product.name}${item.variant ? ` (Variant: ${item.variant.variantName})` : ''}. Available stock: ${availableStock}`
-          );
-        }
+      // Check stock for all items (including pre-order quota).
+      const availableStock = item.variant ? item.variant.stock : item.product.stock;
+      if (item.quantity > availableStock) {
+        throw new AppError(
+          400,
+          'INSUFFICIENT_STOCK',
+          `Insufficient stock for product: ${item.product.name}${item.variant ? ` (Variant: ${item.variant.variantName})` : ''}. Available stock: ${availableStock}`
+        );
       }
 
       // Price calculation
@@ -166,37 +164,31 @@ export class OrdersService {
     const result = await prisma.$transaction(async (tx) => {
       // 1. Double check and decrement stock
       for (const item of order.orderItems) {
-        if (!item.product.isPreorder) {
-          if (item.variantId) {
-            const variant = await tx.productVariant.findUnique({ where: { id: item.variantId } });
-            if (!variant || variant.stock < item.quantity) {
-              throw new AppError(400, 'INSUFFICIENT_STOCK', `Variant ${item.variantName} is out of stock`);
-            }
-            // Decrement variant stock
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: { stock: variant.stock - item.quantity },
-            });
-            // Also decrement the parent product's main stock so the catalog
-            // total reflects the sale (guarded so it never goes negative).
-            const parent = await tx.product.findUnique({ where: { id: item.productId } });
-            if (parent) {
-              await tx.product.update({
-                where: { id: item.productId },
-                data: { stock: Math.max(0, parent.stock - item.quantity) },
-              });
-            }
-          } else {
-            const product = await tx.product.findUnique({ where: { id: item.productId } });
-            if (!product || product.stock < item.quantity) {
-              throw new AppError(400, 'INSUFFICIENT_STOCK', `Product ${item.productName} is out of stock`);
-            }
-            // Decrement product stock
+        if (item.variantId) {
+          const variant = await tx.productVariant.findUnique({ where: { id: item.variantId } });
+          if (!variant || variant.stock < item.quantity) {
+            throw new AppError(400, 'INSUFFICIENT_STOCK', `Variant ${item.variantName} is out of stock`);
+          }
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: variant.stock - item.quantity },
+          });
+          const parent = await tx.product.findUnique({ where: { id: item.productId } });
+          if (parent) {
             await tx.product.update({
               where: { id: item.productId },
-              data: { stock: product.stock - item.quantity },
+              data: { stock: Math.max(0, parent.stock - item.quantity) },
             });
           }
+        } else {
+          const product = await tx.product.findUnique({ where: { id: item.productId } });
+          if (!product || product.stock < item.quantity) {
+            throw new AppError(400, 'INSUFFICIENT_STOCK', `Product ${item.productName} is out of stock`);
+          }
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: product.stock - item.quantity },
+          });
         }
       }
 

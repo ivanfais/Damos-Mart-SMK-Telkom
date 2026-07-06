@@ -235,7 +235,7 @@ export class QueuesService {
           title: 'Pesanan Siap Diambil',
           body: `Pesanan Anda dengan nomor antrean ${queue.queueNumber} sudah siap diambil di kasir Damos Mart!`,
           type: 'QUEUE_READY',
-          referenceId: queue.id,
+          referenceId: queue.orderId,
         },
       });
 

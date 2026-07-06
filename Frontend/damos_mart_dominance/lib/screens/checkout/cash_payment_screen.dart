@@ -49,7 +49,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
   bool _isVerifying = false;
   bool _isCancelling = false;
 
-  bool get _showDevControls => kDebugMode || Env.isDevelopment;
+  bool get _showSimControls => kDebugMode || Env.showPaymentSimulation;
 
   @override
   void initState() {
@@ -257,6 +257,16 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
   }
 
   Widget _buildQueueCard(OrderModel order) {
+    final queueNumber = Text(
+      _queueDisplay(order),
+      style: const TextStyle(
+        fontSize: 36,
+        fontWeight: FontWeight.w800,
+        color: DamosDominanceColors.primary,
+        height: 1,
+      ),
+    );
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -276,15 +286,26 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            _queueDisplay(order),
-            style: const TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              color: DamosDominanceColors.primary,
-              height: 1,
+          if (_showSimControls)
+            GestureDetector(
+              onTap: !_isVerifying && !_expired ? _simulatePayment : null,
+              onLongPress: !_isVerifying && !_expired ? _handleTimeout : null,
+              child: queueNumber,
+            )
+          else
+            queueNumber,
+          if (_showSimControls) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Mode uji: ketuk nomor = bayar berhasil, tahan = waktu habis',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: DamosDominanceColors.textSecondary.withValues(alpha: 0.95),
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 12),
           RichText(
             textAlign: TextAlign.center,
@@ -527,29 +548,25 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
     );
   }
 
-  Widget _buildSimBottomBar() {
-    if (_expired) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: _CashStyle.cardBorder)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSimulatePaymentButton(),
-            if (_showDevControls) ...[
-              const SizedBox(height: 8),
-              _buildSimulateTimeoutButton(),
-            ],
-          ],
+  Widget _buildDevControlsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'Simulasi Pembayaran (Mode Uji)',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: DamosDominanceColors.textSecondary,
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        _buildSimulatePaymentButton(),
+        const SizedBox(height: 8),
+        _buildSimulateTimeoutButton(),
+      ],
     );
   }
 
@@ -597,7 +614,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
                 ),
                 _buildWaitingBanner(),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, _showDevControls ? 8 : 24),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -608,6 +625,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
                       _buildInfoBanner(),
                       const SizedBox(height: 16),
                       _buildHomeButton(expired: false),
+                      if (_showSimControls) _buildDevControlsSection(),
                     ],
                   ),
                 ),
@@ -615,7 +633,6 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
             ),
           ),
         ),
-        if (_showDevControls) _buildSimBottomBar(),
       ],
     );
   }

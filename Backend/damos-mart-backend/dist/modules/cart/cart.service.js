@@ -50,7 +50,7 @@ class CartService {
             totalItems += item.quantity;
             totalPrice += subtotal;
             const availableStock = item.variant ? item.variant.stock : item.product.stock;
-            const isAvailable = item.product.isPreorder || availableStock >= item.quantity;
+            const isAvailable = availableStock >= item.quantity;
             return {
                 id: item.id,
                 productId: item.productId,
@@ -86,11 +86,13 @@ class CartService {
             throw new error_middleware_1.AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found or inactive');
         }
         // 2. Verify variant if provided
+        let availableStock = product.stock;
         if (data.variantId) {
             const variant = product.variants.find((v) => v.id === data.variantId);
             if (!variant) {
                 throw new error_middleware_1.AppError(404, 'VARIANT_NOT_FOUND', 'Product variant not found');
             }
+            availableStock = variant.stock;
         }
         const productId = data.productId;
         const variantId = data.variantId || null;
@@ -102,6 +104,10 @@ class CartService {
                 variantId,
             },
         });
+        const nextQuantity = (existingItem?.quantity ?? 0) + data.quantity;
+        if (nextQuantity > availableStock) {
+            throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Stok tidak mencukupi untuk ${product.name}. Stok tersedia: ${availableStock}`);
+        }
         if (existingItem) {
             return database_1.default.cartItem.update({
                 where: { id: existingItem.id },
@@ -125,9 +131,17 @@ class CartService {
     async updateQuantity(userId, cartItemId, quantity) {
         const item = await database_1.default.cartItem.findUnique({
             where: { id: cartItemId },
+            include: {
+                product: true,
+                variant: true,
+            },
         });
         if (!item || item.userId !== userId) {
             throw new error_middleware_1.AppError(404, 'CART_ITEM_NOT_FOUND', 'Cart item not found');
+        }
+        const availableStock = item.variant ? item.variant.stock : item.product.stock;
+        if (quantity > availableStock) {
+            throw new error_middleware_1.AppError(400, 'INSUFFICIENT_STOCK', `Stok tidak mencukupi. Stok tersedia: ${availableStock}`);
         }
         return database_1.default.cartItem.update({
             where: { id: cartItemId },

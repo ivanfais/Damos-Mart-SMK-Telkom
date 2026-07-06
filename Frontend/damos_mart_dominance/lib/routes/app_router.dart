@@ -41,6 +41,7 @@ import '../screens/history/purchase_history_screen.dart';
 import '../screens/order/order_detail_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/review/review_screen.dart';
+import '../screens/notifications/notifications_screen.dart';
 
 // Shell Navigation
 import '../widgets/common/damos_bottom_nav.dart';
@@ -58,7 +59,6 @@ class AppRouter {
     refreshListenable: AuthRefreshNotifier.instance,
     redirect: (BuildContext context, GoRouterState state) async {
       final path = state.uri.path;
-      print('DEBUG ROUTER: redirect called for path=$path');
       try {
         final selectedDisc = PrefsStorage.instance.getSelectedDiscVariant();
         final isDiscPicker = path == '/disc-picker';
@@ -74,7 +74,6 @@ class AppRouter {
 
         final token = await SecureStorage.instance.getAccessToken();
         final isLoggedIn = token != null && token.isNotEmpty;
-        print('DEBUG ROUTER: isLoggedIn=$isLoggedIn');
 
         final isAuthPath = path == '/login' ||
             path == '/register' ||
@@ -83,24 +82,19 @@ class AppRouter {
             path == '/reset-password';
 
         if (isSplash || isDiscPicker) {
-          print('DEBUG ROUTER: splash/disc-picker path, returning null');
           return null;
         }
 
         if (!isLoggedIn && !isAuthPath) {
-          print('DEBUG ROUTER: not logged in, redirecting to /login');
           return '/login';
         }
 
         if (isLoggedIn && isAuthPath) {
-          print('DEBUG ROUTER: logged in, redirecting to /home');
           return '/home';
         }
 
-        print('DEBUG ROUTER: allowing normal routing, returning null');
         return null;
       } catch (e) {
-        print('DEBUG ROUTER: redirect error: $e');
         return '/login';
       }
     },
@@ -222,7 +216,14 @@ class AppRouter {
       ),
 
       GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) => _page(state, const NotificationsScreen()),
+      ),
+
+      GoRoute(
         path: '/orders/:id',
+        parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return _page(state, OrderDetailScreen(orderId: id));

@@ -126,7 +126,7 @@ class ProductListTile extends StatelessWidget {
                 ],
 
                 // Low-stock indicator (seperti aplikasi e-commerce umumnya)
-                if (!item.isPreorder && item.availableStock < 10) ...[
+                if (item.availableStock < 10) ...[
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -203,7 +203,7 @@ class ProductListTile extends StatelessWidget {
                             ),
                             GestureDetector(
                               onTap: () {
-                                if (item.quantity < item.availableStock || item.isPreorder) {
+                                if (item.quantity < item.availableStock) {
                                   onQuantityChanged!(item.quantity + 1);
                                 }
                               },

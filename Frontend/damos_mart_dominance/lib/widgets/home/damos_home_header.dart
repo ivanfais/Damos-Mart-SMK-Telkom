@@ -7,6 +7,7 @@ import '../../blocs/auth/auth_state.dart';
 import '../../blocs/cart/cart_cubit.dart';
 import '../../core/utils/damos_system_ui.dart';
 import '../../core/utils/cart_navigation.dart';
+import '../../widgets/common/user_avatar.dart';
 import '../../theme/damos_dominance_colors.dart';
 
 /// Green header for Beranda — greeting, search bar, and cart shortcut.
@@ -45,28 +46,62 @@ class DamosHomeHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              builder: (context, authState) {
+                final avatarUrl =
+                    authState is Authenticated ? authState.user.avatarUrl : null;
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      _greeting(state),
-                      style: const TextStyle(
-                        color: DamosDominanceColors.textOnPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        height: 1.3,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _greeting(authState),
+                            style: const TextStyle(
+                              color: DamosDominanceColors.textOnPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'DAMOS MART',
+                            style: TextStyle(
+                              color: DamosDominanceColors.textOnPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'DAMOS MART',
-                      style: TextStyle(
-                        color: DamosDominanceColors.textOnPrimary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                        height: 1.2,
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => context.go('/profile'),
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              width: 2,
+                            ),
+                          ),
+                          child: UserAvatar(
+                            avatarUrl: avatarUrl,
+                            radius: 18,
+                            backgroundColor: Colors.white,
+                            iconColor: DamosDominanceColors.primary,
+                            iconSize: 20,
+                          ),
+                        ),
                       ),
                     ),
                   ],

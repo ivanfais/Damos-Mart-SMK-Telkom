@@ -6,7 +6,7 @@ exports.productQuerySchema = zod_1.z.object({
     query: zod_1.z.object({
         category: zod_1.z.string().optional(),
         search: zod_1.z.string().optional(),
-        inStock: zod_1.z.enum(['true', 'false']).optional().default('true'),
+        inStock: zod_1.z.enum(['true', 'false']).optional(),
         isPreorder: zod_1.z.enum(['true', 'false']).optional(),
         sort: zod_1.z.enum(['newest', 'price_asc', 'price_desc', 'rating_desc', 'popular']).optional().default('newest'),
         page: zod_1.z.coerce.number().int().min(1).optional().default(1),

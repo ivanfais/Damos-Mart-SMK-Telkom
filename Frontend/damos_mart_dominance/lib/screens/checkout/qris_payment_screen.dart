@@ -49,7 +49,7 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
   bool _isVerifying = false;
   bool _isCancelling = false;
 
-  bool get _showDevControls => kDebugMode || Env.isDevelopment;
+  bool get _showSimControls => kDebugMode || Env.showPaymentSimulation;
 
   @override
   void initState() {
@@ -340,7 +340,13 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
                 ),
                 const SizedBox(height: 16),
                 GestureDetector(
-                  onTap: _isVerifying ? null : _simulatePayment,
+                  onTap: _showSimControls && !_isVerifying && !_expired
+                      ? _simulatePayment
+                      : null,
+                  onLongPress:
+                      _showSimControls && !_isVerifying && !_expired
+                          ? _handleTimeout
+                          : null,
                   child: QrImageView(
                     data: _qrisPayload(order),
                     version: QrVersions.auto,
@@ -356,6 +362,18 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
                     ),
                   ),
                 ),
+                if (_showSimControls) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Mode uji: ketuk QR = bayar berhasil, tahan QR = waktu habis',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: DamosDominanceColors.textSecondary.withValues(alpha: 0.95),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   'Cek aplikasi penyelenggara di: www.aspi-qris.id',
@@ -561,31 +579,25 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
     );
   }
 
-  Widget _buildSimBottomBar() {
-    if (_expired) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: _QrisStyle.cardBorder),
+  Widget _buildDevControlsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'Simulasi Pembayaran (Mode Uji)',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: DamosDominanceColors.textSecondary,
+          ),
         ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSimulatePaymentButton(),
-            if (_showDevControls) ...[
-              const SizedBox(height: 8),
-              _buildSimulateTimeoutButton(),
-            ],
-          ],
-        ),
-      ),
+        const SizedBox(height: 12),
+        _buildSimulatePaymentButton(),
+        const SizedBox(height: 8),
+        _buildSimulateTimeoutButton(),
+      ],
     );
   }
 
@@ -655,7 +667,7 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
                 ),
                 _buildWaitingBanner(),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, _showDevControls ? 8 : 24),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -666,6 +678,7 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
                       _buildSaveQrButton(),
                       const SizedBox(height: 16),
                       _buildOrderSummary(order),
+                      if (_showSimControls) _buildDevControlsSection(),
                     ],
                   ),
                 ),
@@ -673,7 +686,6 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
             ),
           ),
         ),
-        if (_showDevControls) _buildSimBottomBar(),
       ],
     );
   }

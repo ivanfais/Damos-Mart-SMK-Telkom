@@ -6,6 +6,7 @@ class NotificationBanner extends StatelessWidget {
   final String title;
   final String message;
   final String timeLabelText;
+  final String? tapActionLabel;
   final VoidCallback? onClose;
   final VoidCallback? onTap;
 
@@ -14,6 +15,7 @@ class NotificationBanner extends StatelessWidget {
     required this.title,
     required this.message,
     this.timeLabelText = 'Sekarang',
+    this.tapActionLabel,
     this.onClose,
     this.onTap,
   });
@@ -30,6 +32,7 @@ class NotificationBanner extends StatelessWidget {
     required String title,
     required String message,
     String timeLabelText = 'Sekarang',
+    String? tapActionLabel,
     VoidCallback? onTap,
     Duration autoHide = const Duration(seconds: 8),
   }) {
@@ -53,6 +56,7 @@ class NotificationBanner extends StatelessWidget {
               title: title,
               message: message,
               timeLabelText: timeLabelText,
+              tapActionLabel: tapActionLabel,
               onTap: onTap,
               onClose: hide,
             ),
@@ -150,11 +154,11 @@ class NotificationBanner extends StatelessWidget {
                       height: 1.45,
                     ),
                   ),
-                  if (onTap != null) ...[
+                  if (onTap != null && tapActionLabel != null) ...[
                     const SizedBox(height: 6),
-                    const Text(
-                      'Ketuk untuk lihat QR Pengambilan',
-                      style: TextStyle(
+                    Text(
+                      tapActionLabel!,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: DamosDominanceColors.primary,

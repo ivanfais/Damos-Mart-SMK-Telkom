@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/utils/validators.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/auth/damos_auth_app_bar.dart';

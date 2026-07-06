@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/utils/validators.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
@@ -23,7 +24,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static const Color _primary = DamosDominanceColors.primary;
   static const Color _textPrimary = DamosDominanceColors.textPrimary;
   static const Color _textSecondary = DamosDominanceColors.textSecondary;
-  static const Color _infoBg = Color(0xFFF0F9F1);
   static const String _dummyCode = '1234';
 
   final _authRepository = AuthRepository();
@@ -36,6 +36,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   _ForgotStep _step = _ForgotStep.email;
   bool _isSubmitting = false;
   bool _showValidation = false;
+  String? _emailSubmitError;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -67,6 +68,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() {
       _isSubmitting = true;
       _showValidation = false;
+      _emailSubmitError = null;
     });
     try {
       await _authRepository.forgotPassword(_email);
@@ -78,14 +80,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isSubmitting = false);
-      PopUpAlert.show(
-        context: context,
-        title: 'Gagal',
-        description: e.toString(),
-        isError: true,
-      );
+      setState(() {
+        _isSubmitting = false;
+        _emailSubmitError = _resolveEmailSubmitError(e);
+      });
     }
+  }
+
+  String _resolveEmailSubmitError(Object error) {
+    if (error is ApiException) {
+      if (error.code == 'USER_NOT_FOUND' ||
+          error.message.contains('Email tidak terdaftar')) {
+        return 'Email tidak terdaftar';
+      }
+      return error.message;
+    }
+    return 'Email tidak terdaftar';
   }
 
   void _submitCode() {
@@ -151,7 +161,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String get _subtitle {
     switch (_step) {
       case _ForgotStep.email:
-        return 'Masukkan email terdaftar untuk menerima kode verifikasi reset password.';
+        return 'Masukkan email Anda untuk reset password';
       case _ForgotStep.code:
         return 'Masukkan kode verifikasi 4 digit yang dikirim ke email kamu.';
       case _ForgotStep.newPassword:
@@ -174,7 +184,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (_isSubmitting) return false;
     switch (_step) {
       case _ForgotStep.email:
-        return Validators.authEmail(_email) == null;
+        return _email.isNotEmpty;
       case _ForgotStep.code:
         return _codeController.text.trim().length == 4;
       case _ForgotStep.newPassword:
@@ -185,7 +195,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   VoidCallback? get _onSubmit {
-    if (_isSubmitting) return null;
+    if (_isSubmitting || !_canSubmit) return null;
     switch (_step) {
       case _ForgotStep.email:
         return _submitEmail;
@@ -206,34 +216,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             DamosAuthTextField(
               controller: _emailController,
               hintText: 'Masukkan Alamat Email',
+              prefixIcon: Icons.person_outline,
               keyboardType: TextInputType.emailAddress,
               validator: Validators.authEmail,
               textInputAction: TextInputAction.done,
-              onChanged: (_) => setState(() {}),
+              showErrorState: _emailSubmitError != null,
+              onChanged: (_) => setState(() {
+                _emailSubmitError = null;
+              }),
               onFieldSubmitted: (_) => _submitEmail(),
             ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: _infoBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _primary.withOpacity(0.2)),
+            if (_emailSubmitError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _emailSubmitError!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: DamosDominanceColors.error,
+                ),
               ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, color: _primary, size: 20),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Pastikan email sudah terdaftar di Damos Mart.',
-                      style: TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ],
         );
       case _ForgotStep.code:
@@ -256,17 +259,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               onFieldSubmitted: (_) => _submitCode(),
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: _infoBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _primary.withOpacity(0.2)),
-              ),
-              child: Text(
-                'Demo: gunakan kode $_dummyCode untuk verifikasi.',
-                style: const TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
-              ),
+            Text(
+              'Demo: gunakan kode $_dummyCode untuk verifikasi.',
+              style: const TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
             ),
           ],
         );
@@ -325,7 +320,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DamosDominanceColors.background,
+      backgroundColor: Colors.white,
       appBar: DamosAuthAppBar(title: _appBarTitle),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -336,92 +331,78 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 8),
                 Text(
                   _subtitle,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, height: 1.5, color: _textSecondary),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: _textPrimary,
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
                   switchInCurve: Curves.easeOut,
                   switchOutCurve: Curves.easeIn,
                   child: _buildStepContent(),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
                 SizedBox(
-                  height: 52,
+                  height: 48,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: _canSubmit
-                          ? [
-                              BoxShadow(
-                                color: _primary.withOpacity(0.18),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
                     child: ElevatedButton(
                       onPressed: _onSubmit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: _step == _ForgotStep.email
+                            ? (_canSubmit ? _primary : DamosDominanceColors.fieldFill)
+                            : _primary,
+                        foregroundColor: _step == _ForgotStep.email
+                            ? (_canSubmit ? Colors.white : _textPrimary)
+                            : Colors.white,
+                        disabledBackgroundColor: _step == _ForgotStep.email
+                            ? DamosDominanceColors.fieldFill
+                            : _primary.withValues(alpha: 0.5),
+                        disabledForegroundColor: _step == _ForgotStep.email
+                            ? _textPrimary
+                            : Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: _step == _ForgotStep.email && !_canSubmit
+                                ? DamosDominanceColors.fieldBorder
+                                : Colors.transparent,
+                          ),
                         ),
                       ),
                       child: _isSubmitting
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  _step == _ForgotStep.email && !_canSubmit
+                                      ? _primary
+                                      : Colors.white,
+                                ),
                               ),
                             )
                           : Text(
                               _buttonLabel,
-                              style: const TextStyle(
-                                fontSize: 16,
+                              style: TextStyle(
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
+                                color: _step == _ForgotStep.email
+                                    ? (_canSubmit ? Colors.white : _textPrimary)
+                                    : Colors.white,
                               ),
                             ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
-                if (_step == _ForgotStep.email) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Ingat password? ',
-                        style: TextStyle(fontSize: 14, color: _textPrimary),
-                      ),
-                      GestureDetector(
-                        onTap: () => context.go('/login'),
-                        child: const Text(
-                          'Kembali Login',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: _textPrimary,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),

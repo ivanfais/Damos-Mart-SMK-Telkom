@@ -3,9 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/order/order_cubit.dart';
 import '../../blocs/queue/queue_cubit.dart';
+import '../../blocs/notification/notification_cubit.dart';
+import '../../data/models/notification_model.dart';
 import '../../data/models/queue_model.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../core/utils/cart_navigation.dart';
+import '../../core/utils/notification_navigation.dart';
+import 'damos_history_nav_icon.dart';
 
 class DamosBottomNav extends StatelessWidget {
   final Widget child;
@@ -27,22 +31,36 @@ class DamosBottomNav extends StatelessWidget {
     return 0;
   }
 
-  void _onItemTapped(int index, BuildContext context, {int readyCount = 0}) {
-    switch (index) {
-      case 0:
-        context.go('/home');
-        break;
-      case 1:
-        context.go('/catalog');
-        break;
-      case 2:
-        context.read<OrderCubit>().loadMyOrders();
-        context.go(readyCount > 0 ? '/history?tab=ready' : '/history');
-        break;
-      case 3:
-        context.go('/profile');
-        break;
+  Future<void> _onHistoryTap(
+    BuildContext context, {
+    required int readyCount,
+    required List<NotificationModel> notifications,
+  }) async {
+    final notificationCubit = context.read<NotificationCubit>();
+    var resolvedNotifications = notifications;
+
+    if (notificationCubit.state is! NotificationLoaded) {
+      await notificationCubit.loadNotifications(showLoading: false);
+      final state = notificationCubit.state;
+      if (state is NotificationLoaded) {
+        resolvedNotifications = state.notifications;
+      }
     }
+
+    // Dot notifikasi: langsung ke detail, ditandai sudah dibaca.
+    if (NotificationNavigation.hasHistoryUnread(resolvedNotifications)) {
+      if (!context.mounted) return;
+      final navigated = await NotificationNavigation.openLatestUnread(
+        context,
+        where: NotificationNavigation.isHistoryRelated,
+      );
+      if (navigated) return;
+    }
+
+    // Badge angka siap ambil / riwayat normal.
+    if (!context.mounted) return;
+    context.read<OrderCubit>().loadMyOrders();
+    context.go(readyCount > 0 ? '/history?tab=ready' : '/history');
   }
 
   int _readyPickupCount(QueueState state, QueueCubit cubit) {
@@ -76,38 +94,55 @@ class DamosBottomNav extends StatelessWidget {
                 final readyCount =
                     _readyPickupCount(queueState, context.read<QueueCubit>());
 
-                return Row(
-                  children: [
-                    _NavItem(
-                      label: 'Beranda',
-                      isSelected: selectedIndex == 0,
-                      outlineIcon: Icons.home_outlined,
-                      filledIcon: Icons.home_rounded,
-                      onTap: () => _onItemTapped(0, context),
-                    ),
-                    _NavItem(
-                      label: 'Katalog',
-                      isSelected: selectedIndex == 1,
-                      outlineIcon: Icons.grid_view_outlined,
-                      filledIcon: Icons.grid_view_rounded,
-                      onTap: () => _onItemTapped(1, context),
-                    ),
-                    _NavItem(
-                      label: 'Riwayat Pesanan',
-                      isSelected: selectedIndex == 2,
-                      outlineIcon: Icons.receipt_long_outlined,
-                      filledIcon: Icons.receipt_long_rounded,
-                      badgeCount: readyCount,
-                      onTap: () => _onItemTapped(2, context, readyCount: readyCount),
-                    ),
-                    _NavItem(
-                      label: 'Profile',
-                      isSelected: selectedIndex == 3,
-                      outlineIcon: Icons.account_circle_outlined,
-                      filledIcon: Icons.account_circle_rounded,
-                      onTap: () => _onItemTapped(3, context),
-                    ),
-                  ],
+                return BlocBuilder<NotificationCubit, NotificationState>(
+                  builder: (context, notificationState) {
+                    final notifications = notificationState is NotificationLoaded
+                        ? notificationState.notifications
+                        : const <NotificationModel>[];
+                    final historyUnreadDot =
+                        NotificationNavigation.hasHistoryUnread(notifications);
+
+                    return Row(
+                      children: [
+                        _NavItem(
+                          label: 'Beranda',
+                          isSelected: selectedIndex == 0,
+                          outlineIcon: Icons.home_outlined,
+                          filledIcon: Icons.home_rounded,
+                          onTap: () => context.go('/home'),
+                        ),
+                        _NavItem(
+                          label: 'Katalog',
+                          isSelected: selectedIndex == 1,
+                          outlineIcon: Icons.grid_view_outlined,
+                          filledIcon: Icons.grid_view_rounded,
+                          onTap: () => context.go('/catalog'),
+                        ),
+                        _NavItem(
+                          label: 'Riwayat Pesanan',
+                          isSelected: selectedIndex == 2,
+                          iconBuilder: (color, selected) => DamosHistoryNavIcon(
+                            color: color,
+                            isSelected: selected,
+                          ),
+                          badgeCount: readyCount,
+                          showDot: historyUnreadDot,
+                          onTap: () => _onHistoryTap(
+                            context,
+                            readyCount: readyCount,
+                            notifications: notifications,
+                          ),
+                        ),
+                        _NavItem(
+                          label: 'Profile',
+                          isSelected: selectedIndex == 3,
+                          outlineIcon: Icons.account_circle_outlined,
+                          filledIcon: Icons.account_circle_rounded,
+                          onTap: () => context.go('/profile'),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             ),
@@ -121,19 +156,37 @@ class DamosBottomNav extends StatelessWidget {
 class _NavItem extends StatelessWidget {
   final String label;
   final bool isSelected;
-  final IconData outlineIcon;
-  final IconData filledIcon;
+  final IconData? outlineIcon;
+  final IconData? filledIcon;
+  final Widget Function(Color color, bool isSelected)? iconBuilder;
   final VoidCallback onTap;
   final int badgeCount;
+  final bool showDot;
 
   const _NavItem({
     required this.label,
     required this.isSelected,
-    required this.outlineIcon,
-    required this.filledIcon,
+    this.outlineIcon,
+    this.filledIcon,
+    this.iconBuilder,
     required this.onTap,
     this.badgeCount = 0,
-  });
+    this.showDot = false,
+  }) : assert(
+          iconBuilder != null || (outlineIcon != null && filledIcon != null),
+          'Provide iconBuilder or both outlineIcon and filledIcon',
+        );
+
+  Widget _buildIcon(Color color) {
+    if (iconBuilder != null) {
+      return iconBuilder!(color, isSelected);
+    }
+    return Icon(
+      isSelected ? filledIcon! : outlineIcon!,
+      size: 24,
+      color: color,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,15 +205,26 @@ class _NavItem extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(
-                    isSelected ? filledIcon : outlineIcon,
-                    size: 24,
-                    color: color,
-                  ),
+                  _buildIcon(color),
+                  if (showDot)
+                    Positioned(
+                      left: badgeCount > 0 ? -1 : null,
+                      right: badgeCount > 0 ? null : -1,
+                      top: -1,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: DamosDominanceColors.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                      ),
+                    ),
                   if (badgeCount > 0)
                     Positioned(
-                      right: -8,
-                      top: -4,
+                      right: -10,
+                      top: -5,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         constraints: const BoxConstraints(minWidth: 16, minHeight: 16),

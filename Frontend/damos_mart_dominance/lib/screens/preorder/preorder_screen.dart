@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../blocs/product/product_cubit.dart';
 import '../../blocs/cart/cart_cubit.dart';
+import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/product_variant_model.dart';
 import '../../data/models/cart_item_model.dart';
@@ -46,14 +47,23 @@ class _PreorderScreenState extends State<PreorderScreen> {
     context.read<ProductCubit>().loadProductDetail(widget.productId);
   }
 
-  void _incrementQty() {
-    setState(() => _quantity++);
+  void _incrementQty(int maxStock) {
+    if (_quantity < maxStock) {
+      setState(() => _quantity++);
+    }
   }
 
   void _decrementQty() {
     if (_quantity > 1) {
       setState(() => _quantity--);
     }
+  }
+
+  int _maxStock(ProductModel product) {
+    return ProductStockUtils.stockFor(
+      product,
+      variant: _selectedVariant,
+    );
   }
 
   double _displayPrice(ProductModel product) {
@@ -215,30 +225,45 @@ class _PreorderScreenState extends State<PreorderScreen> {
   Widget _buildSizeChip({
     required String label,
     required bool selected,
+    required bool enabled,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? _Ds.primary : Colors.white,
+          color: !enabled
+              ? const Color(0xFFF3F4F6)
+              : selected
+                  ? _Ds.primary
+                  : Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? _Ds.primary : _Ds.border),
+          border: Border.all(
+            color: !enabled
+                ? _Ds.borderLight
+                : selected
+                    ? _Ds.primary
+                    : _Ds.border,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : _Ds.textPrimary,
+            color: !enabled
+                ? _Ds.textSecondary
+                : selected
+                    ? Colors.white
+                    : _Ds.textPrimary,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildQuantitySelector() {
+  Widget _buildQuantitySelector(int maxStock) {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: _Ds.border),
@@ -256,7 +281,10 @@ class _PreorderScreenState extends State<PreorderScreen> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _Ds.textPrimary),
             ),
           ),
-          _qtyButton(icon: Icons.add, onTap: _incrementQty),
+          _qtyButton(
+            icon: Icons.add,
+            onTap: _quantity < maxStock ? () => _incrementQty(maxStock) : null,
+          ),
         ],
       ),
     );
@@ -331,6 +359,9 @@ class _PreorderScreenState extends State<PreorderScreen> {
   }
 
   Widget _buildBottomBar(ProductModel product) {
+    final maxStock = _maxStock(product);
+    final canOrder = maxStock > 0;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -349,10 +380,12 @@ class _PreorderScreenState extends State<PreorderScreen> {
           height: 52,
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: _isSubmitting ? null : () => _executePreorder(product),
+            onPressed: canOrder && !_isSubmitting ? () => _executePreorder(product) : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _Ds.primary,
               foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFFE5E7EB),
+              disabledForegroundColor: _Ds.textSecondary,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -362,9 +395,9 @@ class _PreorderScreenState extends State<PreorderScreen> {
                     height: 22,
                     child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                   )
-                : const Text(
-                    'Pre-Order Sekarang',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                : Text(
+                    canOrder ? 'Pre-Order Sekarang' : 'Kuota Habis',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                   ),
           ),
         ),
@@ -400,10 +433,18 @@ class _PreorderScreenState extends State<PreorderScreen> {
             if (_selectedVariant == null && product.variants.isNotEmpty) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && _selectedVariant == null) {
-                  setState(() => _selectedVariant = product.variants.first);
+                  setState(() {
+                    _selectedVariant =
+                        ProductStockUtils.firstInStockVariant(product) ??
+                            product.variants.first;
+                    _quantity = 1;
+                  });
                 }
               });
             }
+
+            final maxStock = _maxStock(product);
+            final canOrder = maxStock > 0;
 
             return Column(
               children: [
@@ -475,12 +516,12 @@ class _PreorderScreenState extends State<PreorderScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      const Text(
-                                        'TERSEDIA',
+                                      Text(
+                                        canOrder ? 'Stok: $maxStock' : 'KUOTA HABIS',
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: _Ds.primary,
+                                          color: canOrder ? _Ds.primary : _Ds.red,
                                         ),
                                       ),
                                     ],
@@ -509,10 +550,18 @@ class _PreorderScreenState extends State<PreorderScreen> {
                                   runSpacing: 10,
                                   children: product.variants.map((variant) {
                                     final selected = _selectedVariant?.id == variant.id;
+                                    final enabled =
+                                        ProductStockUtils.variantHasStock(variant);
                                     return _buildSizeChip(
-                                      label: variant.variantName,
+                                      label: enabled
+                                          ? variant.variantName
+                                          : '${variant.variantName} (Habis)',
                                       selected: selected,
-                                      onTap: () => setState(() => _selectedVariant = variant),
+                                      enabled: enabled,
+                                      onTap: () => setState(() {
+                                        _selectedVariant = variant;
+                                        _quantity = 1;
+                                      }),
                                     );
                                   }).toList(),
                                 ),
@@ -530,7 +579,7 @@ class _PreorderScreenState extends State<PreorderScreen> {
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              _buildQuantitySelector(),
+                              _buildQuantitySelector(maxStock),
 
                               const SizedBox(height: 24),
 

@@ -38,6 +38,14 @@ android {
             isShrinkResources = false
         }
     }
+
+    applicationVariants.configureEach {
+        outputs.configureEach {
+            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            outputImpl.outputFileName =
+                "Damos-Mart-Dominance-v${defaultConfig.versionName}-${name}.apk"
+        }
+    }
 }
 
 kotlin {

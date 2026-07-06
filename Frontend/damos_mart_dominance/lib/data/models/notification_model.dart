@@ -1,6 +1,12 @@
 import 'package:equatable/equatable.dart';
 
-enum NotificationType { queueReady, orderStatus, promo, chat }
+enum NotificationType {
+  queueReady,
+  orderStatus,
+  promo,
+  chat,
+  complaint,
+}
 
 class NotificationModel extends Equatable {
   final String id;
@@ -38,6 +44,9 @@ class NotificationModel extends Equatable {
       case 'CHAT':
         parsedType = NotificationType.chat;
         break;
+      case 'COMPLAINT':
+        parsedType = NotificationType.complaint;
+        break;
     }
 
     return NotificationModel(
@@ -48,7 +57,7 @@ class NotificationModel extends Equatable {
       type: parsedType,
       referenceId: json['referenceId'] as String?,
       isRead: json['isRead'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
     );
   }
 
@@ -67,6 +76,9 @@ class NotificationModel extends Equatable {
       case NotificationType.chat:
         typeStr = 'CHAT';
         break;
+      case NotificationType.complaint:
+        typeStr = 'COMPLAINT';
+        break;
     }
 
     return {
@@ -82,5 +94,6 @@ class NotificationModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, userId, title, body, type, referenceId, isRead, createdAt];
+  List<Object?> get props =>
+      [id, userId, title, body, type, referenceId, isRead, createdAt];
 }

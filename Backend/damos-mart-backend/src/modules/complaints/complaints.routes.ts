@@ -2,9 +2,11 @@ import { Router, RequestHandler } from 'express';
 import { ComplaintsController } from './complaints.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { adminMiddleware } from '../../middlewares/admin.middleware';
+import { uploadComplaint } from '../../middlewares/upload.middleware';
 import { validateRequest } from '../../middlewares/validate.middleware';
 import {
   createComplaintSchema,
+  createReturnScheduleSchema,
   adminCreateComplaintSchema,
   updateComplaintStatusSchema,
   respondComplaintSchema,
@@ -16,11 +18,22 @@ const bind = (method: keyof ComplaintsController): RequestHandler => {
   return (req, res, next) => (controller[method] as any)(req, res, next);
 };
 
-// ----- Student routes (reserved for the Flutter app, not yet wired on mobile) -----
+// ----- Student routes (Ajukan Komplain & Retur, wired on mobile) -----
 const router = Router();
 router.use(authMiddleware);
-router.post('/', validateRequest(createComplaintSchema), bind('create'));
+router.post(
+  '/',
+  uploadComplaint.array('photos', 3),
+  validateRequest(createComplaintSchema),
+  bind('submitComplaint')
+);
 router.get('/me', bind('getMine'));
+router.get('/return-schedules/me', bind('getMyReturnSchedules'));
+router.post(
+  '/:id/return-schedule',
+  validateRequest(createReturnScheduleSchema),
+  bind('scheduleReturn')
+);
 
 // ----- Admin routes (mounted under /admin/complaints) -----
 export const adminComplaintRouter = Router();

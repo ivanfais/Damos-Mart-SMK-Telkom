@@ -36,6 +36,7 @@ model User {
   chatRoomAsAdmin   ChatRoom[]     @relation("AdminRoom")
   chatMessages      ChatMessage[]
   complaints        Complaint[]
+  returnSchedules   ReturnSchedule[]
 
   @@map("users")
 }
@@ -385,24 +386,58 @@ model CooperativeStatus {
 // ==========================================
 
 model Complaint {
-  id            String            @id @default(uuid())
-  userId        String?           @map("user_id")   // siswa pelapor (opsional: admin bisa catat manual)
-  orderId       String?           @map("order_id")  // pesanan terkait (opsional)
-  subject       String
-  category      ComplaintCategory @default(OTHER)
-  description   String
-  status        ComplaintStatus   @default(OPEN)
-  priority      ComplaintPriority @default(MEDIUM)
-  adminResponse String?           @map("admin_response")
-  respondedAt   DateTime?         @map("responded_at")
-  resolvedAt    DateTime?         @map("resolved_at")
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  id              String            @id @default(uuid())
+  complaintNumber String            @unique @map("complaint_number")
+  userId          String?           @map("user_id")   // siswa pelapor (opsional: admin bisa catat manual)
+  orderId         String?           @map("order_id")  // pesanan terkait (opsional)
+  subject         String
+  category        ComplaintCategory @default(OTHER)
+  description     String
+  status          ComplaintStatus   @default(OPEN)
+  priority        ComplaintPriority @default(MEDIUM)
+  adminResponse   String?           @map("admin_response")
+  respondedAt     DateTime?         @map("responded_at")
+  resolvedAt      DateTime?         @map("resolved_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order           Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  photos          ComplaintPhoto[]
+  returnSchedules ReturnSchedule[]
 
   @@map("complaints")
+}
+
+enum ReturnTimeSlot {
+  BREAK_FIRST   // Istirahat Pertama 09:30-10:30
+  BREAK_SECOND  // Istirahat Kedua 12:15-13:00
+  SCHOOL_END    // Jam Pulang Sekolah 15:30-16:30
+}
+
+model ReturnSchedule {
+  id          String         @id @default(uuid())
+  complaintId String         @map("complaint_id")
+  userId      String         @map("user_id")
+  returnDate  DateTime       @map("return_date")
+  timeSlot    ReturnTimeSlot @map("time_slot")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("return_schedules")
+}
+
+model ComplaintPhoto {
+  id          String   @id @default(uuid())
+  complaintId String   @map("complaint_id")
+  photoUrl    String   @map("photo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@map("complaint_photos")
 }
 
 enum ComplaintCategory {

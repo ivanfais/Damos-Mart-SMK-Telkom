@@ -78,4 +78,10 @@ export const uploadCooperative = multer({
   fileFilter,
 });
 
+export const uploadComplaint = multer({
+  storage: getStorage('complaints'),
+  limits: { fileSize: env.MAX_FILE_SIZE },
+  fileFilter,
+});
+
 

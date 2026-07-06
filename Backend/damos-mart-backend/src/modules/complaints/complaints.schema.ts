@@ -4,12 +4,25 @@ const categoryEnum = z.enum(['PRODUCT', 'SERVICE', 'ORDER', 'QUEUE', 'OTHER']);
 const statusEnum = z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED']);
 const priorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH']);
 
+// Reason options shown to students on the "Ajukan Komplain" form.
+export const complaintReasonEnum = z.enum(['PRODUCT_DAMAGED', 'QUANTITY_SHORT', 'OTHER']);
+
+// Time slot options shown to students on the "Jadwalkan Pengembalian" form.
+export const returnTimeSlotEnum = z.enum(['BREAK_FIRST', 'BREAK_SECOND', 'SCHOOL_END']);
+
+export const createReturnScheduleSchema = z.object({
+  body: z.object({
+    returnDate: z.coerce.date(),
+    timeSlot: returnTimeSlotEnum,
+  }),
+});
+
+// Student-facing complaint submission (multipart/form-data: fields below + up to 3 `photos` files).
 export const createComplaintSchema = z.object({
   body: z.object({
-    subject: z.string().min(3, 'Subjek komplain minimal 3 karakter'),
+    orderId: z.string().uuid('Pesanan tidak valid'),
+    reason: complaintReasonEnum,
     description: z.string().min(5, 'Deskripsi komplain minimal 5 karakter'),
-    category: categoryEnum.optional().default('OTHER'),
-    orderId: z.string().uuid('orderId tidak valid').optional().nullable(),
   }),
 });
 

@@ -1,9 +1,23 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middlewares/error.middleware';
+import { generateNextComplaintNumber } from '../../utils/complaint-number';
 
 type ComplaintCategory = 'PRODUCT' | 'SERVICE' | 'ORDER' | 'QUEUE' | 'OTHER';
 type ComplaintStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
 type ComplaintPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+type ComplaintReason = 'PRODUCT_DAMAGED' | 'QUANTITY_SHORT' | 'OTHER';
+
+const REASON_LABELS: Record<ComplaintReason, string> = {
+  PRODUCT_DAMAGED: 'Produk Rusak/Cacat',
+  QUANTITY_SHORT: 'Jumlah Produk Kurang',
+  OTHER: 'Lainnya',
+};
+
+const REASON_CATEGORY: Record<ComplaintReason, ComplaintCategory> = {
+  PRODUCT_DAMAGED: 'PRODUCT',
+  QUANTITY_SHORT: 'ORDER',
+  OTHER: 'OTHER',
+};
 
 const userSelect = {
   id: true,
@@ -17,6 +31,10 @@ const orderSelect = {
   orderNumber: true,
   total: true,
   status: true,
+  orderItems: {
+    take: 1,
+    select: { productName: true },
+  },
 } as const;
 
 export class ComplaintsService {
@@ -40,8 +58,11 @@ export class ComplaintsService {
       }
     }
 
+    const complaintNumber = await generateNextComplaintNumber(prisma);
+
     return prisma.complaint.create({
       data: {
+        complaintNumber,
         userId: userId ?? undefined,
         orderId: data.orderId ?? undefined,
         subject: data.subject,
@@ -54,13 +75,108 @@ export class ComplaintsService {
   }
 
   /**
+   * Student: submits a complaint/return request from the "Ajukan Komplain" form.
+   * Requires a completed order and at least one evidence photo.
+   */
+  async submitComplaint(
+    userId: string,
+    data: { orderId: string; reason: ComplaintReason; description: string },
+    photoUrls: string[]
+  ) {
+    const order = await prisma.order.findFirst({
+      where: { id: data.orderId, userId, status: 'COMPLETED' },
+    });
+    if (!order) {
+      throw new AppError(
+        400,
+        'INVALID_ORDER',
+        'Pesanan tidak ditemukan atau belum selesai. Hanya pesanan selesai yang bisa dikomplain.'
+      );
+    }
+
+    if (photoUrls.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Unggah minimal 1 foto sebagai bukti');
+    }
+
+    const complaintNumber = await generateNextComplaintNumber(prisma);
+
+    return prisma.$transaction(async (tx) => {
+      const complaint = await tx.complaint.create({
+        data: {
+          complaintNumber,
+          userId,
+          orderId: data.orderId,
+          subject: REASON_LABELS[data.reason],
+          category: REASON_CATEGORY[data.reason] as any,
+          description: data.description,
+        },
+      });
+
+      await tx.complaintPhoto.createMany({
+        data: photoUrls.map((url) => ({ complaintId: complaint.id, photoUrl: url })),
+      });
+
+      return tx.complaint.findUnique({
+        where: { id: complaint.id },
+        include: { user: { select: userSelect }, order: { select: orderSelect }, photos: true },
+      });
+    });
+  }
+
+  /**
    * Student: fetches complaints they submitted.
    */
   async getByUser(userId: string) {
     return prisma.complaint.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: { order: { select: orderSelect } },
+      include: { order: { select: orderSelect }, photos: true },
+    });
+  }
+
+  /**
+   * Student: schedules a return pickup for an approved (RESOLVED) complaint.
+   */
+  async scheduleReturn(
+    userId: string,
+    complaintId: string,
+    data: { returnDate: Date; timeSlot: 'BREAK_FIRST' | 'BREAK_SECOND' | 'SCHOOL_END' }
+  ) {
+    const complaint = await prisma.complaint.findFirst({ where: { id: complaintId, userId } });
+    if (!complaint) {
+      throw new AppError(404, 'COMPLAINT_NOT_FOUND', 'Laporan tidak ditemukan');
+    }
+    if (complaint.status !== 'RESOLVED') {
+      throw new AppError(
+        400,
+        'COMPLAINT_NOT_APPROVED',
+        'Hanya laporan yang sudah disetujui yang bisa dijadwalkan pengembaliannya'
+      );
+    }
+
+    const schedule = await prisma.returnSchedule.create({
+      data: {
+        complaintId,
+        userId,
+        returnDate: data.returnDate,
+        timeSlot: data.timeSlot,
+      },
+    });
+
+    return prisma.returnSchedule.findUnique({
+      where: { id: schedule.id },
+      include: { complaint: { include: { order: { select: orderSelect } } } },
+    });
+  }
+
+  /**
+   * Student: fetches return schedules they've booked, most recent first.
+   */
+  async getMyReturnSchedules(userId: string) {
+    return prisma.returnSchedule.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: { complaint: { include: { order: { select: orderSelect } } } },
     });
   }
 

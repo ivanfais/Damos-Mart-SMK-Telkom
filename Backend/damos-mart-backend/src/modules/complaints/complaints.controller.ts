@@ -20,11 +20,63 @@ export class ComplaintsController {
     }
   }
 
+  /**
+   * Student: submits a complaint/return request with evidence photos
+   * from the "Ajukan Komplain" form.
+   */
+  async submitComplaint(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.userId;
+
+      const files = req.files as Express.Multer.File[];
+      const photoUrls = files ? files.map((file) => `/uploads/complaints/${file.filename}`) : [];
+
+      const complaint = await service.submitComplaint(userId, req.body, photoUrls);
+      return res.status(201).json({
+        success: true,
+        data: complaint,
+        message: 'Laporan berhasil dibuat',
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async getMine(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
       const complaints = await service.getByUser(userId);
       return res.status(200).json({ success: true, data: complaints });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Student: schedules a return pickup for an approved complaint.
+   */
+  async scheduleReturn(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.userId;
+      const schedule = await service.scheduleReturn(userId, req.params.id, req.body);
+      return res.status(201).json({
+        success: true,
+        data: schedule,
+        message: 'Pengembalian berhasil dijadwalkan',
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Student: fetches their return schedule history.
+   */
+  async getMyReturnSchedules(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.userId;
+      const schedules = await service.getMyReturnSchedules(userId);
+      return res.status(200).json({ success: true, data: schedules });
     } catch (error) {
       return next(error);
     }

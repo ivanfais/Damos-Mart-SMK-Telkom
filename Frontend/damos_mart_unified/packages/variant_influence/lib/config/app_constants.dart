@@ -1,0 +1,30 @@
+class AppConstants {
+  static const String appName = 'Damos Mart Influence';
+  static const String schoolName = 'SMK Telkom Jakarta';
+
+  // Secure Storage Keys
+  static const String keyAccessToken = 'access_token';
+  static const String keyRefreshToken = 'refresh_token';
+  static const String keyUserData = 'user_data';
+
+  // Preferences Keys
+  static const String keySettingsNotifications = 'settings_notifications';
+  static const String keySettingsDarkTheme = 'settings_dark_theme';
+  static const String keySelectedDiscVariant = 'selected_disc_variant';
+  static const String keySearchHistory = 'influence_search_history';
+
+  // Asset paths
+  static const String imageLogo = 'assets/images/logo damos.png';
+  static const String imageProductHighlight = 'assets/images/produk higlight.png';
+  static const String imageSplashBg = 'assets/images/splash_bg.png';
+  static const String imageEmptyCart = 'assets/images/empty_cart.png';
+  static const String imageEmptyOrder = 'assets/images/empty_order.png';
+  static const String imageOrderSuccess = 'assets/images/order_success.png';
+  static const String imageQrisDummy = 'assets/images/qris_dummy.png';
+
+  static const String iconHome = 'assets/icons/ic_home.svg';
+  static const String iconCatalog = 'assets/icons/ic_catalog.svg';
+  static const String iconQueue = 'assets/icons/ic_queue.svg';
+  static const String iconCart = 'assets/icons/ic_cart.svg';
+  static const String iconProfile = 'assets/icons/ic_profile.svg';
+}

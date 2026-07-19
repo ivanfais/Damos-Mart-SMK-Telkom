@@ -28,3 +28,9 @@ Thumbs.db
 **/coverage/
 .pub-cache/
 .pub/
+**/flutter/ephemeral/
+**/.plugin_symlinks/
+**/.cxx/
+**/local.properties
+**/.flutter-plugins
+**/.flutter-plugins-dependencies

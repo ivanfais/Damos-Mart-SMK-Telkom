@@ -12,16 +12,19 @@ const error_middleware_1 = require("../../middlewares/error.middleware");
 const email_service_1 = require("../../services/email.service");
 const reset_token_1 = require("../../utils/reset-token");
 const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000;
-function resolvePasswordResetMethod(client) {
+function resolveResetPasswordUrl(client) {
     const normalizedClient = client?.trim().toLowerCase();
-    if (normalizedClient &&
-        env_1.env.PASSWORD_RESET_LINK_CLIENTS.includes(normalizedClient)) {
-        return 'email';
+    const byClient = {
+        dominance: env_1.env.RESET_PASSWORD_URL_DOMINANCE,
+        influence: env_1.env.RESET_PASSWORD_URL_INFLUENCE,
+        steadiness: env_1.env.RESET_PASSWORD_URL_STEADINESS,
+        conscientiousness: env_1.env.RESET_PASSWORD_URL_CONSCIENTIOUSNESS,
+    };
+    const specific = normalizedClient ? byClient[normalizedClient] : undefined;
+    if (specific && specific.trim()) {
+        return specific.trim();
     }
-    if (env_1.env.PASSWORD_RESET_DEMO_CODE) {
-        return 'demo';
-    }
-    return 'email';
+    return env_1.env.RESET_PASSWORD_URL;
 }
 function isTokenResetInput(input) {
     return 'token' in input;
@@ -288,17 +291,6 @@ class AuthService {
         if (!user.isActive) {
             throw new error_middleware_1.AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
         }
-        const method = resolvePasswordResetMethod(input.client);
-        if (method === 'demo') {
-            if (!env_1.env.PASSWORD_RESET_DEMO_CODE) {
-                throw new error_middleware_1.AppError(400, 'DEMO_RESET_DISABLED', 'Reset password demo tidak tersedia. Hubungi administrator.');
-            }
-            return {
-                email: user.email,
-                method: 'demo',
-                message: 'Kode verifikasi telah dikirim. Gunakan kode demo untuk melanjutkan reset password.',
-            };
-        }
         const rawToken = (0, reset_token_1.generateResetToken)();
         const tokenHash = (0, reset_token_1.hashResetToken)(rawToken);
         const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
@@ -315,7 +307,7 @@ class AuthService {
                 expiresAt,
             },
         });
-        const resetUrl = `${env_1.env.RESET_PASSWORD_URL}${rawToken}`;
+        const resetUrl = `${resolveResetPasswordUrl(input.client)}${rawToken}`;
         await (0, email_service_1.sendPasswordResetEmail)({
             to: user.email,
             fullName: user.fullName,

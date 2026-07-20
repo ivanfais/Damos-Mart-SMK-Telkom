@@ -14,21 +14,21 @@ import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPas
 
 const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000;
 
-function resolvePasswordResetMethod(client?: string): 'email' | 'demo' {
+function resolveResetPasswordUrl(client?: string): string {
   const normalizedClient = client?.trim().toLowerCase();
+  const byClient: Record<string, string | undefined> = {
+    dominance: env.RESET_PASSWORD_URL_DOMINANCE,
+    influence: env.RESET_PASSWORD_URL_INFLUENCE,
+    steadiness: env.RESET_PASSWORD_URL_STEADINESS,
+    conscientiousness: env.RESET_PASSWORD_URL_CONSCIENTIOUSNESS,
+  };
 
-  if (
-    normalizedClient &&
-    env.PASSWORD_RESET_LINK_CLIENTS.includes(normalizedClient)
-  ) {
-    return 'email';
+  const specific = normalizedClient ? byClient[normalizedClient] : undefined;
+  if (specific && specific.trim()) {
+    return specific.trim();
   }
 
-  if (env.PASSWORD_RESET_DEMO_CODE) {
-    return 'demo';
-  }
-
-  return 'email';
+  return env.RESET_PASSWORD_URL;
 }
 
 function isTokenResetInput(input: ResetPasswordInput): input is ResetPasswordTokenInput {
@@ -343,24 +343,6 @@ export class AuthService {
       throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
     }
 
-    const method = resolvePasswordResetMethod(input.client);
-
-    if (method === 'demo') {
-      if (!env.PASSWORD_RESET_DEMO_CODE) {
-        throw new AppError(
-          400,
-          'DEMO_RESET_DISABLED',
-          'Reset password demo tidak tersedia. Hubungi administrator.',
-        );
-      }
-
-      return {
-        email: user.email,
-        method: 'demo' as const,
-        message: 'Kode verifikasi telah dikirim. Gunakan kode demo untuk melanjutkan reset password.',
-      };
-    }
-
     const rawToken = generateResetToken();
     const tokenHash = hashResetToken(rawToken);
     const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
@@ -380,7 +362,7 @@ export class AuthService {
       },
     });
 
-    const resetUrl = `${env.RESET_PASSWORD_URL}${rawToken}`;
+    const resetUrl = `${resolveResetPasswordUrl(input.client)}${rawToken}`;
     await sendPasswordResetEmail({
       to: user.email,
       fullName: user.fullName,

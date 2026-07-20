@@ -132,26 +132,46 @@ class AuthRepository {
     return UserModel.fromJson(data);
   }
 
-  Future<void> requestPasswordReset(String email) async {
-    await _client.post(
+  Future<String> requestPasswordReset(String email) async {
+    final response = await _client.post(
       ApiConfig.forgotPassword,
-      data: {'email': email},
-    );
-  }
-
-  Future<void> resetPassword({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
-    await _client.post(
-      ApiConfig.resetPassword,
       data: {
         'email': email,
-        'code': code,
-        'newPassword': newPassword,
+        'client': 'steadiness',
       },
     );
+
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    return response.data['message'] as String? ??
+        data['message'] as String? ??
+        'Link reset password telah dikirim ke email Anda.';
+  }
+
+  Future<bool> validateResetToken(String token) async {
+    final response = await _client.get(
+      ApiConfig.validateResetToken,
+      queryParameters: {'token': token},
+    );
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    return data['valid'] as bool? ?? false;
+  }
+
+  Future<String> resetPasswordWithToken({
+    required String token,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _client.post(
+      ApiConfig.resetPassword,
+      data: {
+        'token': token,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+    );
+
+    return response.data['message'] as String? ??
+        'Password berhasil diperbarui.';
   }
 
   Future<void> changePassword({

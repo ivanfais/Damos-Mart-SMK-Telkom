@@ -12,6 +12,7 @@ import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
+import '../screens/auth/reset_password_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/catalog/product_detail_screen.dart';
@@ -68,8 +69,10 @@ class AppRouter {
         final isLoggedIn = token != null && token.isNotEmpty;
         print('DEBUG ROUTER: isLoggedIn=$isLoggedIn');
 
-        final isAuthPath =
-            path == '/login' || path == '/register' || path == '/forgot-password';
+        final isAuthPath = path == '/login' ||
+            path == '/register' ||
+            path == '/forgot-password' ||
+            path == '/reset-password';
 
         if (isSplash || isDiscPicker) {
           print('DEBUG ROUTER: splash/disc-picker path, returning null');
@@ -129,6 +132,13 @@ class AppRouter {
               prefillEmail: extra?['email'] as String?,
             ),
           );
+        },
+      ),
+      GoRoute(
+        path: '/reset-password',
+        pageBuilder: (context, state) {
+          final token = state.uri.queryParameters['token'] ?? '';
+          return _page(state, ResetPasswordScreen(token: token));
         },
       ),
 

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/utils/validators.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../widgets/common/damos_text_field.dart';
 import '../../widgets/common/pop_up_alert.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -15,12 +16,11 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  static const Color _primary = Color(0xFF1B8C2E);
-  static const Color _fieldBorder = Color(0xFFD1D5DB);
-  static const Color _textPrimary = Color(0xFF1A1A1A);
-  static const Color _textSecondary = Color(0xFF6B7280);
-  static const Color _red = Color(0xFFD42427);
-  static const Color _fieldFill = Color(0xFFF3F4F6);
+  static const Color _bg = Color(0xFFFCF8F8);
+  static const Color _primary = Color(0xFF018D1A);
+  static const Color _dark = Color(0xFF111111);
+  static const Color _grey = Color(0xFF555555);
+  static const Color _red = Color(0xFFD32F2F);
 
   final _authRepository = AuthRepository();
   final _formKey = GlobalKey<FormState>();
@@ -38,7 +38,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (widget.prefillEmail != null && widget.prefillEmail!.isNotEmpty) {
       _emailController.text = widget.prefillEmail!;
     }
-    _emailController.addListener(() => setState(() {}));
   }
 
   @override
@@ -85,42 +84,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
-  InputDecoration _decoration({String? errorText}) {
-    return InputDecoration(
-      hintText: 'Masukkan Alamat Email',
-      prefixIcon: const Icon(Icons.person_outline),
-      filled: true,
-      fillColor: _fieldFill,
-      errorText: errorText,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: errorText != null ? _red : _fieldBorder,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _primary, width: 1.5),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: _bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textPrimary),
+          icon: const Icon(Icons.arrow_back, color: _dark),
           onPressed: () => context.pop(),
         ),
         title: Text(
           _emailSent ? 'Cek Email Anda' : 'Lupa Password',
           style: const TextStyle(
-            color: _textPrimary,
+            fontFamily: 'Poppins',
+            color: _dark,
             fontWeight: FontWeight.w700,
             fontSize: 18,
           ),
@@ -149,27 +128,44 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       children: [
         const Text(
           'Masukkan email terdaftar Anda. Kami akan mengirim link reset password ke Gmail Anda.',
-          style: TextStyle(fontSize: 14, height: 1.5, color: _textPrimary),
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 14,
+            height: 1.5,
+            color: _dark,
+          ),
         ),
         const SizedBox(height: 20),
-        TextFormField(
+        DamosTextField(
           controller: _emailController,
+          labelText: 'Email',
+          hintText: 'Masukkan Alamat Email',
+          prefixIcon: Icons.person_outline,
           keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.done,
           validator: Validators.email,
-          onChanged: (_) => setState(() => _emailSubmitError = null),
+          textInputAction: TextInputAction.done,
           onFieldSubmitted: (_) => _submitEmail(),
-          decoration: _decoration(errorText: _emailSubmitError),
         ),
+        if (_emailSubmitError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _emailSubmitError!,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: _red,
+              fontSize: 12,
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         SizedBox(
-          height: 48,
+          height: 52,
           child: ElevatedButton(
             onPressed: _isSubmitting || _email.isEmpty ? null : _submitEmail,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _email.isNotEmpty ? _primary : _fieldFill,
-              foregroundColor: _email.isNotEmpty ? Colors.white : _textPrimary,
-              disabledBackgroundColor: _fieldFill,
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: _primary.withValues(alpha: 0.55),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -177,16 +173,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             child: _isSubmitting
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 22,
+                    height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(_primary),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
                 : const Text(
                     'Kirim Link Reset',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
           ),
         ),
@@ -213,15 +213,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 12),
               Text(
                 _successMessage,
-                style: const TextStyle(fontSize: 14, height: 1.5, color: _textPrimary),
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  height: 1.5,
+                  color: _dark,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Email: $_email',
                 style: const TextStyle(
+                  fontFamily: 'Poppins',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: _textSecondary,
+                  color: _grey,
                 ),
               ),
             ],
@@ -230,11 +236,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 12),
         const Text(
           'Buka email Anda, klik link reset password, lalu buat password baru di halaman reset.',
-          style: TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 13,
+            height: 1.45,
+            color: _grey,
+          ),
         ),
         const SizedBox(height: 20),
         SizedBox(
-          height: 48,
+          height: 52,
           child: ElevatedButton(
             onPressed: () => context.go('/login', extra: {'email': _email}),
             style: ElevatedButton.styleFrom(
@@ -247,7 +258,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             child: const Text(
               'Kembali ke Login',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+              ),
             ),
           ),
         ),

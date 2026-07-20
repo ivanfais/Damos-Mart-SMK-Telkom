@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'core/disc/disc_session_handoff.dart';
@@ -9,6 +11,11 @@ import 'core/utils/damos_system_ui.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Agar link email /reset-password?token=... bisa dibuka langsung di browser.
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
   DamosSystemUi.apply(DamosSystemUi.lightHeader);
   
   // Initialize shared preferences storage

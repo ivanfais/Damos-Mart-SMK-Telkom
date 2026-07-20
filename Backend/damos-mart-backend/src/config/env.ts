@@ -26,22 +26,20 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('Damos Mart <noreply@damosmart.com>'),
+  /** Fallback reset URL prefix used by all DISC apps. */
   RESET_PASSWORD_URL: z
     .string()
     .default('http://localhost:8080/reset-password?token='),
-  /** App clients that use email reset links, e.g. `dominance`. Others use demo code. */
-  PASSWORD_RESET_LINK_CLIENTS: z
-    .string()
-    .optional()
-    .default('dominance')
-    .transform((val) =>
-      val
-        .split(',')
-        .map((item) => item.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  /** Demo verification code for non-link clients. Set empty to disable demo flow. */
-  PASSWORD_RESET_DEMO_CODE: z.string().default('1234'),
+  /** Optional per-variant reset URL overrides. */
+  RESET_PASSWORD_URL_DOMINANCE: z.string().optional(),
+  RESET_PASSWORD_URL_INFLUENCE: z.string().optional(),
+  RESET_PASSWORD_URL_STEADINESS: z.string().optional(),
+  RESET_PASSWORD_URL_CONSCIENTIOUSNESS: z.string().optional(),
+  /**
+   * Legacy demo code (kept for older clients). Empty disables demo reset.
+   * All current DISC apps use email reset links.
+   */
+  PASSWORD_RESET_DEMO_CODE: z.string().optional().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);

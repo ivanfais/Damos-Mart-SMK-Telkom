@@ -15,6 +15,6 @@ class DamosDominanceColors {
   static const Color buttonDisabledBorder = Color(0xFF9CA3AF);
   static const Color buttonDisabledText = Color(0xFF374151);
   static const Color error = Color(0xFFD42427);
-  static const Color cartButtonFill = Color(0xFFF5E1E8);
+  static const Color cartButtonFill = Color(0xFFFFFFFF);
   static const Color navInactive = Color(0xFF9CA3AF);
 }

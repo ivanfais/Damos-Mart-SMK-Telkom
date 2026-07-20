@@ -8,6 +8,7 @@ import '../../core/socket/socket_service.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../data/models/chat_message_model.dart';
 import '../../widgets/common/error_state.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import '../../config/app_constants.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
@@ -286,9 +287,7 @@ class _ChatScreenState extends State<ChatScreen> {
         },
         builder: (context, state) {
           if (state is ChatLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: DamosDominanceColors.primary),
-            );
+            return const DamosChatShimmer();
           }
 
           if (state is ChatError) {

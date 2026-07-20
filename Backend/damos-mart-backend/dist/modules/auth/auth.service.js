@@ -5,11 +5,38 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const database_1 = __importDefault(require("../../config/database"));
+const env_1 = require("../../config/env");
 const hash_1 = require("../../utils/hash");
 const jwt_1 = require("../../utils/jwt");
 const error_middleware_1 = require("../../middlewares/error.middleware");
-/** Dummy verification code for password reset (development/demo). */
-const RESET_PASSWORD_CODE = '1234';
+const email_service_1 = require("../../services/email.service");
+const reset_token_1 = require("../../utils/reset-token");
+const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000;
+function resolvePasswordResetMethod(client) {
+    const normalizedClient = client?.trim().toLowerCase();
+    if (normalizedClient &&
+        env_1.env.PASSWORD_RESET_LINK_CLIENTS.includes(normalizedClient)) {
+        return 'email';
+    }
+    if (env_1.env.PASSWORD_RESET_DEMO_CODE) {
+        return 'demo';
+    }
+    return 'email';
+}
+function isTokenResetInput(input) {
+    return 'token' in input;
+}
+/**
+ * Computes the refresh token's DB expiry from JWT_REFRESH_EXPIRES_IN (e.g. "30d", "12h"),
+ * so the stored expiry always matches the signed JWT's own lifetime.
+ */
+function refreshTokenExpiresAt() {
+    const match = /^(\d+)\s*(d|h|m|s)$/i.exec(env_1.env.JWT_REFRESH_EXPIRES_IN.trim());
+    const amount = match ? parseInt(match[1], 10) : 7;
+    const unit = match ? match[2].toLowerCase() : 'd';
+    const msPerUnit = { d: 86400000, h: 3600000, m: 60000, s: 1000 };
+    return new Date(Date.now() + amount * (msPerUnit[unit] ?? msPerUnit.d));
+}
 /**
  * Strips password hash from user object.
  */
@@ -48,8 +75,7 @@ class AuthService {
         const accessToken = (0, jwt_1.generateAccessToken)(payload);
         const refreshToken = (0, jwt_1.generateRefreshToken)(payload);
         // Save refresh token in database (expires in 7 days)
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
+        const expiresAt = refreshTokenExpiresAt();
         await database_1.default.refreshToken.create({
             data: {
                 userId: user.id,
@@ -87,8 +113,7 @@ class AuthService {
         };
         const accessToken = (0, jwt_1.generateAccessToken)(payload);
         const refreshToken = (0, jwt_1.generateRefreshToken)(payload);
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
+        const expiresAt = refreshTokenExpiresAt();
         // Remove old refresh tokens for this user to keep db clean
         await database_1.default.refreshToken.deleteMany({
             where: { userId: user.id }
@@ -165,8 +190,7 @@ class AuthService {
         };
         const accessToken = (0, jwt_1.generateAccessToken)(payload);
         const refreshToken = (0, jwt_1.generateRefreshToken)(payload);
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
+        const expiresAt = refreshTokenExpiresAt();
         await database_1.default.refreshToken.deleteMany({
             where: { userId: user.id }
         });
@@ -222,8 +246,7 @@ class AuthService {
         const accessToken = (0, jwt_1.generateAccessToken)(payload);
         const newRefreshToken = (0, jwt_1.generateRefreshToken)(payload);
         // Update in database (rotate refresh token)
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
+        const expiresAt = refreshTokenExpiresAt();
         await database_1.default.refreshToken.delete({
             where: { token },
         });
@@ -253,7 +276,7 @@ class AuthService {
         }
     }
     /**
-     * Validates that an email is registered before password reset.
+     * Sends a password reset link to the user's email.
      */
     async requestPasswordReset(input) {
         const user = await database_1.default.user.findUnique({
@@ -265,16 +288,107 @@ class AuthService {
         if (!user.isActive) {
             throw new error_middleware_1.AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
         }
+        const method = resolvePasswordResetMethod(input.client);
+        if (method === 'demo') {
+            if (!env_1.env.PASSWORD_RESET_DEMO_CODE) {
+                throw new error_middleware_1.AppError(400, 'DEMO_RESET_DISABLED', 'Reset password demo tidak tersedia. Hubungi administrator.');
+            }
+            return {
+                email: user.email,
+                method: 'demo',
+                message: 'Kode verifikasi telah dikirim. Gunakan kode demo untuk melanjutkan reset password.',
+            };
+        }
+        const rawToken = (0, reset_token_1.generateResetToken)();
+        const tokenHash = (0, reset_token_1.hashResetToken)(rawToken);
+        const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+        await database_1.default.passwordResetToken.deleteMany({
+            where: {
+                userId: user.id,
+                usedAt: null,
+            },
+        });
+        await database_1.default.passwordResetToken.create({
+            data: {
+                userId: user.id,
+                tokenHash,
+                expiresAt,
+            },
+        });
+        const resetUrl = `${env_1.env.RESET_PASSWORD_URL}${rawToken}`;
+        await (0, email_service_1.sendPasswordResetEmail)({
+            to: user.email,
+            fullName: user.fullName,
+            resetUrl,
+        });
         return {
             email: user.email,
-            message: 'Kode verifikasi telah dikirim (demo: gunakan 1234)',
+            method: 'email',
+            message: 'Link reset password telah dikirim ke email Anda. Periksa kotak masuk Gmail Anda.',
         };
     }
     /**
-     * Resets password after dummy verification code check.
+     * Validates whether a password reset token is still usable.
+     */
+    async validateResetToken(token) {
+        const tokenHash = (0, reset_token_1.hashResetToken)(token);
+        const savedToken = await database_1.default.passwordResetToken.findUnique({
+            where: { tokenHash },
+        });
+        const valid = !!savedToken &&
+            savedToken.usedAt == null &&
+            savedToken.expiresAt > new Date();
+        return { valid };
+    }
+    /**
+     * Resets password using a one-time token from the reset email link.
      */
     async resetPassword(input) {
-        if (input.code !== RESET_PASSWORD_CODE) {
+        if (isTokenResetInput(input)) {
+            return this.resetPasswordWithToken(input);
+        }
+        return this.resetPasswordWithDemoCode(input);
+    }
+    async resetPasswordWithToken(input) {
+        if (input.newPassword !== input.confirmPassword) {
+            throw new error_middleware_1.AppError(400, 'PASSWORD_MISMATCH', 'Konfirmasi password tidak sesuai');
+        }
+        const tokenHash = (0, reset_token_1.hashResetToken)(input.token);
+        const savedToken = await database_1.default.passwordResetToken.findUnique({
+            where: { tokenHash },
+            include: { user: true },
+        });
+        if (!savedToken || savedToken.usedAt != null || savedToken.expiresAt < new Date()) {
+            throw new error_middleware_1.AppError(400, 'INVALID_TOKEN', 'Link reset password tidak valid atau sudah kedaluwarsa');
+        }
+        const user = savedToken.user;
+        if (!user.isActive) {
+            throw new error_middleware_1.AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+        }
+        const hashed = await (0, hash_1.hashPassword)(input.newPassword);
+        await database_1.default.$transaction([
+            database_1.default.user.update({
+                where: { id: user.id },
+                data: { passwordHash: hashed },
+            }),
+            database_1.default.passwordResetToken.update({
+                where: { id: savedToken.id },
+                data: { usedAt: new Date() },
+            }),
+            database_1.default.refreshToken.deleteMany({
+                where: { userId: user.id },
+            }),
+        ]);
+        return {
+            email: user.email,
+            message: 'Password berhasil diperbarui',
+        };
+    }
+    async resetPasswordWithDemoCode(input) {
+        if (!env_1.env.PASSWORD_RESET_DEMO_CODE) {
+            throw new error_middleware_1.AppError(400, 'DEMO_RESET_DISABLED', 'Reset password demo tidak tersedia');
+        }
+        if (input.code !== env_1.env.PASSWORD_RESET_DEMO_CODE) {
             throw new error_middleware_1.AppError(400, 'INVALID_CODE', 'Kode verifikasi salah');
         }
         const user = await database_1.default.user.findUnique({
@@ -287,13 +401,15 @@ class AuthService {
             throw new error_middleware_1.AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
         }
         const hashed = await (0, hash_1.hashPassword)(input.newPassword);
-        await database_1.default.user.update({
-            where: { id: user.id },
-            data: { passwordHash: hashed },
-        });
-        await database_1.default.refreshToken.deleteMany({
-            where: { userId: user.id },
-        });
+        await database_1.default.$transaction([
+            database_1.default.user.update({
+                where: { id: user.id },
+                data: { passwordHash: hashed },
+            }),
+            database_1.default.refreshToken.deleteMany({
+                where: { userId: user.id },
+            }),
+        ]);
         return {
             email: user.email,
             message: 'Password berhasil diperbarui',

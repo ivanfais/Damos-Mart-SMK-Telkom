@@ -27,7 +27,6 @@ import 'core/notifications/notification_payload.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/socket/socket_service.dart';
 import 'core/utils/damos_system_ui.dart';
-import 'widgets/common/notification_banner.dart';
 
 class DamosMartApp extends StatefulWidget {
   const DamosMartApp({super.key});
@@ -245,25 +244,6 @@ class _DamosMartAppState extends State<DamosMartApp> {
     String? orderNumber,
   }) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (orderId != null) {
-        NotificationBanner.show(
-          title: title,
-          message: message,
-          tapActionLabel: isReady
-              ? 'Ketuk untuk lihat QR Pengambilan'
-              : 'Ketuk untuk lihat detail pesanan',
-          onTap: () {
-            NotificationBanner.hide();
-            _openOrderDetail(orderId);
-          },
-        );
-      } else {
-        NotificationBanner.show(
-          title: title,
-          message: message,
-        );
-      }
-
       final push = PushNotificationService.instance;
       if (!push.isSupported) return;
 
@@ -293,16 +273,6 @@ class _DamosMartAppState extends State<DamosMartApp> {
         'Ada pembaruan pada komplain Anda. Ketuk untuk melihat detail.';
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      NotificationBanner.show(
-        title: title,
-        message: body,
-        tapActionLabel: 'Ketuk untuk lihat detail komplain',
-        onTap: () {
-          NotificationBanner.hide();
-          _openComplaintDetail(complaintId);
-        },
-      );
-
       final push = PushNotificationService.instance;
       if (!push.isSupported) return;
 
@@ -324,16 +294,6 @@ class _DamosMartAppState extends State<DamosMartApp> {
         'Status pesanan Anda telah diperbarui. Ketuk untuk melihat detail.';
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      NotificationBanner.show(
-        title: title,
-        message: body,
-        tapActionLabel: 'Ketuk untuk lihat detail pesanan',
-        onTap: () {
-          NotificationBanner.hide();
-          _openOrderDetail(orderId);
-        },
-      );
-
       final push = PushNotificationService.instance;
       if (!push.isSupported) return;
 
@@ -391,7 +351,6 @@ class _DamosMartAppState extends State<DamosMartApp> {
           } else if (state is Unauthenticated) {
             SocketService.instance.disconnect();
             _socketListenersRegistered = false;
-            NotificationBanner.hide();
             context.read<NotificationCubit>().reset();
             context.read<CartCubit>().resetSession();
             context.read<FavoriteCubit>().resetSession();

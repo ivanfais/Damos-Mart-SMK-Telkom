@@ -22,7 +22,6 @@ class CatalogScreen extends StatefulWidget {
 
 class _CatalogScreenState extends State<CatalogScreen> {
   final ScrollController _scrollController = ScrollController();
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -31,11 +30,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
     final productCubit = context.read<ProductCubit>();
     final state = productCubit.state;
-    if (state is ProductCatalogLoaded) {
-      _searchController.text = state.searchQuery;
-    } else if (state is! ProductLoading) {
+    if (state is ProductCatalogLoaded && state.searchQuery.isNotEmpty) {
+      productCubit.loadCatalog(categoryId: state.selectedCategoryId);
+    } else if (state is! ProductCatalogLoaded && state is! ProductLoading) {
       productCubit.loadCatalog();
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      GoRouter.of(context).routerDelegate.addListener(_onRouteChanged);
+    });
 
     final cartState = context.read<CartCubit>().state;
     if (cartState is! CartLoaded) {
@@ -52,8 +56,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _searchController.dispose();
+    GoRouter.of(context).routerDelegate.removeListener(_onRouteChanged);
     super.dispose();
+  }
+
+  void _onRouteChanged() {
+    if (!mounted) return;
+    final location =
+        GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
+    if (location != '/catalog') return;
+
+    final cubit = context.read<ProductCubit>();
+    final state = cubit.state;
+    if (state is ProductCatalogLoaded && state.searchQuery.isNotEmpty) {
+      cubit.loadCatalog(categoryId: state.selectedCategoryId);
+    }
   }
 
   void _onScroll() {
@@ -63,8 +80,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
-  void _triggerSearch(String query) {
-    context.read<ProductCubit>().searchProducts(query.trim());
+  Widget _buildHeader() {
+    return const DamosCatalogHeader();
   }
 
   String _chipLabelForCategoryId(String selectedCategoryId, List<CategoryModel> categories) {
@@ -105,13 +122,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return match?.id ?? '';
   }
 
-  Widget _buildHeader() {
-    return DamosCatalogHeader(
-      searchController: _searchController,
-      onSearchSubmitted: _triggerSearch,
-    );
-  }
-
   Widget _buildCategorySection(String selectedCategoryId, List<CategoryModel> categories) {
     final selectedChip = _chipLabelForCategoryId(selectedCategoryId, categories);
 
@@ -139,7 +149,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
             subtitle: 'Coba cari dengan kata kunci lain ya!',
             actionButtonText: 'Reset Filter',
             onActionButtonPressed: () {
-              _searchController.clear();
               context.read<ProductCubit>().loadCatalog();
             },
           ),
@@ -161,25 +170,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             if (index >= state.products.length) {
-              return SizedBox(
+              return const LoadingShimmer(
                 width: DamosCatalogProductCard.cardWidth,
                 height: DamosCatalogProductCard.cardHeight,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: DamosDominanceColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
+                borderRadius: 8,
               );
             }
 
@@ -224,29 +218,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(child: _buildHeader()),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(top: 16, bottom: 16),
-              child: SizedBox(
-                height: 40,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: DamosDominanceColors.primary,
-                  ),
-                ),
-              ),
-            ),
-          ),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                mainAxisExtent: DamosCatalogProductCard.cardHeight,
-              ),
+              gridDelegate: DamosCatalogProductGridShimmer.gridDelegate,
               delegate: SliverChildBuilderDelegate(
                 (_, __) => const LoadingShimmer(
                   width: DamosCatalogProductCard.cardWidth,
@@ -287,14 +262,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DamosDominanceColors.screenBackground,
-      body: BlocConsumer<ProductCubit, ProductState>(
-        listener: (context, state) {
-          if (state is ProductCatalogLoaded) {
-            if (_searchController.text != state.searchQuery) {
-              _searchController.text = state.searchQuery;
-            }
-          }
-        },
+      body: BlocBuilder<ProductCubit, ProductState>(
         builder: (context, state) {
           if (state is ProductCatalogLoaded) {
             return RefreshIndicator(

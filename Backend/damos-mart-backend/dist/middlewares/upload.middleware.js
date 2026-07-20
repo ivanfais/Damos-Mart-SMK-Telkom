@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadCooperative = exports.uploadCategory = exports.uploadReview = exports.uploadProduct = exports.uploadAvatar = void 0;
+exports.uploadComplaint = exports.uploadCooperative = exports.uploadCategory = exports.uploadReview = exports.uploadProduct = exports.uploadAvatar = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -64,6 +64,11 @@ exports.uploadCategory = (0, multer_1.default)({
 });
 exports.uploadCooperative = (0, multer_1.default)({
     storage: getStorage('cooperative'),
+    limits: { fileSize: env_1.env.MAX_FILE_SIZE },
+    fileFilter,
+});
+exports.uploadComplaint = (0, multer_1.default)({
+    storage: getStorage('complaints'),
     limits: { fileSize: env_1.env.MAX_FILE_SIZE },
     fileFilter,
 });

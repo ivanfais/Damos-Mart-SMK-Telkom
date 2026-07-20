@@ -14,6 +14,7 @@ import '../../widgets/common/damos_text_field.dart';
 import '../../widgets/common/damos_success_banner.dart';
 import '../../widgets/common/pop_up_alert.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/loading_shimmer.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -362,9 +363,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 width: _avatarSize,
                                 height: _avatarSize,
                                 fit: BoxFit.cover,
-                                placeholder: (_, __) => const Center(
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
+                                placeholder: (_, __) => const DamosImagePlaceholderShimmer(),
                                 errorWidget: (_, __, ___) => _buildAvatarPlaceholder(),
                               )
                             : _buildAvatarPlaceholder(),

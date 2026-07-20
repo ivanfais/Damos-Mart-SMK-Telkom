@@ -24,13 +24,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       final token = await SecureStorage.instance.getAccessToken();
-      final userData = await SecureStorage.instance.getUserData();
+      final refreshToken = await SecureStorage.instance.getRefreshToken();
+      var userData = await SecureStorage.instance.getUserData();
 
-      if (token != null && token.isNotEmpty && userData != null) {
-        emit(Authenticated(UserModel.fromJson(userData)));
-      } else {
+      final hasSession = (token != null && token.isNotEmpty) ||
+          (refreshToken != null && refreshToken.isNotEmpty);
+
+      if (!hasSession) {
         emit(Unauthenticated());
+        return;
       }
+
+      if (userData == null) {
+        try {
+          final user = await _repository.getCurrentUser();
+          userData = user.toJson();
+          await SecureStorage.instance.saveUserData(userData);
+        } catch (_) {
+          emit(Unauthenticated());
+          return;
+        }
+      }
+
+      emit(Authenticated(UserModel.fromJson(userData)));
     } catch (e) {
       emit(Unauthenticated());
     }

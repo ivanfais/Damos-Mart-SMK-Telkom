@@ -5,6 +5,7 @@ import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_model.dart';
 import '../../theme/damos_dominance_colors.dart';
+import '../common/loading_shimmer.dart';
 
 /// Product card for Katalog grid — matches Beranda card typography.
 class DamosCatalogProductCard extends StatelessWidget {
@@ -60,16 +61,7 @@ class DamosCatalogProductCard extends StatelessWidget {
                                 ? CachedNetworkImage(
                                     imageUrl: ApiConfig.imageUrl(product.imageUrl!),
                                     fit: BoxFit.cover,
-                                    placeholder: (_, __) => const Center(
-                                      child: SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: DamosDominanceColors.primary,
-                                        ),
-                                      ),
-                                    ),
+                                    placeholder: (_, __) => const DamosImagePlaceholderShimmer(),
                                     errorWidget: (_, __, ___) => const Center(
                                       child: Icon(
                                         Icons.shopping_bag_outlined,

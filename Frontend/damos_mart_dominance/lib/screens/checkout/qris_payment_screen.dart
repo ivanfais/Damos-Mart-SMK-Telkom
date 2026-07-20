@@ -12,6 +12,7 @@ import '../../core/utils/currency_formatter.dart';
 import '../../data/models/order_model.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/pop_up_alert.dart';
 
 class _QrisStyle {
@@ -739,9 +740,7 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
           final order = _order ?? (state is OrderDetailLoaded ? state.order : null);
 
           if (order == null) {
-            return const Center(
-              child: CircularProgressIndicator(color: DamosDominanceColors.primary),
-            );
+            return const DamosOrderDetailShimmer();
           }
 
           if (_order == null) {

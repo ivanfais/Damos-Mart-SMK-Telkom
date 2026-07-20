@@ -8,6 +8,7 @@ import '../../core/storage/prefs_storage.dart';
 import '../../data/models/user_model.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/user_avatar.dart';
 import '../../widgets/profile/damos_logout_confirm_dialog.dart';
 
@@ -57,11 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
             if (state is! Authenticated) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: DamosDominanceColors.primary,
-                ),
-              );
+              return const DamosProfileShimmer();
             }
 
             final user = state.user;

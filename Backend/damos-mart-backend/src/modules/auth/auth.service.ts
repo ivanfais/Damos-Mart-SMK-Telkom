@@ -8,10 +8,32 @@ import {
   TokenPayload,
 } from '../../utils/jwt';
 import { AppError } from '../../middlewares/error.middleware';
-import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
+import { sendPasswordResetEmail } from '../../services/email.service';
+import { generateResetToken, hashResetToken } from '../../utils/reset-token';
+import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPasswordInput, ResetPasswordTokenInput, ResetPasswordDemoInput } from './auth.schema';
 
-/** Dummy verification code for password reset (development/demo). */
-const RESET_PASSWORD_CODE = '1234';
+const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000;
+
+function resolvePasswordResetMethod(client?: string): 'email' | 'demo' {
+  const normalizedClient = client?.trim().toLowerCase();
+
+  if (
+    normalizedClient &&
+    env.PASSWORD_RESET_LINK_CLIENTS.includes(normalizedClient)
+  ) {
+    return 'email';
+  }
+
+  if (env.PASSWORD_RESET_DEMO_CODE) {
+    return 'demo';
+  }
+
+  return 'email';
+}
+
+function isTokenResetInput(input: ResetPasswordInput): input is ResetPasswordTokenInput {
+  return 'token' in input;
+}
 
 /**
  * Computes the refresh token's DB expiry from JWT_REFRESH_EXPIRES_IN (e.g. "30d", "12h"),
@@ -306,7 +328,7 @@ export class AuthService {
   }
 
   /**
-   * Validates that an email is registered before password reset.
+   * Sends a password reset link to the user's email.
    */
   async requestPasswordReset(input: ForgotPasswordInput) {
     const user = await prisma.user.findUnique({
@@ -321,17 +343,133 @@ export class AuthService {
       throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
     }
 
+    const method = resolvePasswordResetMethod(input.client);
+
+    if (method === 'demo') {
+      if (!env.PASSWORD_RESET_DEMO_CODE) {
+        throw new AppError(
+          400,
+          'DEMO_RESET_DISABLED',
+          'Reset password demo tidak tersedia. Hubungi administrator.',
+        );
+      }
+
+      return {
+        email: user.email,
+        method: 'demo' as const,
+        message: 'Kode verifikasi telah dikirim. Gunakan kode demo untuk melanjutkan reset password.',
+      };
+    }
+
+    const rawToken = generateResetToken();
+    const tokenHash = hashResetToken(rawToken);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+    });
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    const resetUrl = `${env.RESET_PASSWORD_URL}${rawToken}`;
+    await sendPasswordResetEmail({
+      to: user.email,
+      fullName: user.fullName,
+      resetUrl,
+    });
+
     return {
       email: user.email,
-      message: 'Kode verifikasi telah dikirim (demo: gunakan 1234)',
+      method: 'email' as const,
+      message: 'Link reset password telah dikirim ke email Anda. Periksa kotak masuk Gmail Anda.',
     };
   }
 
   /**
-   * Resets password after dummy verification code check.
+   * Validates whether a password reset token is still usable.
+   */
+  async validateResetToken(token: string) {
+    const tokenHash = hashResetToken(token);
+    const savedToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    });
+
+    const valid =
+      !!savedToken &&
+      savedToken.usedAt == null &&
+      savedToken.expiresAt > new Date();
+
+    return { valid };
+  }
+
+  /**
+   * Resets password using a one-time token from the reset email link.
    */
   async resetPassword(input: ResetPasswordInput) {
-    if (input.code !== RESET_PASSWORD_CODE) {
+    if (isTokenResetInput(input)) {
+      return this.resetPasswordWithToken(input);
+    }
+
+    return this.resetPasswordWithDemoCode(input);
+  }
+
+  private async resetPasswordWithToken(input: ResetPasswordTokenInput) {
+    if (input.newPassword !== input.confirmPassword) {
+      throw new AppError(400, 'PASSWORD_MISMATCH', 'Konfirmasi password tidak sesuai');
+    }
+
+    const tokenHash = hashResetToken(input.token);
+    const savedToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!savedToken || savedToken.usedAt != null || savedToken.expiresAt < new Date()) {
+      throw new AppError(400, 'INVALID_TOKEN', 'Link reset password tidak valid atau sudah kedaluwarsa');
+    }
+
+    const user = savedToken.user;
+    if (!user.isActive) {
+      throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+    }
+
+    const hashed = await hashPassword(input.newPassword);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashed },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: savedToken.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: user.id },
+      }),
+    ]);
+
+    return {
+      email: user.email,
+      message: 'Password berhasil diperbarui',
+    };
+  }
+
+  private async resetPasswordWithDemoCode(input: ResetPasswordDemoInput) {
+    if (!env.PASSWORD_RESET_DEMO_CODE) {
+      throw new AppError(400, 'DEMO_RESET_DISABLED', 'Reset password demo tidak tersedia');
+    }
+
+    if (input.code !== env.PASSWORD_RESET_DEMO_CODE) {
       throw new AppError(400, 'INVALID_CODE', 'Kode verifikasi salah');
     }
 
@@ -349,14 +487,15 @@ export class AuthService {
 
     const hashed = await hashPassword(input.newPassword);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash: hashed },
-    });
-
-    await prisma.refreshToken.deleteMany({
-      where: { userId: user.id },
-    });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashed },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: user.id },
+      }),
+    ]);
 
     return {
       email: user.email,

@@ -81,7 +81,7 @@ class DioClient {
               // Perform token refresh call
               final refreshResponse = await _dio.post(
                 ApiConfig.refreshToken,
-                data: {'token': refreshToken},
+                data: {'refreshToken': refreshToken},
               );
 
               final success = refreshResponse.data['success'] ?? false;
@@ -123,8 +123,13 @@ class DioClient {
                 }
               }
             } catch (e) {
-              await SecureStorage.instance.clearAll();
-              SessionExpiredNotifier.instance.notify();
+              final statusCode = e is DioException ? e.response?.statusCode : null;
+              final isAuthFailure =
+                  statusCode == 401 || statusCode == 403 || statusCode == 400;
+              if (isAuthFailure) {
+                await SecureStorage.instance.clearAll();
+                SessionExpiredNotifier.instance.notify();
+              }
               return handler.next(
                 DioException(
                   requestOptions: error.requestOptions,

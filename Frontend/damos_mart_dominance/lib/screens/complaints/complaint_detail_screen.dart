@@ -10,6 +10,7 @@ import '../../data/repositories/complaint_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
 import '../../widgets/common/error_state.dart';
+import '../../widgets/common/loading_shimmer.dart';
 
 class ComplaintDetailScreen extends StatefulWidget {
   const ComplaintDetailScreen({
@@ -403,11 +404,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           ),
           Expanded(
             child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: DamosDominanceColors.primary,
-                    ),
-                  )
+                ? const DamosOrderDetailShimmer()
                 : _error != null
                     ? ErrorState(
                         message: _error!,

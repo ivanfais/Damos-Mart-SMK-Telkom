@@ -17,6 +17,7 @@ import '../../core/notifications/complaint_realtime_service.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
 import '../../widgets/common/error_state.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/order/damos_pickup_qr_card.dart';
 import '../../widgets/complaints/complaint_help_card.dart';
 
@@ -621,9 +622,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             return _buildContent(state.order);
           }
 
-          return const Center(
-            child: CircularProgressIndicator(color: DamosDominanceColors.primary),
-          );
+          return const DamosOrderDetailShimmer();
         },
       ),
     );

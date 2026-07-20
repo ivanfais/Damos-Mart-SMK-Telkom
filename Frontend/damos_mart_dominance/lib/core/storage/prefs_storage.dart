@@ -41,4 +41,35 @@ class PrefsStorage {
   Future<void> clearSelectedDiscVariant() async {
     await _prefs.remove(AppConstants.keySelectedDiscVariant);
   }
+
+  static const int _maxSearchHistory = 10;
+
+  List<String> getSearchHistory() {
+    return _prefs.getStringList(AppConstants.keySearchHistory) ?? [];
+  }
+
+  Future<void> addSearchHistory(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+
+    final history = getSearchHistory()
+      ..removeWhere((item) => item.toLowerCase() == trimmed.toLowerCase());
+    history.insert(0, trimmed);
+
+    if (history.length > _maxSearchHistory) {
+      history.removeRange(_maxSearchHistory, history.length);
+    }
+
+    await _prefs.setStringList(AppConstants.keySearchHistory, history);
+  }
+
+  Future<void> removeSearchHistory(String query) async {
+    final history = getSearchHistory()
+      ..removeWhere((item) => item == query);
+    await _prefs.setStringList(AppConstants.keySearchHistory, history);
+  }
+
+  Future<void> clearSearchHistory() async {
+    await _prefs.remove(AppConstants.keySearchHistory);
+  }
 }

@@ -10,6 +10,7 @@ import '../../data/models/notification_model.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
 import '../../widgets/common/error_state.dart';
+import '../../widgets/common/loading_shimmer.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -116,11 +117,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 }
 
                 if (state is NotificationLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: DamosDominanceColors.primary,
-                    ),
-                  );
+                  return const DamosListCardShimmer();
                 }
 
                 if (state is! NotificationLoaded) {

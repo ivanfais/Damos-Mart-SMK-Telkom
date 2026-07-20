@@ -29,6 +29,19 @@ const envSchema = z.object({
   RESET_PASSWORD_URL: z
     .string()
     .default('http://localhost:8080/reset-password?token='),
+  /** App clients that use email reset links, e.g. `dominance`. Others use demo code. */
+  PASSWORD_RESET_LINK_CLIENTS: z
+    .string()
+    .optional()
+    .default('dominance')
+    .transform((val) =>
+      val
+        .split(',')
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  /** Demo verification code for non-link clients. Set empty to disable demo flow. */
+  PASSWORD_RESET_DEMO_CODE: z.string().default('1234'),
 });
 
 const parsed = envSchema.safeParse(process.env);

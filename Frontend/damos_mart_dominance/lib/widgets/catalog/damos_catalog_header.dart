@@ -2,19 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/cart/cart_cubit.dart';
+import '../../core/search/search_navigation.dart';
 import '../../core/utils/cart_navigation.dart';
 import '../../core/utils/damos_system_ui.dart';
 import '../../theme/damos_dominance_colors.dart';
+import '../../widgets/search/damos_search_bar_trigger.dart';
 
 class DamosCatalogHeader extends StatelessWidget {
-  const DamosCatalogHeader({
-    super.key,
-    required this.searchController,
-    required this.onSearchSubmitted,
-  });
-
-  final TextEditingController searchController;
-  final ValueChanged<String> onSearchSubmitted;
+  const DamosCatalogHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -42,44 +37,8 @@ class DamosCatalogHeader extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.search,
-                          color: DamosDominanceColors.textHint,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            controller: searchController,
-                            textInputAction: TextInputAction.search,
-                            onSubmitted: onSearchSubmitted,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: DamosDominanceColors.textPrimary,
-                            ),
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                              border: InputBorder.none,
-                              hintText: 'Cari produk...',
-                              hintStyle: TextStyle(
-                                color: DamosDominanceColors.textHint,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: DamosSearchBarTrigger(
+                    onTap: () => SearchNavigation.open(context),
                   ),
                 ),
                 const SizedBox(width: 10),

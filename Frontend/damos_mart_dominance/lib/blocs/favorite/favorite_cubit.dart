@@ -94,6 +94,9 @@ class FavoriteCubit extends Cubit<FavoriteState> {
   final FavoriteRepository _repository;
   final ProductRepository _productRepository;
 
+  List<ProductModel> _cachedFavorites = [];
+  int _requestId = 0;
+
   Set<String> get _favoriteIds {
     final state = this.state;
     if (state is FavoriteIdsLoaded) return state.favoriteIds;
@@ -117,29 +120,80 @@ class FavoriteCubit extends Cubit<FavoriteState> {
   Future<void> loadFavorites({
     String? categoryId,
     String? search,
+    bool refresh = false,
   }) async {
+    final currentState = state;
+    final selectedCategoryId = categoryId ??
+        (currentState is FavoriteListLoaded ? currentState.selectedCategoryId : '');
+    final searchQuery = search ??
+        (currentState is FavoriteListLoaded ? currentState.searchQuery : '');
+
+    if (!refresh &&
+        _cachedFavorites.isNotEmpty &&
+        currentState is FavoriteListLoaded) {
+      emit(
+        currentState.copyWith(
+          selectedCategoryId: selectedCategoryId,
+          searchQuery: searchQuery,
+          products: _filteredFavorites(selectedCategoryId, searchQuery),
+        ),
+      );
+      return;
+    }
+
     final currentIds = _favoriteIds;
-    emit(FavoriteListLoading(currentIds));
+    final requestId = ++_requestId;
+
+    if (currentState is! FavoriteListLoaded) {
+      emit(FavoriteListLoading(currentIds));
+    } else {
+      emit(
+        currentState.copyWith(
+          selectedCategoryId: selectedCategoryId,
+          searchQuery: searchQuery,
+        ),
+      );
+    }
 
     try {
       final categories = await _productRepository.getCategories();
-      final products = await _repository.getFavorites(
-        categoryId: categoryId,
-        search: search,
-      );
+      if (requestId != _requestId) return;
+
+      if (_cachedFavorites.isEmpty || refresh) {
+        _cachedFavorites = await _repository.getFavorites();
+        if (requestId != _requestId) return;
+      }
 
       emit(
         FavoriteListLoaded(
-          favoriteIds: products.map((p) => p.id).toSet(),
-          products: products,
+          favoriteIds: _cachedFavorites.map((p) => p.id).toSet(),
+          products: _filteredFavorites(selectedCategoryId, searchQuery),
           categories: categories,
-          selectedCategoryId: categoryId ?? '',
-          searchQuery: search ?? '',
+          selectedCategoryId: selectedCategoryId,
+          searchQuery: searchQuery,
         ),
       );
     } catch (e) {
+      if (requestId != _requestId) return;
       emit(FavoriteError(e.toString(), favoriteIds: currentIds));
     }
+  }
+
+  List<ProductModel> _filteredFavorites(String categoryId, String search) {
+    var items = List<ProductModel>.from(_cachedFavorites);
+
+    if (categoryId.isNotEmpty) {
+      items = items.where((product) => product.categoryId == categoryId).toList();
+    }
+
+    final query = search.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      items = items
+          .where((product) => product.name.toLowerCase().contains(query))
+          .toList();
+    }
+
+    return items;
   }
 
   Future<bool> toggleFavorite(String productId) async {
@@ -172,12 +226,15 @@ class FavoriteCubit extends Cubit<FavoriteState> {
   }
 
   void _emitIds(Set<String> ids) {
+    _cachedFavorites =
+        _cachedFavorites.where((product) => ids.contains(product.id)).toList();
+
     final state = this.state;
     if (state is FavoriteListLoaded) {
       emit(
         state.copyWith(
           favoriteIds: ids,
-          products: state.products.where((p) => ids.contains(p.id)).toList(),
+          products: _filteredFavorites(state.selectedCategoryId, state.searchQuery),
         ),
       );
       return;
@@ -186,6 +243,8 @@ class FavoriteCubit extends Cubit<FavoriteState> {
   }
 
   void resetSession() {
+    _cachedFavorites = [];
+    _requestId = 0;
     emit(FavoriteInitial());
   }
 }

@@ -260,20 +260,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildSectionTitle('Preferensi Aplikasi'),
                             _buildMenuCard([
                               _buildMenuTile(
-                                icon: ProfileMenuIcons.language,
-                                title: 'Bahasa',
-                                subtitle: 'Bahasa Indonesia',
-                                onTap: () {
-                                  PopUpAlert.show(
-                                    context: context,
-                                    title: 'Bahasa',
-                                    description: 'Bahasa aplikasi saat ini: Bahasa Indonesia.',
-                                    isError: false,
-                                  );
-                                },
-                              ),
-                              _buildDivider(),
-                              _buildMenuTile(
                                 icon: ProfileMenuIcons.notifications,
                                 title: 'Notifikasi',
                                 onTap: () => context.go('/notifications?from=profile'),

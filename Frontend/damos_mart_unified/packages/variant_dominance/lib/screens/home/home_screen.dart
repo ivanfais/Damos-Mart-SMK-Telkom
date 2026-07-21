@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../blocs/product/product_cubit.dart';
 import '../../blocs/queue/queue_cubit.dart';
 import '../../blocs/cart/cart_cubit.dart';
 import '../../blocs/favorite/favorite_cubit.dart';
@@ -26,7 +25,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ProductRepository _productRepository = ProductRepository();
   final OrderRepository _orderRepository = OrderRepository();
-  final TextEditingController _searchController = TextEditingController();
 
   List<ProductModel> _buyAgainProducts = [];
   List<ProductModel> _recommendedProducts = [];
@@ -39,12 +37,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadHomeData();
     context.read<QueueCubit>().loadActiveQueues();
     context.read<CartCubit>().loadCart();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadHomeData() async {
@@ -108,13 +100,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _submitSearch(String query) {
-    if (query.trim().isNotEmpty) {
-      context.read<ProductCubit>().searchProducts(query.trim());
-      context.go('/catalog');
-    }
-  }
-
   List<QueueModel> _activeQueues(QueueState state) {
     if (state is! QueueActiveLoaded) return [];
 
@@ -153,10 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DamosHomeHeader(
-                searchController: _searchController,
-                onSearchSubmitted: _submitSearch,
-              ),
+              const DamosHomeHeader(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: BlocBuilder<QueueCubit, QueueState>(

@@ -5,6 +5,7 @@ import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_model.dart';
 import '../../theme/damos_dominance_colors.dart';
+import '../common/loading_shimmer.dart';
 
 /// Horizontal product card for Beranda carousels — 165 x 230.
 class DamosHomeProductCard extends StatelessWidget {
@@ -27,7 +28,6 @@ class DamosHomeProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasStock = ProductStockUtils.hasAvailableStock(product);
-    final displayImageUrl = product.displayImageUrl();
 
     return SizedBox(
       width: cardWidth,
@@ -54,20 +54,11 @@ class DamosHomeProductCard extends StatelessWidget {
                         child: SizedBox(
                           width: cardWidth - 20,
                           height: 130,
-                          child: displayImageUrl != null && displayImageUrl.isNotEmpty
+                          child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                               ? CachedNetworkImage(
-                                  imageUrl: ApiConfig.imageUrl(displayImageUrl),
+                                  imageUrl: ApiConfig.imageUrl(product.imageUrl!),
                                   fit: BoxFit.cover,
-                                  placeholder: (_, __) => const Center(
-                                    child: SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: DamosDominanceColors.primary,
-                                      ),
-                                    ),
-                                  ),
+                                  placeholder: (_, __) => const DamosImagePlaceholderShimmer(),
                                   errorWidget: (_, __, ___) => const Center(
                                     child: Icon(
                                       Icons.shopping_bag_outlined,

@@ -6,6 +6,7 @@ import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/auth/damos_auth_app_bar.dart';
 import '../../widgets/auth/damos_auth_text_field.dart';
 import '../../widgets/auth/password_requirements.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/pop_up_alert.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -105,9 +106,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isValidating) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: DamosDominanceColors.background,
-        body: Center(child: CircularProgressIndicator()),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: const [
+              SizedBox(height: 48),
+              LoadingShimmer(width: 180, height: 28, borderRadius: 8),
+              SizedBox(height: 24),
+              LoadingShimmer(width: double.infinity, height: 48, borderRadius: 8),
+              SizedBox(height: 16),
+              LoadingShimmer(width: double.infinity, height: 48, borderRadius: 8),
+              SizedBox(height: 16),
+              LoadingShimmer(width: double.infinity, height: 48, borderRadius: 8),
+            ],
+          ),
+        ),
       );
     }
 

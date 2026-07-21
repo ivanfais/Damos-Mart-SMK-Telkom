@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/repositories/queue_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
+import '../../widgets/common/loading_shimmer.dart';
 
 /// Legacy queue routes and QUEUE_READY notification refs redirect to order detail.
 class QueueRouteRedirectScreen extends StatefulWidget {
@@ -38,9 +39,7 @@ class _QueueRouteRedirectScreenState extends State<QueueRouteRedirectScreen> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: DamosDominanceColors.screenBackground,
-      body: Center(
-        child: CircularProgressIndicator(color: DamosDominanceColors.primary),
-      ),
+      body: DamosOrderDetailShimmer(),
     );
   }
 }

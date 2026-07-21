@@ -5,6 +5,7 @@ import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/product_grid_layout.dart';
 import '../../core/utils/product_stock_utils.dart';
 import '../../data/models/product_model.dart';
+import '../common/loading_shimmer.dart';
 
 /// Compact product card for home/catalog grids.
 class DamosProductGridCard extends StatelessWidget {
@@ -30,25 +31,18 @@ class DamosProductGridCard extends StatelessWidget {
   static const Color _star = Color(0xFFFFC107);
 
   Widget _buildProductImage(double height) {
-    final displayImageUrl = product.displayImageUrl();
     return SizedBox(
       height: height,
       width: double.infinity,
       child: ColoredBox(
         color: _bgGrey,
-        child: displayImageUrl != null && displayImageUrl.isNotEmpty
+        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
             ? CachedNetworkImage(
-                imageUrl: ApiConfig.imageUrl(displayImageUrl),
+                imageUrl: ApiConfig.imageUrl(product.imageUrl!),
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: height,
-                placeholder: (_, __) => const Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
-                  ),
-                ),
+                placeholder: (_, __) => const DamosImagePlaceholderShimmer(),
                 errorWidget: (_, __, ___) => const Center(
                   child: Icon(Icons.shopping_bag_outlined, color: _hint, size: 30),
                 ),

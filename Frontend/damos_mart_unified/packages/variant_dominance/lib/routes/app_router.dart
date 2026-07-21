@@ -14,7 +14,6 @@ import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
-import '../screens/auth/forgot_password_verify_screen.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/catalog/catalog_screen.dart';
@@ -43,6 +42,8 @@ import '../screens/order/order_detail_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/review/review_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
+import '../screens/search/search_screen.dart';
+import '../core/search/search_navigation.dart';
 
 // Shell Navigation
 import '../widgets/common/damos_bottom_nav.dart';
@@ -91,7 +92,6 @@ class AppRouter {
         final isAuthPath = path == '/login' ||
             path == '/register' ||
             path == '/forgot-password' ||
-            path == '/forgot-password/verify' ||
             path == '/reset-password';
 
         if (isSplash || isDiscPicker) {
@@ -140,14 +140,6 @@ class AppRouter {
       GoRoute(
         path: '/forgot-password',
         pageBuilder: (context, state) => _page(state, const ForgotPasswordScreen()),
-      ),
-      GoRoute(
-        path: '/forgot-password/verify',
-        pageBuilder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>?;
-          final email = extra?['email'] as String? ?? '';
-          return _page(state, ForgotPasswordVerifyScreen(email: email));
-        },
       ),
       GoRoute(
         path: '/reset-password',
@@ -226,6 +218,22 @@ class AppRouter {
         path: '/favorites',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) => _page(state, const FavoritesScreen()),
+      ),
+
+      GoRoute(
+        path: '/search',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final scopeName = state.uri.queryParameters['scope'] ?? 'catalog';
+          final scope = scopeName == 'favorites'
+              ? SearchScope.favorites
+              : SearchScope.catalog;
+          final initialQuery = state.uri.queryParameters['q'];
+          return _page(
+            state,
+            SearchScreen(scope: scope, initialQuery: initialQuery),
+          );
+        },
       ),
 
       GoRoute(

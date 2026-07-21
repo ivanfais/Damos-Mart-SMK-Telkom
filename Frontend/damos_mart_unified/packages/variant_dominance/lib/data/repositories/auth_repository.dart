@@ -92,6 +92,12 @@ class AuthRepository {
     );
   }
 
+  Future<UserModel> getCurrentUser() async {
+    final response = await _client.get(ApiConfig.userMe);
+    final data = response.data['data'] as Map<String, dynamic>;
+    return UserModel.fromJson(data);
+  }
+
   Future<String> forgotPassword(String email) async {
     final response = await _client.post(
       ApiConfig.forgotPassword,

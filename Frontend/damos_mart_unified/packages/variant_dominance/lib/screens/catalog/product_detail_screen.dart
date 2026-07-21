@@ -16,6 +16,7 @@ import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/error_state.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/product/damos_fly_to_cart.dart';
 import '../../widgets/product/damos_product_purchase_sheet.dart';
 import '../../widgets/product/damos_similar_product_card.dart';
@@ -106,7 +107,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       context: context,
       fromKey: _productImageKey,
       toKey: _cartIconKey,
-      imageUrl: product.displayImageUrl(),
+      imageUrl: product.imageUrl,
       onComplete: () {
         if (!mounted) return;
         setState(() {
@@ -174,7 +175,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildImageHeader(ProductModel product, bool isOutOfStock) {
     final topPadding = MediaQuery.paddingOf(context).top;
-    final displayImageUrl = product.displayImageUrl();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: DamosSystemUi.greenHeader,
@@ -184,13 +184,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             key: _productImageKey,
             height: 300,
             width: double.infinity,
-            child: displayImageUrl != null && displayImageUrl.isNotEmpty
+            child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                 ? CachedNetworkImage(
-                    imageUrl: ApiConfig.imageUrl(displayImageUrl),
+                    imageUrl: ApiConfig.imageUrl(product.imageUrl!),
                     fit: BoxFit.cover,
                     placeholder: (_, __) => const ColoredBox(
                       color: Color(0xFFF3F4F6),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: DamosImagePlaceholderShimmer(),
                     ),
                     errorWidget: (_, __, ___) => const ColoredBox(
                       color: Color(0xFFF3F4F6),
@@ -434,7 +434,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           SizedBox(
             height: 150,
             child: _loadingSimilar
-                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                ? ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: 3,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (_, __) => const LoadingShimmer(
+                      width: 120,
+                      height: 150,
+                      borderRadius: 8,
+                    ),
+                  )
                 : _similarProducts.isEmpty
                     ? const Text(
                         'Belum ada produk serupa',
@@ -618,7 +627,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         },
         builder: (context, state) {
           if (state is ProductLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const ProductDetailShimmer();
           }
 
           if (state is ProductError) {

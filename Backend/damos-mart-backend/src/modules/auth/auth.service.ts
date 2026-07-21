@@ -408,11 +408,11 @@ export class AuthService {
       });
     } catch (error) {
       console.error('[auth] Failed to send password reset link email:', error);
-      throw new AppError(
-        500,
-        'EMAIL_SEND_FAILED',
-        'Gagal mengirim link reset password ke email. Coba lagi nanti.',
-      );
+      const detail =
+        error instanceof Error && error.message === 'SMTP_SEND_TIMEOUT'
+          ? 'Koneksi ke server email terlalu lama. Coba lagi atau cek konfigurasi SMTP di Railway.'
+          : 'Gagal mengirim link reset password ke email. Coba lagi nanti.';
+      throw new AppError(500, 'EMAIL_SEND_FAILED', detail);
     }
 
     return {
@@ -456,11 +456,11 @@ export class AuthService {
       });
     } catch (error) {
       console.error('[auth] Failed to send password reset code email:', error);
-      throw new AppError(
-        500,
-        'EMAIL_SEND_FAILED',
-        'Gagal mengirim kode verifikasi ke email. Coba lagi nanti.',
-      );
+      const detail =
+        error instanceof Error && error.message === 'SMTP_SEND_TIMEOUT'
+          ? 'Koneksi ke server email terlalu lama. Coba lagi atau cek konfigurasi SMTP di Railway.'
+          : 'Gagal mengirim kode verifikasi ke email. Coba lagi nanti.';
+      throw new AppError(500, 'EMAIL_SEND_FAILED', detail);
     }
 
     const message = isSmtpConfigured()

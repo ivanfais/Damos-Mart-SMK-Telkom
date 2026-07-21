@@ -1,6 +1,10 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
+const SMTP_CONNECTION_TIMEOUT_MS = 10_000;
+const SMTP_SOCKET_TIMEOUT_MS = 15_000;
+const SMTP_SEND_TIMEOUT_MS = 18_000;
+
 export function isSmtpConfigured(): boolean {
   return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
 }
@@ -18,7 +22,38 @@ function createTransport() {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS,
     },
+    connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+    greetingTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
   });
+}
+
+async function sendMailWithTimeout(options: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<void> {
+  const transport = createTransport();
+  if (!transport) {
+    throw new Error('SMTP_NOT_CONFIGURED');
+  }
+
+  await Promise.race([
+    transport.sendMail({
+      from: env.SMTP_FROM,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    }),
+    new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error('SMTP_SEND_TIMEOUT')),
+        SMTP_SEND_TIMEOUT_MS,
+      );
+    }),
+  ]);
 }
 
 export async function sendPasswordResetEmail(input: {
@@ -55,16 +90,14 @@ export async function sendPasswordResetEmail(input: {
     <p>Salam,<br/>Tim Damos Mart</p>
   `;
 
-  const transport = createTransport();
-  if (!transport) {
+  if (!isSmtpConfigured()) {
     console.log('[Email] SMTP not configured. Password reset link:');
     console.log(`  To: ${input.to}`);
     console.log(`  ${input.resetUrl}`);
     return;
   }
 
-  await transport.sendMail({
-    from: env.SMTP_FROM,
+  await sendMailWithTimeout({
     to: input.to,
     subject,
     text,
@@ -101,14 +134,12 @@ export async function sendPasswordResetCodeEmail(input: {
     </div>
   `;
 
-  const transport = createTransport();
-  if (!transport) {
+  if (!isSmtpConfigured()) {
     console.warn(`[Email] SMTP not configured. Password reset code for ${input.to}: ${input.code}`);
     return;
   }
 
-  await transport.sendMail({
-    from: env.SMTP_FROM,
+  await sendMailWithTimeout({
     to: input.to,
     subject,
     text,

@@ -43,8 +43,8 @@ class Env {
     return trimmed;
   }
 
-  static const int connectTimeoutMs = 10000;
-  static const int receiveTimeoutMs = 30000;
+  static const int connectTimeoutMs = 15000;
+  static const int receiveTimeoutMs = 45000;
 
   /// Origin web tunggal, mis. `https://damosmart.app` (tanpa trailing slash).
   static const String appWebOrigin = String.fromEnvironment(

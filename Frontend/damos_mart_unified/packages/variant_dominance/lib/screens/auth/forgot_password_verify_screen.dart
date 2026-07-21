@@ -83,7 +83,7 @@ class _ForgotPasswordVerifyScreenState extends State<ForgotPasswordVerifyScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Kode 4 digit dikirim ke ${widget.email}. Gunakan kode demo 1234.',
+                'Kode 4 digit dikirim ke ${widget.email}. Cek inbox email kamu (berlaku 15 menit).',
                 style: const TextStyle(
                   fontSize: 14,
                   color: DamosDominanceColors.textPrimary,

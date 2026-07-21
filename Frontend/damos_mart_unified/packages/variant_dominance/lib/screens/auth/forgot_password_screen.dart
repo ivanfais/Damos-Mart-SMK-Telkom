@@ -24,7 +24,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static const Color _primary = DamosDominanceColors.primary;
   static const Color _textPrimary = DamosDominanceColors.textPrimary;
   static const Color _textSecondary = DamosDominanceColors.textSecondary;
-  static const String _dummyCode = '1234';
 
   final _authRepository = AuthRepository();
   final _formKey = GlobalKey<FormState>();
@@ -101,16 +100,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void _submitCode() {
     setState(() => _showValidation = true);
     if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_codeController.text.trim() != _dummyCode) {
-      PopUpAlert.show(
-        context: context,
-        title: 'Kode Salah',
-        description: 'Kode verifikasi tidak valid. Coba lagi ya.',
-        isError: true,
-      );
       return;
     }
 
@@ -259,9 +248,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               onFieldSubmitted: (_) => _submitCode(),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Demo: gunakan kode $_dummyCode untuk verifikasi.',
-              style: const TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
+            const Text(
+              'Cek inbox email kamu. Kode berlaku 15 menit.',
+              style: TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
             ),
           ],
         );

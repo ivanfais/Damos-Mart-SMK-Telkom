@@ -19,7 +19,6 @@ class _Ds {
   static const Color bg = Color(0xFFF5F5F5);
   static const Color red = Color(0xFFD42427);
   static const Color verifyTeal = Color(0xFF00838F);
-  static const String dummyCode = '1234';
 }
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -144,16 +143,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         context: context,
         title: 'Kode Belum Lengkap',
         description: 'Masukkan kode verifikasi 4 digit ya.',
-        isError: true,
-      );
-      return;
-    }
-
-    if (_otpCode != _Ds.dummyCode) {
-      PopUpAlert.show(
-        context: context,
-        title: 'Kode Salah',
-        description: 'Kode verifikasi tidak valid. Coba lagi ya.',
         isError: true,
       );
       return;
@@ -445,7 +434,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Demo: gunakan kode 1234',
+          'Cek inbox email kamu. Kode berlaku 15 menit.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: _Ds.textSecondary, fontFamily: AppTextStyles.fontFamily),
         ),

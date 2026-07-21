@@ -29,6 +29,11 @@ const envSchema = z.object({
   RESET_PASSWORD_URL: z
     .string()
     .default('http://localhost:8080/reset-password?token='),
+  /** Optional fallback code when SMTP is not configured (local/demo only). */
+  PASSWORD_RESET_DEMO_CODE: z
+    .string()
+    .optional()
+    .transform((val) => (val && val.length === 4 ? val : undefined)),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -9,9 +9,20 @@ import {
 } from '../../utils/jwt';
 import { AppError } from '../../middlewares/error.middleware';
 import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
+import { createHash, randomInt } from 'crypto';
+import { isSmtpConfigured, sendPasswordResetCodeEmail } from '../../utils/mailer';
 
-/** Dummy verification code for password reset (development/demo). */
-const RESET_PASSWORD_CODE = '1234';
+const RESET_CODE_TTL_MS = 15 * 60 * 1000;
+
+function generateResetCode(): string {
+  return String(randomInt(1000, 10000));
+}
+
+function hashResetCode(email: string, code: string): string {
+  return createHash('sha256')
+    .update(`${email.trim().toLowerCase()}:${code.trim()}`)
+    .digest('hex');
+}
 
 /**
  * Computes the refresh token's DB expiry from JWT_REFRESH_EXPIRES_IN (e.g. "30d", "12h"),
@@ -306,7 +317,7 @@ export class AuthService {
   }
 
   /**
-   * Validates that an email is registered before password reset.
+   * Sends a 4-digit password reset code to the registered email.
    */
   async requestPasswordReset(input: ForgotPasswordInput) {
     const user = await prisma.user.findUnique({
@@ -321,20 +332,58 @@ export class AuthService {
       throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
     }
 
+    const code =
+      !isSmtpConfigured() && env.PASSWORD_RESET_DEMO_CODE
+        ? env.PASSWORD_RESET_DEMO_CODE
+        : generateResetCode();
+
+    const tokenHash = hashResetCode(user.email, code);
+    const expiresAt = new Date(Date.now() + RESET_CODE_TTL_MS);
+
+    await prisma.$transaction([
+      prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id, usedAt: null },
+      }),
+      prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+        },
+      }),
+    ]);
+
+    try {
+      await sendPasswordResetCodeEmail({
+        to: user.email,
+        fullName: user.fullName,
+        code,
+      });
+    } catch (error) {
+      console.error('[auth] Failed to send password reset email:', error);
+      throw new AppError(
+        500,
+        'EMAIL_SEND_FAILED',
+        'Gagal mengirim kode verifikasi ke email. Coba lagi nanti.',
+      );
+    }
+
+    const message = isSmtpConfigured()
+      ? 'Kode verifikasi telah dikirim ke email kamu.'
+      : env.PASSWORD_RESET_DEMO_CODE
+        ? `SMTP belum dikonfigurasi. Gunakan kode demo: ${env.PASSWORD_RESET_DEMO_CODE}`
+        : 'Kode verifikasi dibuat (cek log server karena SMTP belum dikonfigurasi).';
+
     return {
       email: user.email,
-      message: 'Kode verifikasi telah dikirim (demo: gunakan 1234)',
+      message,
     };
   }
 
   /**
-   * Resets password after dummy verification code check.
+   * Resets password after verifying the emailed 4-digit code.
    */
   async resetPassword(input: ResetPasswordInput) {
-    if (input.code !== RESET_PASSWORD_CODE) {
-      throw new AppError(400, 'INVALID_CODE', 'Kode verifikasi salah');
-    }
-
     const user = await prisma.user.findUnique({
       where: { email: input.email },
     });
@@ -347,16 +396,36 @@ export class AuthService {
       throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
     }
 
+    const tokenHash = hashResetCode(user.email, input.code);
+    const resetToken = await prisma.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!resetToken) {
+      throw new AppError(400, 'INVALID_CODE', 'Kode verifikasi salah atau sudah kedaluwarsa');
+    }
+
     const hashed = await hashPassword(input.newPassword);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash: hashed },
-    });
-
-    await prisma.refreshToken.deleteMany({
-      where: { userId: user.id },
-    });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashed },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: user.id },
+      }),
+    ]);
 
     return {
       email: user.email,

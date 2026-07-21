@@ -11,6 +11,7 @@ class AppConstants {
   static const String keySettingsNotifications = 'settings_notifications';
   static const String keySettingsDarkTheme = 'settings_dark_theme';
   static const String keySelectedDiscVariant = 'selected_disc_variant';
+  static const String keySearchHistory = 'search_history';
 
   // Asset paths
   static const String imageLogo = 'assets/images/logo_koperasi.png';

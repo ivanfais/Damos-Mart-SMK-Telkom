@@ -2,21 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/cart/cart_cubit.dart';
+import '../../core/search/search_navigation.dart';
 import '../../core/utils/cart_navigation.dart';
 import '../../core/utils/damos_system_ui.dart';
 import '../../theme/damos_dominance_colors.dart';
+import '../../widgets/search/damos_search_bar_trigger.dart';
 
 /// Green header for Favorite Saya — single row per design.
 class DamosFavoritesHeader extends StatelessWidget {
   const DamosFavoritesHeader({
     super.key,
-    required this.searchController,
-    required this.onSearchSubmitted,
     required this.onBack,
   });
 
-  final TextEditingController searchController;
-  final ValueChanged<String> onSearchSubmitted;
   final VoidCallback onBack;
 
   static const double _searchHeight = 40;
@@ -31,7 +29,7 @@ class DamosFavoritesHeader extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Material(
-                color: DamosDominanceColors.cartButtonFill,
+                color: Colors.white,
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -114,43 +112,13 @@ class DamosFavoritesHeader extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Container(
+              child: DamosSearchBarTrigger(
                 height: _searchHeight,
-                decoration: BoxDecoration(
-                  color: DamosDominanceColors.cartButtonFill,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.search,
-                      color: DamosDominanceColors.textHint,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: searchController,
-                        textInputAction: TextInputAction.search,
-                        onSubmitted: onSearchSubmitted,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: DamosDominanceColors.textPrimary,
-                        ),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          border: InputBorder.none,
-                          hintText: 'Cari produk...',
-                          hintStyle: TextStyle(
-                            color: DamosDominanceColors.textHint,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                fontSize: 12,
+                iconSize: 18,
+                onTap: () => SearchNavigation.open(
+                  context,
+                  scope: SearchScope.favorites,
                 ),
               ),
             ),

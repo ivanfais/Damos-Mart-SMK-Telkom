@@ -238,12 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                        onTap: () => PopUpAlert.show(
-                          context: context,
-                          title: 'Lupa Password?',
-                          description:
-                              'Silakan hubungi petugas koperasi atau admin IT sekolah untuk mereset password Anda.',
-                        ),
+                        onTap: () => context.push('/forgot-password'),
                         child: const Text(
                           'Lupa Password?',
                           style: TextStyle(

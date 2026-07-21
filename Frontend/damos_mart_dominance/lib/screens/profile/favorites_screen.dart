@@ -20,8 +20,6 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  final TextEditingController _searchController = TextEditingController();
-
   static const List<String> _chipLabels = [
     'Semua',
     'Makanan',
@@ -35,22 +33,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     super.initState();
     context.read<FavoriteCubit>().loadFavorites();
     context.read<CartCubit>().loadCart();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _triggerSearch(String query) {
-    final state = context.read<FavoriteCubit>().state;
-    final categoryId =
-        state is FavoriteListLoaded ? state.selectedCategoryId : '';
-    context.read<FavoriteCubit>().loadFavorites(
-          categoryId: categoryId,
-          search: query.trim(),
-        );
   }
 
   String _chipLabelForCategoryId(String selectedCategoryId, List<CategoryModel> categories) {
@@ -96,8 +78,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Widget _buildHeader() {
     return DamosFavoritesHeader(
-      searchController: _searchController,
-      onSearchSubmitted: _triggerSearch,
       onBack: () {
         if (context.canPop()) {
           context.pop();
@@ -120,7 +100,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           final categoryId = _categoryIdForChip(label, categories);
           context.read<FavoriteCubit>().loadFavorites(
                 categoryId: categoryId,
-                search: _searchController.text.trim(),
               );
         },
       ),
@@ -186,7 +165,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       );
     }
 
-    if (state is FavoriteListLoading || state is FavoriteIdsLoaded) {
+    if (state is FavoriteListLoading) {
       return CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -201,29 +180,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               ),
             ),
           ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: SizedBox(
-                height: 24,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: DamosDominanceColors.primary,
-                  ),
-                ),
-              ),
-            ),
-          ),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                mainAxisExtent: DamosCatalogProductCard.cardHeight,
-              ),
+              gridDelegate: DamosCatalogProductGridShimmer.gridDelegate,
               delegate: SliverChildBuilderDelegate(
                 (_, __) => const LoadingShimmer(
                   width: DamosCatalogProductCard.cardWidth,
@@ -239,10 +199,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
 
     if (state is FavoriteListLoaded) {
-      if (_searchController.text != state.searchQuery) {
-        _searchController.text = state.searchQuery;
-      }
-
       return CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -276,6 +232,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 await context.read<FavoriteCubit>().loadFavorites(
                       categoryId: state.selectedCategoryId,
                       search: state.searchQuery,
+                      refresh: true,
                     );
               } else {
                 await context.read<FavoriteCubit>().loadFavorites();

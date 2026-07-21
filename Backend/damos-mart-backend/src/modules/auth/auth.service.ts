@@ -8,11 +8,25 @@ import {
   TokenPayload,
 } from '../../utils/jwt';
 import { AppError } from '../../middlewares/error.middleware';
-import { RegisterInput, LoginInput, SsoLoginInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
+import {
+  isSmtpConfigured,
+  sendPasswordResetCodeEmail,
+  sendPasswordResetEmail,
+} from '../../services/email.service';
+import { generateResetToken, hashResetToken } from '../../utils/reset-token';
+import {
+  RegisterInput,
+  LoginInput,
+  SsoLoginInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+  ResetPasswordTokenInput,
+  ResetPasswordDemoInput,
+} from './auth.schema';
 import { createHash, randomInt } from 'crypto';
-import { isSmtpConfigured, sendPasswordResetCodeEmail } from '../../utils/mailer';
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
+const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000;
 
 function generateResetCode(): string {
   return String(randomInt(1000, 10000));
@@ -22,6 +36,27 @@ function hashResetCode(email: string, code: string): string {
   return createHash('sha256')
     .update(`${email.trim().toLowerCase()}:${code.trim()}`)
     .digest('hex');
+}
+
+function resolveResetPasswordUrl(client?: string): string {
+  const normalizedClient = client?.trim().toLowerCase();
+  const byClient: Record<string, string | undefined> = {
+    dominance: env.RESET_PASSWORD_URL_DOMINANCE,
+    influence: env.RESET_PASSWORD_URL_INFLUENCE,
+    steadiness: env.RESET_PASSWORD_URL_STEADINESS,
+    conscientiousness: env.RESET_PASSWORD_URL_CONSCIENTIOUSNESS,
+  };
+
+  const specific = normalizedClient ? byClient[normalizedClient] : undefined;
+  if (specific && specific.trim()) {
+    return specific.trim();
+  }
+
+  return env.RESET_PASSWORD_URL;
+}
+
+function isTokenResetInput(input: ResetPasswordInput): input is ResetPasswordTokenInput {
+  return 'token' in input;
 }
 
 /**
@@ -317,7 +352,9 @@ export class AuthService {
   }
 
   /**
-   * Sends a 4-digit password reset code to the registered email.
+   * Sends password reset via email:
+   * - standalone apps (with `client`) get a reset link
+   * - unified app (no `client`) gets a 4-digit verification code
    */
   async requestPasswordReset(input: ForgotPasswordInput) {
     const user = await prisma.user.findUnique({
@@ -332,6 +369,63 @@ export class AuthService {
       throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
     }
 
+    if (input.client) {
+      return this.requestPasswordResetLink(user, input.client);
+    }
+
+    return this.requestPasswordResetCode(user);
+  }
+
+  private async requestPasswordResetLink(
+    user: { id: string; email: string; fullName: string },
+    client: string,
+  ) {
+    const rawToken = generateResetToken();
+    const tokenHash = hashResetToken(rawToken);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+    await prisma.$transaction([
+      prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id, usedAt: null },
+      }),
+      prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+        },
+      }),
+    ]);
+
+    const resetUrl = `${resolveResetPasswordUrl(client)}${rawToken}`;
+
+    try {
+      await sendPasswordResetEmail({
+        to: user.email,
+        fullName: user.fullName,
+        resetUrl,
+      });
+    } catch (error) {
+      console.error('[auth] Failed to send password reset link email:', error);
+      throw new AppError(
+        500,
+        'EMAIL_SEND_FAILED',
+        'Gagal mengirim link reset password ke email. Coba lagi nanti.',
+      );
+    }
+
+    return {
+      email: user.email,
+      method: 'email' as const,
+      message: 'Link reset password telah dikirim ke email Anda. Periksa kotak masuk Gmail Anda.',
+    };
+  }
+
+  private async requestPasswordResetCode(user: {
+    id: string;
+    email: string;
+    fullName: string;
+  }) {
     const code =
       !isSmtpConfigured() && env.PASSWORD_RESET_DEMO_CODE
         ? env.PASSWORD_RESET_DEMO_CODE
@@ -360,7 +454,7 @@ export class AuthService {
         code,
       });
     } catch (error) {
-      console.error('[auth] Failed to send password reset email:', error);
+      console.error('[auth] Failed to send password reset code email:', error);
       throw new AppError(
         500,
         'EMAIL_SEND_FAILED',
@@ -376,14 +470,82 @@ export class AuthService {
 
     return {
       email: user.email,
+      method: 'code' as const,
       message,
     };
   }
 
   /**
-   * Resets password after verifying the emailed 4-digit code.
+   * Validates whether a password reset token is still usable.
+   */
+  async validateResetToken(token: string) {
+    const tokenHash = hashResetToken(token);
+    const savedToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    });
+
+    const valid =
+      !!savedToken &&
+      savedToken.usedAt == null &&
+      savedToken.expiresAt > new Date();
+
+    return { valid };
+  }
+
+  /**
+   * Resets password using either an email link token or a 4-digit code.
    */
   async resetPassword(input: ResetPasswordInput) {
+    if (isTokenResetInput(input)) {
+      return this.resetPasswordWithToken(input);
+    }
+
+    return this.resetPasswordWithCode(input);
+  }
+
+  private async resetPasswordWithToken(input: ResetPasswordTokenInput) {
+    if (input.newPassword !== input.confirmPassword) {
+      throw new AppError(400, 'PASSWORD_MISMATCH', 'Konfirmasi password tidak sesuai');
+    }
+
+    const tokenHash = hashResetToken(input.token);
+    const savedToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!savedToken || savedToken.usedAt != null || savedToken.expiresAt < new Date()) {
+      throw new AppError(400, 'INVALID_TOKEN', 'Link reset password tidak valid atau sudah kedaluwarsa');
+    }
+
+    const user = savedToken.user;
+    if (!user.isActive) {
+      throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
+    }
+
+    const hashed = await hashPassword(input.newPassword);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashed },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: savedToken.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: user.id },
+      }),
+    ]);
+
+    return {
+      email: user.email,
+      message: 'Password berhasil diperbarui',
+    };
+  }
+
+  private async resetPasswordWithCode(input: ResetPasswordDemoInput) {
     const user = await prisma.user.findUnique({
       where: { email: input.email },
     });

@@ -349,16 +349,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen>
               fit: BoxFit.cover,
               width: 52,
               height: 52,
-              placeholder: (_, __) => const Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: DamosDominanceColors.primary,
-                  ),
-                ),
-              ),
+              placeholder: (_, __) => const DamosImagePlaceholderShimmer(),
               errorWidget: (_, __, ___) => const Icon(
                 Icons.image_outlined,
                 color: DamosDominanceColors.textSecondary,

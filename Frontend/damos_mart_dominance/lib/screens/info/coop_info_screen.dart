@@ -140,13 +140,7 @@ class _CoopInfoScreenState extends State<CoopInfoScreen> {
             ? CachedNetworkImage(
                 imageUrl: ApiConfig.imageUrl(locationInfo!.imageUrl!),
                 fit: BoxFit.cover,
-                placeholder: (_, __) => const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: _Ds.primary),
-                  ),
-                ),
+                placeholder: (_, __) => const DamosImagePlaceholderShimmer(),
                 errorWidget: (_, __, ___) =>
                     const Icon(Icons.map_outlined, size: 48, color: _Ds.textSecondary),
               )

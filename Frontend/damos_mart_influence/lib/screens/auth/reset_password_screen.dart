@@ -1,27 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/utils/password_rules.dart';
+import '../../core/utils/validators.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../../theme/damos_dominance_colors.dart';
-import '../../widgets/auth/damos_auth_app_bar.dart';
-import '../../widgets/auth/damos_auth_text_field.dart';
-import '../../widgets/auth/password_requirements.dart';
-import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/pop_up_alert.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String token;
 
-  const ResetPasswordScreen({
-    super.key,
-    required this.token,
-  });
+  const ResetPasswordScreen({super.key, required this.token});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+  static const Color _primary = Color(0xFF1B8C2E);
+  static const Color _textPrimary = Color(0xFF1A1A1A);
+  static const Color _fieldFill = Color(0xFFF3F4F6);
+
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
@@ -76,13 +72,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      final message = await _repository.resetPassword(
+      final message = await _repository.resetPasswordWithToken(
         token: widget.token,
         newPassword: _passwordController.text,
         confirmPassword: _confirmController.text,
       );
       if (!mounted) return;
-
       await PopUpAlert.showSuccess(
         context: context,
         title: 'Password Diperbarui',
@@ -103,34 +98,47 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
+  InputDecoration _fieldDecoration({
+    required String hint,
+    required bool obscure,
+    required VoidCallback onToggle,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: const Icon(Icons.lock_outline),
+      filled: true,
+      fillColor: _fieldFill,
+      suffixIcon: IconButton(
+        icon: Icon(
+          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+        ),
+        onPressed: onToggle,
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isValidating) {
-      return Scaffold(
-        backgroundColor: DamosDominanceColors.background,
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
-              SizedBox(height: 48),
-              LoadingShimmer(width: 180, height: 28, borderRadius: 8),
-              SizedBox(height: 24),
-              LoadingShimmer(width: double.infinity, height: 48, borderRadius: 8),
-              SizedBox(height: 16),
-              LoadingShimmer(width: double.infinity, height: 48, borderRadius: 8),
-              SizedBox(height: 16),
-              LoadingShimmer(width: double.infinity, height: 48, borderRadius: 8),
-            ],
-          ),
-        ),
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator(color: _primary)),
       );
     }
 
     if (!_tokenValid) {
       return Scaffold(
-        backgroundColor: DamosDominanceColors.background,
-        appBar: const DamosAuthAppBar(title: 'Reset Password'),
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text(
+            'Reset Password',
+            style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w700),
+          ),
+          centerTitle: true,
+        ),
         body: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -138,10 +146,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             children: [
               const Text(
                 'Link reset password tidak valid atau sudah kedaluwarsa.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: DamosDominanceColors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 14, color: _textPrimary),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -149,8 +154,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 child: ElevatedButton(
                   onPressed: () => context.go('/forgot-password'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: DamosDominanceColors.primary,
-                    foregroundColor: DamosDominanceColors.textOnPrimary,
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -168,8 +173,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
 
     return Scaffold(
-      backgroundColor: DamosDominanceColors.background,
-      appBar: const DamosAuthAppBar(title: 'Reset Password'),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Reset Password',
+          style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w700),
+        ),
+        centerTitle: true,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -177,33 +190,32 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DamosAuthTextField(
+              TextFormField(
                 controller: _passwordController,
-                hintText: 'Password Baru',
-                prefixIcon: Icons.lock_outline,
                 obscureText: _obscurePassword,
-                onToggleVisibility: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
-                validator: PasswordRules.validate,
-                onChanged: (_) => setState(() {}),
+                validator: Validators.password,
+                decoration: _fieldDecoration(
+                  hint: 'Password Baru',
+                  obscure: _obscurePassword,
+                  onToggle: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
               ),
-              const SizedBox(height: 12),
-              PasswordRequirements(password: _passwordController.text),
               const SizedBox(height: 16),
-              DamosAuthTextField(
+              TextFormField(
                 controller: _confirmController,
-                hintText: 'Konfirmasi Password Baru',
-                prefixIcon: Icons.lock_outline,
                 obscureText: _obscureConfirm,
-                onToggleVisibility: () {
-                  setState(() => _obscureConfirm = !_obscureConfirm);
-                },
-                textInputAction: TextInputAction.done,
-                validator: (value) => PasswordRules.confirm(value, _passwordController.text),
+                validator: (value) =>
+                    Validators.confirmPassword(value, _passwordController.text),
                 onFieldSubmitted: (_) {
                   if (!_isSubmitting) _submit();
                 },
+                decoration: _fieldDecoration(
+                  hint: 'Konfirmasi Password Baru',
+                  obscure: _obscureConfirm,
+                  onToggle: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
+                ),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -211,10 +223,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: DamosDominanceColors.primary,
-                    foregroundColor: DamosDominanceColors.textOnPrimary,
-                    disabledBackgroundColor:
-                        DamosDominanceColors.primary.withValues(alpha: 0.6),
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: _primary.withValues(alpha: 0.6),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -226,9 +237,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              DamosDominanceColors.textOnPrimary,
-                            ),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text(

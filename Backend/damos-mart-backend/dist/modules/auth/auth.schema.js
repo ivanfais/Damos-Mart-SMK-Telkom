@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.refreshTokenSchema = exports.ssoLoginSchema = exports.loginSchema = exports.registerSchema = void 0;
+exports.resetPasswordSchema = exports.validateResetTokenSchema = exports.forgotPasswordSchema = exports.refreshTokenSchema = exports.ssoLoginSchema = exports.loginSchema = exports.registerSchema = void 0;
 const zod_1 = require("zod");
 exports.registerSchema = zod_1.z.object({
     body: zod_1.z.object({
@@ -30,12 +30,25 @@ exports.refreshTokenSchema = zod_1.z.object({
 exports.forgotPasswordSchema = zod_1.z.object({
     body: zod_1.z.object({
         email: zod_1.z.string().email('Invalid email address'),
+        client: zod_1.z.string().trim().min(1).optional(),
+    }),
+});
+exports.validateResetTokenSchema = zod_1.z.object({
+    query: zod_1.z.object({
+        token: zod_1.z.string().min(1, 'Token is required'),
     }),
 });
 exports.resetPasswordSchema = zod_1.z.object({
-    body: zod_1.z.object({
-        email: zod_1.z.string().email('Invalid email address'),
-        code: zod_1.z.string().length(4, 'Verification code must be 4 digits'),
-        newPassword: zod_1.z.string().min(6, 'Password must be at least 6 characters long'),
-    }),
+    body: zod_1.z.union([
+        zod_1.z.object({
+            token: zod_1.z.string().min(1, 'Token is required'),
+            newPassword: zod_1.z.string().min(6, 'Password must be at least 6 characters long'),
+            confirmPassword: zod_1.z.string().min(6, 'Confirm password is required'),
+        }),
+        zod_1.z.object({
+            email: zod_1.z.string().email('Invalid email address'),
+            code: zod_1.z.string().length(4, 'Verification code must be 4 digits'),
+            newPassword: zod_1.z.string().min(6, 'Password must be at least 6 characters long'),
+        }),
+    ]),
 });

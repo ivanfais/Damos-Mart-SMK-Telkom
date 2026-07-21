@@ -1,0 +1,117 @@
+import nodemailer from 'nodemailer';
+import { env } from '../config/env';
+
+export function isSmtpConfigured(): boolean {
+  return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+}
+
+function createTransport() {
+  if (!isSmtpConfigured()) {
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_SECURE,
+    auth: {
+      user: env.SMTP_USER,
+      pass: env.SMTP_PASS,
+    },
+  });
+}
+
+export async function sendPasswordResetEmail(input: {
+  to: string;
+  fullName: string;
+  resetUrl: string;
+}) {
+  const subject = 'Reset Password Damos Mart';
+  const text = [
+    `Halo ${input.fullName},`,
+    '',
+    'Kami menerima permintaan reset password untuk akun Damos Mart Anda.',
+    'Klik link berikut untuk membuat password baru (berlaku 1 jam):',
+    input.resetUrl,
+    '',
+    'Jika Anda tidak meminta reset password, abaikan email ini.',
+    '',
+    'Salam,',
+    'Tim Damos Mart',
+  ].join('\n');
+
+  const html = `
+    <p>Halo <strong>${input.fullName}</strong>,</p>
+    <p>Kami menerima permintaan reset password untuk akun Damos Mart Anda.</p>
+    <p>
+      <a href="${input.resetUrl}" style="display:inline-block;padding:12px 20px;background:#1B8C2E;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;">
+        Reset Password
+      </a>
+    </p>
+    <p>Atau salin link berikut ke browser Anda:</p>
+    <p><a href="${input.resetUrl}">${input.resetUrl}</a></p>
+    <p>Link berlaku selama <strong>1 jam</strong>.</p>
+    <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
+    <p>Salam,<br/>Tim Damos Mart</p>
+  `;
+
+  const transport = createTransport();
+  if (!transport) {
+    console.log('[Email] SMTP not configured. Password reset link:');
+    console.log(`  To: ${input.to}`);
+    console.log(`  ${input.resetUrl}`);
+    return;
+  }
+
+  await transport.sendMail({
+    from: env.SMTP_FROM,
+    to: input.to,
+    subject,
+    text,
+    html,
+  });
+}
+
+export async function sendPasswordResetCodeEmail(input: {
+  to: string;
+  fullName: string;
+  code: string;
+}) {
+  const subject = 'Kode Verifikasi Reset Password - Damos Mart';
+  const text = [
+    `Halo ${input.fullName},`,
+    '',
+    `Kode verifikasi reset password kamu adalah: ${input.code}`,
+    '',
+    'Kode berlaku 15 menit. Jangan bagikan kode ini kepada siapa pun.',
+    '',
+    'Jika kamu tidak meminta reset password, abaikan email ini.',
+    '',
+    '— Damos Mart SMK Telkom Jakarta',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1a1a1a;">
+      <p>Halo <strong>${input.fullName}</strong>,</p>
+      <p>Kode verifikasi reset password kamu adalah:</p>
+      <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #1B8C2E;">${input.code}</p>
+      <p>Kode berlaku <strong>15 menit</strong>. Jangan bagikan kode ini kepada siapa pun.</p>
+      <p style="color: #6b7280; font-size: 13px;">Jika kamu tidak meminta reset password, abaikan email ini.</p>
+      <p>— Damos Mart SMK Telkom Jakarta</p>
+    </div>
+  `;
+
+  const transport = createTransport();
+  if (!transport) {
+    console.warn(`[Email] SMTP not configured. Password reset code for ${input.to}: ${input.code}`);
+    return;
+  }
+
+  await transport.sendMail({
+    from: env.SMTP_FROM,
+    to: input.to,
+    subject,
+    text,
+    html,
+  });
+}

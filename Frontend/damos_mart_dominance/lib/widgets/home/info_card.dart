@@ -21,16 +21,13 @@ class InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     String crowdText = 'Sepi/Rendah 😊';
     Color crowdColor = AppColors.success;
-    Color crowdBg = AppColors.primarySurface;
 
     if (crowdLevel == CooperativeCrowdLevel.medium) {
       crowdText = 'Sedang/Normal ☕';
       crowdColor = AppColors.warning;
-      crowdBg = AppColors.warning.withOpacity(0.1);
     } else if (crowdLevel == CooperativeCrowdLevel.high) {
       crowdText = 'Ramai/Padat 🏃';
       crowdColor = AppColors.error;
-      crowdBg = AppColors.error.withOpacity(0.1);
     }
 
     return GestureDetector(

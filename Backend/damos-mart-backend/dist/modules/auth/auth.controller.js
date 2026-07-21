@@ -104,6 +104,23 @@ class AuthController {
     /**
      * HTTP Handler for reset password with verification code.
      */
+    async validateResetToken(req, res, next) {
+        try {
+            const token = req.query.token;
+            const data = await authService.validateResetToken(token);
+            return res.status(200).json({
+                success: true,
+                data,
+                message: data.valid ? 'Token valid' : 'Token tidak valid',
+            });
+        }
+        catch (error) {
+            return next(error);
+        }
+    }
+    /**
+     * HTTP Handler for reset password using email link token.
+     */
     async resetPassword(req, res, next) {
         try {
             const data = await authService.resetPassword(req.body);

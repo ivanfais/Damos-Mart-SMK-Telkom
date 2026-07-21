@@ -26,10 +26,19 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('Damos Mart <noreply@damosmart.com>'),
+  /** Fallback reset URL prefix used by all DISC apps. */
   RESET_PASSWORD_URL: z
     .string()
     .default('http://localhost:8080/reset-password?token='),
-  /** Optional fallback code when SMTP is not configured (local/demo only). */
+  /** Optional per-variant reset URL overrides. */
+  RESET_PASSWORD_URL_DOMINANCE: z.string().optional(),
+  RESET_PASSWORD_URL_INFLUENCE: z.string().optional(),
+  RESET_PASSWORD_URL_STEADINESS: z.string().optional(),
+  RESET_PASSWORD_URL_CONSCIENTIOUSNESS: z.string().optional(),
+  /**
+   * Optional fallback 4-digit code when SMTP is not configured (local/demo only).
+   * Empty string disables the demo fallback.
+   */
   PASSWORD_RESET_DEMO_CODE: z
     .string()
     .optional()

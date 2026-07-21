@@ -6,6 +6,7 @@ import '../../data/repositories/order_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/common/damos_page_app_bar.dart';
 import '../../widgets/common/error_state.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import '../../config/api_config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -201,9 +202,7 @@ class _ComplaintProductSelectionScreenState
               backgroundColor: DamosDominanceColors.primary,
             ),
             const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(color: DamosDominanceColors.primary),
-              ),
+              child: DamosListCardShimmer(),
             ),
           ],
         ),

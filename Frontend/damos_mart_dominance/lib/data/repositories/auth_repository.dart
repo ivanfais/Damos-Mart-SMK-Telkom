@@ -92,14 +92,25 @@ class AuthRepository {
     );
   }
 
+  Future<UserModel> getCurrentUser() async {
+    final response = await _client.get(ApiConfig.userMe);
+    final data = response.data['data'] as Map<String, dynamic>;
+    return UserModel.fromJson(data);
+  }
+
   Future<String> forgotPassword(String email) async {
     final response = await _client.post(
       ApiConfig.forgotPassword,
-      data: {'email': email},
+      data: {
+        'email': email,
+        'client': 'dominance',
+      },
     );
 
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
     return response.data['message'] as String? ??
-        'Jika email terdaftar, link reset password telah dikirim ke email Anda.';
+        data['message'] as String? ??
+        'Link reset password telah dikirim ke email Anda.';
   }
 
   Future<bool> validateResetToken(String token) async {
@@ -123,23 +134,6 @@ class AuthRepository {
         'token': token,
         'newPassword': newPassword,
         'confirmPassword': confirmPassword,
-      },
-    );
-
-    return response.data['message'] as String? ?? 'Password berhasil diperbarui.';
-  }
-
-  Future<String> resetPasswordWithEmail({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
-    final response = await _client.post(
-      ApiConfig.resetPassword,
-      data: {
-        'email': email,
-        'code': code,
-        'newPassword': newPassword,
       },
     );
 

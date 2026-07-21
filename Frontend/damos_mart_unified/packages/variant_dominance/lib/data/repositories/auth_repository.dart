@@ -95,11 +95,14 @@ class AuthRepository {
   Future<String> forgotPassword(String email) async {
     final response = await _client.post(
       ApiConfig.forgotPassword,
-      data: {'email': email},
+      data: {
+        'email': email,
+        'client': 'dominance',
+      },
     );
 
     return response.data['message'] as String? ??
-        'Jika email terdaftar, link reset password telah dikirim ke email Anda.';
+        'Link reset password telah dikirim ke email Anda. Periksa kotak masuk Gmail Anda.';
   }
 
   Future<bool> validateResetToken(String token) async {

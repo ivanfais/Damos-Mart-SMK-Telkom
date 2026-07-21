@@ -6,10 +6,6 @@ import '../../data/repositories/auth_repository.dart';
 import '../../theme/damos_dominance_colors.dart';
 import '../../widgets/auth/damos_auth_app_bar.dart';
 import '../../widgets/auth/damos_auth_text_field.dart';
-import '../../widgets/auth/password_requirements.dart';
-import '../../widgets/common/pop_up_alert.dart';
-
-enum _ForgotStep { email, code, newPassword }
 
 class ForgotPasswordScreen extends StatefulWidget {
   final String? prefillEmail;
@@ -28,16 +24,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _authRepository = AuthRepository();
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _codeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
-  _ForgotStep _step = _ForgotStep.email;
   bool _isSubmitting = false;
   bool _showValidation = false;
+  bool _emailSent = false;
   String? _emailSubmitError;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+  String _successMessage =
+      'Link reset password telah dikirim ke email Anda. Periksa kotak masuk Gmail Anda.';
 
   @override
   void initState() {
@@ -50,9 +43,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void dispose() {
     _emailController.dispose();
-    _codeController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -69,13 +59,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _showValidation = false;
       _emailSubmitError = null;
     });
+
     try {
-      await _authRepository.forgotPassword(_email);
+      final message = await _authRepository.forgotPassword(_email);
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _step = _ForgotStep.code;
-        _codeController.clear();
+        _emailSent = true;
+        _successMessage = message;
       });
     } catch (e) {
       if (!mounted) return;
@@ -97,302 +88,186 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return 'Email tidak terdaftar';
   }
 
-  void _submitCode() {
-    setState(() => _showValidation = true);
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    setState(() {
-      _step = _ForgotStep.newPassword;
-      _passwordController.clear();
-      _confirmPasswordController.clear();
-      _showValidation = false;
-    });
-  }
-
-  Future<void> _submitNewPassword() async {
-    setState(() => _showValidation = true);
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-    try {
-      await _authRepository.resetPasswordWithEmail(
-        email: _email,
-        code: _codeController.text.trim(),
-        newPassword: _passwordController.text,
-      );
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
-
-      await PopUpAlert.showSuccess(
-        context: context,
-        title: 'Password Diperbarui',
-        description: 'Password kamu berhasil diganti. Silakan login dengan password baru.',
-      );
-
-      if (!mounted) return;
-      context.go('/login', extra: {'email': _email});
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
-      PopUpAlert.show(
-        context: context,
-        title: 'Gagal',
-        description: e.toString(),
-        isError: true,
-      );
-    }
-  }
-
-  String get _subtitle {
-    switch (_step) {
-      case _ForgotStep.email:
-        return 'Masukkan email Anda untuk reset password';
-      case _ForgotStep.code:
-        return 'Masukkan kode verifikasi 4 digit yang dikirim ke email kamu.';
-      case _ForgotStep.newPassword:
-        return 'Buat password baru untuk akun $_email.';
-    }
-  }
-
-  String get _buttonLabel {
-    switch (_step) {
-      case _ForgotStep.email:
-        return 'Kirim Reset Link';
-      case _ForgotStep.code:
-        return 'VERIFIKASI';
-      case _ForgotStep.newPassword:
-        return 'SIMPAN PERUBAHAN';
-    }
-  }
-
-  bool get _canSubmit {
-    if (_isSubmitting) return false;
-    switch (_step) {
-      case _ForgotStep.email:
-        return _email.isNotEmpty;
-      case _ForgotStep.code:
-        return _codeController.text.trim().length == 4;
-      case _ForgotStep.newPassword:
-        return Validators.authPassword(_passwordController.text) == null &&
-            _confirmPasswordController.text == _passwordController.text &&
-            _confirmPasswordController.text.isNotEmpty;
-    }
-  }
-
-  VoidCallback? get _onSubmit {
-    if (_isSubmitting || !_canSubmit) return null;
-    switch (_step) {
-      case _ForgotStep.email:
-        return _submitEmail;
-      case _ForgotStep.code:
-        return _submitCode;
-      case _ForgotStep.newPassword:
-        return _submitNewPassword;
-    }
-  }
-
-  Widget _buildStepContent() {
-    switch (_step) {
-      case _ForgotStep.email:
-        return Column(
-          key: const ValueKey(_ForgotStep.email),
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DamosAuthTextField(
-              controller: _emailController,
-              hintText: 'Masukkan Alamat Email',
-              prefixIcon: Icons.person_outline,
-              keyboardType: TextInputType.emailAddress,
-              validator: Validators.authEmail,
-              textInputAction: TextInputAction.done,
-              showErrorState: _emailSubmitError != null,
-              onChanged: (_) => setState(() {
-                _emailSubmitError = null;
-              }),
-              onFieldSubmitted: (_) => _submitEmail(),
+  Widget _buildEmailForm() {
+    return Column(
+      key: const ValueKey('forgot-password-form'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Masukkan email terdaftar Anda. Kami akan mengirim link reset password ke Gmail Anda.',
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            color: _textPrimary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        DamosAuthTextField(
+          controller: _emailController,
+          hintText: 'Masukkan Alamat Email',
+          prefixIcon: Icons.person_outline,
+          keyboardType: TextInputType.emailAddress,
+          validator: Validators.authEmail,
+          textInputAction: TextInputAction.done,
+          showErrorState: _emailSubmitError != null,
+          onChanged: (_) => setState(() {
+            _emailSubmitError = null;
+          }),
+          onFieldSubmitted: (_) => _submitEmail(),
+        ),
+        if (_emailSubmitError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _emailSubmitError!,
+            style: const TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              color: DamosDominanceColors.error,
             ),
-            if (_emailSubmitError != null) ...[
+          ),
+        ],
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 48,
+          child: ElevatedButton(
+            onPressed: _isSubmitting || _email.isEmpty ? null : _submitEmail,
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  _email.isNotEmpty ? _primary : DamosDominanceColors.fieldFill,
+              foregroundColor:
+                  _email.isNotEmpty ? Colors.white : _textPrimary,
+              disabledBackgroundColor: DamosDominanceColors.fieldFill,
+              disabledForegroundColor: _textPrimary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: _email.isEmpty
+                      ? DamosDominanceColors.fieldBorder
+                      : Colors.transparent,
+                ),
+              ),
+            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(_primary),
+                    ),
+                  )
+                : const Text(
+                    'Kirim Link Reset',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuccessState() {
+    return Column(
+      key: const ValueKey('forgot-password-success'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: DamosDominanceColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: DamosDominanceColors.primary.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.mark_email_read_outlined,
+                color: _primary,
+                size: 32,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _successMessage,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: _textPrimary,
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
-                _emailSubmitError!,
+                'Email: $_email',
                 style: const TextStyle(
-                  fontSize: 12,
-                  height: 1.4,
-                  color: DamosDominanceColors.error,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _textSecondary,
                 ),
               ),
             ],
-          ],
-        );
-      case _ForgotStep.code:
-        return Column(
-          key: const ValueKey(_ForgotStep.code),
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DamosAuthTextField(
-              controller: _codeController,
-              hintText: 'Masukkan 4 digit kode',
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.trim().length != 4) {
-                  return 'Masukkan kode 4 digit ya!';
-                }
-                return null;
-              },
-              textInputAction: TextInputAction.done,
-              onChanged: (_) => setState(() {}),
-              onFieldSubmitted: (_) => _submitCode(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Buka email Anda, klik link reset password, lalu buat password baru di halaman reset.',
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.45,
+            color: _textSecondary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () => context.go('/login', extra: {'email': _email}),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Cek inbox email kamu. Kode berlaku 15 menit.',
-              style: TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
+            child: const Text(
+              'Kembali ke Login',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ],
-        );
-      case _ForgotStep.newPassword:
-        return Column(
-          key: const ValueKey(_ForgotStep.newPassword),
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DamosAuthTextField(
-              controller: _passwordController,
-              hintText: 'Password Baru',
-              prefixIcon: Icons.lock_outline,
-              obscureText: _obscurePassword,
-              onToggleVisibility: () => setState(() => _obscurePassword = !_obscurePassword),
-              validator: Validators.authPassword,
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 12),
-            PasswordRequirements(password: _passwordController.text),
-            const SizedBox(height: 16),
-            DamosAuthTextField(
-              controller: _confirmPasswordController,
-              hintText: 'Konfirmasi Password Baru',
-              prefixIcon: Icons.lock_outline,
-              obscureText: _obscureConfirmPassword,
-              onToggleVisibility: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Konfirmasi password wajib diisi';
-                }
-                if (value != _passwordController.text) {
-                  return 'Password baru yang anda masukkan tidak sesuai';
-                }
-                return null;
-              },
-              textInputAction: TextInputAction.done,
-              onChanged: (_) => setState(() {}),
-              onFieldSubmitted: (_) => _submitNewPassword(),
-            ),
-          ],
-        );
-    }
-  }
-
-  String get _appBarTitle {
-    switch (_step) {
-      case _ForgotStep.email:
-        return 'Lupa Password';
-      case _ForgotStep.code:
-        return 'Verifikasi Kode';
-      case _ForgotStep.newPassword:
-        return 'Reset Password';
-    }
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: DamosAuthAppBar(title: _appBarTitle),
+      appBar: DamosAuthAppBar(
+        title: _emailSent ? 'Cek Email Anda' : 'Lupa Password',
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Form(
             key: _formKey,
-            autovalidateMode: _showValidation ? AutovalidateMode.always : AutovalidateMode.disabled,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  _subtitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: _textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  child: _buildStepContent(),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 48,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeInOut,
-                    child: ElevatedButton(
-                      onPressed: _onSubmit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _step == _ForgotStep.email
-                            ? (_canSubmit ? _primary : DamosDominanceColors.fieldFill)
-                            : _primary,
-                        foregroundColor: _step == _ForgotStep.email
-                            ? (_canSubmit ? Colors.white : _textPrimary)
-                            : Colors.white,
-                        disabledBackgroundColor: _step == _ForgotStep.email
-                            ? DamosDominanceColors.fieldFill
-                            : _primary.withValues(alpha: 0.5),
-                        disabledForegroundColor: _step == _ForgotStep.email
-                            ? _textPrimary
-                            : Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(
-                            color: _step == _ForgotStep.email && !_canSubmit
-                                ? DamosDominanceColors.fieldBorder
-                                : Colors.transparent,
-                          ),
-                        ),
-                      ),
-                      child: _isSubmitting
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  _step == _ForgotStep.email && !_canSubmit
-                                      ? _primary
-                                      : Colors.white,
-                                ),
-                              ),
-                            )
-                          : Text(
-                              _buttonLabel,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: _step == _ForgotStep.email
-                                    ? (_canSubmit ? Colors.white : _textPrimary)
-                                    : Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              ],
+            autovalidateMode: _showValidation
+                ? AutovalidateMode.always
+                : AutovalidateMode.disabled,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: _emailSent ? _buildSuccessState() : _buildEmailForm(),
             ),
           ),
         ),

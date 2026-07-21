@@ -144,7 +144,22 @@ class AuthRepository {
     final data = response.data['data'] as Map<String, dynamic>? ?? {};
     return response.data['message'] as String? ??
         data['message'] as String? ??
-        'Link reset password telah dikirim ke email Anda.';
+        'Kode verifikasi telah dikirim ke email kamu.';
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _client.post(
+      ApiConfig.resetPassword,
+      data: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      },
+    );
   }
 
   Future<bool> validateResetToken(String token) async {

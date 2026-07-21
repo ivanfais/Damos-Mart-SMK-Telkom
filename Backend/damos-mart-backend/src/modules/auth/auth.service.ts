@@ -353,8 +353,8 @@ export class AuthService {
 
   /**
    * Sends password reset via email:
-   * - standalone apps (with `client`) get a reset link
-   * - unified app (no `client`) gets a 4-digit verification code
+   * - Dominance → clickable reset link (Netlify / web)
+   * - Influence, Steadiness, and others → 4-digit verification code
    */
   async requestPasswordReset(input: ForgotPasswordInput) {
     const user = await prisma.user.findUnique({
@@ -369,8 +369,9 @@ export class AuthService {
       throw new AppError(403, 'FORBIDDEN', 'Akun tidak aktif. Hubungi administrator.');
     }
 
-    if (input.client) {
-      return this.requestPasswordResetLink(user, input.client);
+    const client = input.client?.trim().toLowerCase();
+    if (client === 'dominance') {
+      return this.requestPasswordResetLink(user, 'dominance');
     }
 
     return this.requestPasswordResetCode(user);

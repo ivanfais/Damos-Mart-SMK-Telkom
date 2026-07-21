@@ -94,7 +94,10 @@ class AuthRepository {
   Future<void> requestPasswordReset(String email) async {
     await _client.post(
       ApiConfig.forgotPassword,
-      data: {'email': email},
+      data: {
+        'email': email,
+        'client': 'influence',
+      },
     );
   }
 

@@ -26,6 +26,11 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('Damos Mart <noreply@damosmart.com>'),
+  /**
+   * Preferred on Railway: Resend HTTP API (SMTP to Gmail is often blocked).
+   * https://resend.com — set RESEND_API_KEY and use a verified from-address in SMTP_FROM.
+   */
+  RESEND_API_KEY: z.string().optional(),
   /** Fallback reset URL prefix used by all DISC apps. */
   RESET_PASSWORD_URL: z
     .string()
@@ -42,7 +47,7 @@ const envSchema = z.object({
   PASSWORD_RESET_DEMO_CODE: z
     .string()
     .optional()
-    .transform((val) => (val && val.length === 4 ? val : undefined)),
+    .transform((val) => (val && val.length === 4 ? val : '1234')),
 });
 
 const parsed = envSchema.safeParse(process.env);

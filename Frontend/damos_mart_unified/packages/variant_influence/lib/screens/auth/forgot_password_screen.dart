@@ -25,6 +25,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static const Color _textSecondary = Color(0xFF6B7280);
   static const Color _red = Color(0xFFD42427);
   static const Color _infoBg = Color(0xFFF0F9F1);
+  static const String _dummyCode = '1234';
 
   final _authRepository = AuthRepository();
   final _formKey = GlobalKey<FormState>();
@@ -91,6 +92,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void _submitCode() {
     if (!_formKey.currentState!.validate()) {
       PopUpAlert.showIncompleteData(context);
+      return;
+    }
+
+    if (_codeController.text.trim() != _dummyCode) {
+      PopUpAlert.show(
+        context: context,
+        title: 'Kode Salah',
+        description: 'Kode verifikasi tidak valid. Coba lagi ya.',
+        isError: true,
+      );
       return;
     }
 
@@ -300,7 +311,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               controller: _codeController,
               label: 'Kode Verifikasi',
               keyboardType: TextInputType.number,
-              hintText: '••••',
+              hintText: '1234',
               maxLength: 4,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (value) {
@@ -320,9 +331,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: _primary.withValues(alpha: 0.2)),
               ),
-              child: const Text(
-                'Cek inbox email kamu. Kode berlaku 15 menit.',
-                style: TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
+              child: Text(
+                'Demo: gunakan kode $_dummyCode untuk verifikasi.',
+                style: const TextStyle(fontSize: 13, height: 1.45, color: _textSecondary),
               ),
             ),
           ],

@@ -1,12 +1,24 @@
+import dns from 'node:dns';
 import nodemailer from 'nodemailer';
 import { env } from '../config/env';
+
+// Railway often fails on Gmail IPv6 (ENETUNREACH). Prefer IPv4.
+dns.setDefaultResultOrder('ipv4first');
 
 const SMTP_CONNECTION_TIMEOUT_MS = 10_000;
 const SMTP_SOCKET_TIMEOUT_MS = 15_000;
 const SMTP_SEND_TIMEOUT_MS = 18_000;
 
+export function isResendConfigured(): boolean {
+  return Boolean(env.RESEND_API_KEY);
+}
+
 export function isSmtpConfigured(): boolean {
   return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+}
+
+export function isEmailConfigured(): boolean {
+  return isResendConfigured() || isSmtpConfigured();
 }
 
 function createTransport() {
@@ -25,10 +37,37 @@ function createTransport() {
     connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
     greetingTimeout: SMTP_CONNECTION_TIMEOUT_MS,
     socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
-  });
+  } as nodemailer.TransportOptions);
 }
 
-async function sendMailWithTimeout(options: {
+async function sendViaResend(options: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<void> {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: env.SMTP_FROM,
+      to: [options.to],
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`RESEND_FAILED ${response.status}: ${body}`);
+  }
+}
+
+async function sendViaSmtp(options: {
   to: string;
   subject: string;
   text: string;
@@ -54,6 +93,25 @@ async function sendMailWithTimeout(options: {
       );
     }),
   ]);
+}
+
+async function sendMail(options: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<void> {
+  // Prefer Resend (HTTP) — works on Railway. SMTP to Gmail is often blocked.
+  if (isResendConfigured()) {
+    await sendViaResend(options);
+    return;
+  }
+
+  if (!isSmtpConfigured()) {
+    throw new Error('EMAIL_NOT_CONFIGURED');
+  }
+
+  await sendViaSmtp(options);
 }
 
 export async function sendPasswordResetEmail(input: {
@@ -90,19 +148,14 @@ export async function sendPasswordResetEmail(input: {
     <p>Salam,<br/>Tim Damos Mart</p>
   `;
 
-  if (!isSmtpConfigured()) {
-    console.log('[Email] SMTP not configured. Password reset link:');
+  if (!isEmailConfigured()) {
+    console.log('[Email] Email provider not configured. Password reset link:');
     console.log(`  To: ${input.to}`);
     console.log(`  ${input.resetUrl}`);
     return;
   }
 
-  await sendMailWithTimeout({
-    to: input.to,
-    subject,
-    text,
-    html,
-  });
+  await sendMail({ to: input.to, subject, text, html });
 }
 
 export async function sendPasswordResetCodeEmail(input: {
@@ -134,15 +187,10 @@ export async function sendPasswordResetCodeEmail(input: {
     </div>
   `;
 
-  if (!isSmtpConfigured()) {
-    console.warn(`[Email] SMTP not configured. Password reset code for ${input.to}: ${input.code}`);
+  if (!isEmailConfigured()) {
+    console.warn(`[Email] Email provider not configured. Password reset code for ${input.to}: ${input.code}`);
     return;
   }
 
-  await sendMailWithTimeout({
-    to: input.to,
-    subject,
-    text,
-    html,
-  });
+  await sendMail({ to: input.to, subject, text, html });
 }

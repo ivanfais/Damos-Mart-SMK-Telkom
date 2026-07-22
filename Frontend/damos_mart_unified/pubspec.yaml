@@ -32,6 +32,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.14.3
+  image: ^4.8.0
 
 flutter_launcher_icons:
   android: true
@@ -42,10 +43,9 @@ flutter_launcher_icons:
     generate: true
   windows:
     generate: true
-  image_path: "assets/images/logo_koperasi.png"
-  adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "assets/images/logo_koperasi.png"
-  adaptive_icon_foreground_inset: 0
+  # Pakai versi kotak dari logo asli (logo di tengah, rasio dijaga, padding
+  # transparan) supaya logo tampil UTUH tanpa gepeng/terpotong.
+  image_path: "assets/images/logo_damos_mart_square.png"
   remove_alpha_ios: true
 
 flutter:
